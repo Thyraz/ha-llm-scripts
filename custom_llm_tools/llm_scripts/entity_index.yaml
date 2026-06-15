@@ -1,0 +1,230 @@
+llmtool_entity_index:
+  alias: LLM Tool Entity Index
+  description: >
+    Use Entity Index before other LLM Tools need Home Assistant entity IDs.
+    It returns only directly labeled entities whose label IDs are in the
+    allowlist. Query by comma-separated label IDs, choose location as inside,
+    outside, or everywhere, and inspect meta.truncated before assuming the
+    result is complete.
+  mode: queued
+  max: 2
+  fields:
+    labels:
+      name: Label IDs
+      description: >
+        Comma-separated allowlisted Home Assistant label IDs. Required when
+        query_mode is by_labels. Do not include inside or outside; use location.
+      required: false
+      example: TemperatureSensor,Thermostat
+      selector:
+        text:
+    location:
+      name: Location
+      description: >
+        Required location filter: inside, outside, or everywhere.
+      required: true
+      example: inside
+      selector:
+        select:
+          options:
+            - inside
+            - outside
+            - everywhere
+    query_mode:
+      name: Query mode
+      description: >
+        by_labels requires labels. all_labeled returns all entities with at
+        least one allowlisted label.
+      required: false
+      default: by_labels
+      example: by_labels
+      selector:
+        select:
+          options:
+            - by_labels
+            - all_labeled
+    match_mode:
+      name: Match mode
+      description: >
+        For by_labels with multiple labels, all requires every label and any
+        requires at least one.
+      required: false
+      default: all
+      example: all
+      selector:
+        select:
+          options:
+            - all
+            - any
+    verbosity:
+      name: Verbosity
+      description: >
+        id_only returns entity IDs, compact returns common fields, detailed adds
+        safe operational fields.
+      required: false
+      default: compact
+      example: compact
+      selector:
+        select:
+          options:
+            - id_only
+            - compact
+            - detailed
+    state_filter:
+      name: State filter
+      description: Optional exact Home Assistant state string. Empty means no state filter.
+      required: false
+      example: "on"
+      selector:
+        text:
+    limit:
+      name: Limit
+      description: Optional maximum returned entities. Default 50. Maximum 1000.
+      required: false
+      default: 50
+      example: "50"
+      selector:
+        number:
+          min: 1
+          max: 1000
+          mode: box
+  sequence:
+    # Static public label allowlist and internal location labels.
+    - alias: Define Entity Index labels
+      variables:
+        known_labels:
+          - PhotovoltaicSystem
+          - ElectricCar
+          - TemperatureSensor
+          - Thermostat
+          - WaterMeter
+          - Light
+          - WindowSensor
+          - MediaPlayer
+          - PowerSensor
+          - EnergySensor
+          - BatteryLevel
+          - Selection
+          - RainSensor
+        inside_label: inside
+        outside_label: outside
+
+    # Normalize enough input in YAML to gather only plausible candidates.
+    - alias: Prepare candidate labels
+      variables:
+        raw_label_ids: "{{ labels if labels is string else '' }}"
+        query_mode_raw: "{{ query_mode | default('by_labels', true) }}"
+        location_raw: "{{ location | default('', true) }}"
+        user_label_list: >
+          {% set parts = raw_label_ids.split(',') %}
+          {% set ns = namespace(items=[]) %}
+          {% for part in parts %}
+            {% set label_id = part | trim %}
+            {% if label_id %}
+              {% set ns.items = ns.items + [label_id] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.items }}
+        location_label: >
+          {% if location_raw == 'inside' %}
+            {{ inside_label }}
+          {% elif location_raw == 'outside' %}
+            {{ outside_label }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        candidate_label_ids: >
+          {% set ns = namespace(items=[]) %}
+          {% if query_mode_raw == 'all_labeled' %}
+            {% for label_id in known_labels %}
+              {% set ns.items = ns.items + [label_id] %}
+            {% endfor %}
+          {% else %}
+            {% for label_id in user_label_list %}
+              {% if label_id not in ns.items %}
+                {% set ns.items = ns.items + [label_id] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if location_label and location_label not in ns.items %}
+            {% set ns.items = ns.items + [location_label] %}
+          {% endif %}
+          {{ ns.items }}
+
+    # Ask Home Assistant for direct-label candidates only.
+    - alias: Gather candidate entity IDs
+      variables:
+        candidate_entity_ids: >
+          {% set ns = namespace(items=[]) %}
+          {% for label_id in candidate_label_ids %}
+            {% for entity_id in label_entities(label_id) %}
+              {% if entity_id not in ns.items %}
+                {% set ns.items = ns.items + [entity_id] %}
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+          {{ ns.items }}
+
+    # Gather one safe record shape. The helper decides final verbosity.
+    - alias: Gather candidate records
+      variables:
+        candidate_records: >
+          {% set ns = namespace(items=[]) %}
+          {% for entity_id in candidate_entity_ids %}
+            {% set record = {
+              'entity_id': entity_id,
+              'labels': entity_id | labels,
+              'state': states(entity_id),
+              'friendly_name': state_attr(entity_id, 'friendly_name'),
+              'domain': entity_id.split('.')[0],
+              'area_id': area_id(entity_id),
+              'device_id': device_id(entity_id),
+              'unit_of_measurement': state_attr(entity_id, 'unit_of_measurement'),
+              'device_class': state_attr(entity_id, 'device_class'),
+              'state_class': state_attr(entity_id, 'state_class')
+            } %}
+            {% set ns.items = ns.items + [record] %}
+          {% endfor %}
+          {{ ns.items }}
+
+    # Validate, match, sort, limit, and shape the response in Python.
+    - alias: Call Entity Index Python Helper
+      action: python_script.llmtool_entity_index
+      data:
+        labels: "{{ raw_label_ids }}"
+        location: "{{ location | default('', true) }}"
+        query_mode: "{{ query_mode | default('by_labels', true) }}"
+        match_mode: "{{ match_mode | default('all', true) }}"
+        verbosity: "{{ verbosity | default('compact', true) }}"
+        state_filter: "{{ state_filter | default('', true) }}"
+        limit: "{{ limit | default('', true) }}"
+        known_labels: "{{ known_labels }}"
+        inside_label: "{{ inside_label }}"
+        outside_label: "{{ outside_label }}"
+        candidates: "{{ candidate_records }}"
+      response_variable: entity_index_helper
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ entity_index_helper.success }}"
+          sequence:
+            - variables:
+                entity_index_response:
+                  success: true
+                  answer: "{{ entity_index_helper.answer }}"
+                  data: "{{ entity_index_helper.data }}"
+                  meta: "{{ entity_index_helper.meta }}"
+      default:
+        - variables:
+            entity_index_response:
+              success: false
+              error: "{{ entity_index_helper.error }}"
+              data: "{{ entity_index_helper.data }}"
+              meta: "{{ entity_index_helper.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Entity Index complete
+      response_variable: entity_index_response

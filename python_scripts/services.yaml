@@ -5,3 +5,34 @@ llmtool_demo:
     name:
       description: Optional name to greet.
       example: Alex
+
+llmtool_entity_index:
+  name: LLM Tool Entity Index
+  description: Validate Entity Index input and shape matching labeled entities.
+  fields:
+    labels:
+      description: Comma-separated allowlisted label IDs.
+      example: TemperatureSensor,Thermostat
+    location:
+      description: >
+        Required location filter: inside, outside, or everywhere.
+      example: inside
+    query_mode:
+      description: >
+        Query scope: by_labels or all_labeled.
+      example: by_labels
+    match_mode:
+      description: >
+        Multi-label matching for by_labels: all or any.
+      example: all
+    verbosity:
+      description: >
+        Response size: id_only, compact, or detailed.
+      example: compact
+    state_filter:
+      description: Optional exact Home Assistant state string.
+      example: "on"
+    limit:
+      description: >
+        Optional maximum returned entities. Default 50, maximum 1000.
+      example: "50"

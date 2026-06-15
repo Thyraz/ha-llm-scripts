@@ -1,6 +1,8 @@
 # Entity Index Plan
 
-Entity Index is a planned LLM Tool for Assistants. It is not a coding guideline for this repository.
+Status: implemented. Local validation covered YAML parsing, Python syntax, and
+direct helper simulations. Full Home Assistant validation still needs a target
+instance with the expected labels.
 
 ## Purpose
 
@@ -45,8 +47,9 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
   `location=outside` are always required filters.
 - Unknown labels should return `success: false` with an actionable error, `data.unknown_labels`,
   and `data.known_labels` so the Assistant can retry.
-- Invalid `location`, `query_mode`, `match_mode`, `verbosity`, non-integer `limit`, or
-  `limit > 1000` return `success: false` with an actionable error.
+- Invalid `location`, `query_mode`, `match_mode`, `verbosity`, non-integer
+  `limit`, `limit < 1`, or `limit > 1000` return `success: false` with an
+  actionable error.
 - Missing or empty `limit` uses the default.
 - `query_mode` controls scope, such as `by_labels` or `all_labeled`.
 - `query_mode=by_labels` requires at least one non-empty label ID.

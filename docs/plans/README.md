@@ -6,8 +6,9 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 
 ## Current active plans
 
-- [Entity Index](entity-index.md)
+None.
 
 ## Implemented plans
 
 - [Demo LLM Tool](implemented/demo-tool.md)
+- [Entity Index](implemented/entity-index.md)

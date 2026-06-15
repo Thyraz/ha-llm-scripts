@@ -6,13 +6,10 @@ This project exposes Home Assistant scripts as LLM tools. Scripts use HA-native 
 
 ## Status
 
-First implementation is a demo LLM Tool Script that proves:
+Current implementation includes:
 
-- scalar tool parameters
-- script to Python Helper handoff
-- `output` captured through `response_variable`
-- final structured response through `stop` and `response_variable`
-- manual Assist exposure
+- `script.llmtool_demo` for install and response-shape validation
+- `script.llmtool_entity_index` for safe labeled-entity discovery
 
 ## Install
 
@@ -80,6 +77,87 @@ Run again with empty or missing `name`; response should use `World`.
 Then manually expose `script.llmtool_demo` to Assist and ask the Assistant to
 call the demo tool. Inspect Script trace and Conversation trace.
 
+## Entity Index tool
+
+After install, Home Assistant should expose:
+
+- `script.llmtool_entity_index`
+- `python_script.llmtool_entity_index`
+
+Entity Index lets an Assistant discover only directly labeled entities whose
+label IDs are in the allowlist.
+
+Allowlisted label IDs:
+
+- `PhotovoltaicSystem`
+- `ElectricCar`
+- `TemperatureSensor`
+- `Thermostat`
+- `WaterMeter`
+- `Light`
+- `WindowSensor`
+- `MediaPlayer`
+- `PowerSensor`
+- `EnergySensor`
+- `BatteryLevel`
+- `Selection`
+- `RainSensor`
+
+Run `script.llmtool_entity_index` from Developer Tools -> Actions:
+
+```yaml
+labels: TemperatureSensor,Thermostat
+location: inside
+query_mode: by_labels
+match_mode: any
+verbosity: compact
+limit: 50
+```
+
+Expected response shape:
+
+```yaml
+success: true
+answer: "Found 3 matching entities."
+data:
+  entities:
+    - entity_id: sensor.living_room_temperature
+      friendly_name: Living room temperature
+      state: "21.5"
+      matched_labels:
+        - TemperatureSensor
+meta:
+  tool: llmtool_entity_index
+  count: 3
+  total: 3
+  query_mode: by_labels
+  labels:
+    - TemperatureSensor
+    - Thermostat
+  location: inside
+  effective_labels:
+    - TemperatureSensor
+    - Thermostat
+    - inside
+  match_mode: any
+  state_filter: ""
+  verbosity: compact
+  limit: 50
+```
+
+Invalid labels return a soft failure:
+
+```yaml
+success: false
+error: "Unknown label ID. Use data.known_labels and retry. Use location for inside/outside."
+data:
+  unknown_labels:
+    - UnknownLabel
+  known_labels:
+    - TemperatureSensor
+meta: {}
+```
+
 ## LLM tool response format
 
 Tools return a structured response in Developer Tools -> Actions:
@@ -106,6 +184,18 @@ meta: {}
 
 Tell your Assistant that these tools share one response format. It should use `answer` for the short summary, `data` for structured details, and `meta` for counts/query echo.
 
+For Entity Index, tell your Assistant:
+
+```text
+Before calling LLM tools that need Home Assistant entity IDs, call Entity Index.
+Use canonical label IDs, not friendly label names. Pass labels as a
+comma-separated string. Always choose location: inside, outside, or everywhere.
+Use query_mode=by_labels for targeted lookup and all_labeled for inventory.
+Use meta.truncated to decide whether to retry with a narrower query or higher
+limit. On success, read data.entities. On validation failure, use error and data
+to retry.
+```
+
 ## Docs
 
 - [Glossary](CONTEXT.md)
@@ -117,7 +207,7 @@ Tell your Assistant that these tools share one response format. It should use `a
 - [Architecture decisions](docs/adr/0001-ha-native-llm-tool-scripts.md)
 - [Tool plans](docs/plans/README.md)
 - [Demo tool plan](docs/plans/implemented/demo-tool.md)
-- [Entity Index plan](docs/plans/entity-index.md)
+- [Entity Index plan](docs/plans/implemented/entity-index.md)
 
 ## Security
 
