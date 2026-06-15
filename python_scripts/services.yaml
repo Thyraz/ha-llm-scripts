@@ -1,0 +1,7 @@
+llmtool_demo:
+  name: LLM Tool Demo
+  description: Normalize demo input and return helper data to the LLM Tool Script.
+  fields:
+    name:
+      description: Optional name to greet.
+      example: Alex

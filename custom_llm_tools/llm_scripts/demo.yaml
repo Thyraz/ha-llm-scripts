@@ -1,0 +1,45 @@
+llmtool_demo:
+  alias: LLM Tool Demo
+  description: >
+    Use this demo LLM Tool to verify scalar parameters, Python Helper handoff,
+    response capture, and structured script responses.
+  mode: queued
+  max: 2
+  fields:
+    name:
+      name: Name
+      description: Optional name to greet. Empty or missing values use World.
+      required: false
+      example: Alex
+      default: World
+      selector:
+        text:
+  sequence:
+    # Normalize the script field enough for a predictable helper handoff.
+    - alias: Prepare helper input
+      variables:
+        helper_name: "{{ name | default('', true) }}"
+
+    # Call the Python Helper and capture its output mapping.
+    - alias: Call demo Python Helper
+      action: python_script.llmtool_demo
+      data:
+        name: "{{ helper_name }}"
+      response_variable: demo_helper
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      variables:
+        demo_response:
+          success: true
+          answer: "{{ demo_helper.helper_message }}"
+          data:
+            normalized_name: "{{ demo_helper.normalized_name }}"
+            helper_message: "{{ demo_helper.helper_message }}"
+          meta:
+            tool: llmtool_demo
+            python_helper: python_script.llmtool_demo
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Demo complete
+      response_variable: demo_response

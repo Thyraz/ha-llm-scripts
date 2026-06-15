@@ -1,0 +1,33 @@
+# Home Assistant LLM Scripts
+
+This project defines a reusable script collection for giving Home Assistant Assistants safe, documented LLM tools.
+
+## Language
+
+**LLM Tool**:
+A capability intended for an LLM-based Assistant to call through Home Assistant.
+_Avoid_: function, plugin, skill
+
+**LLM Tool Script**:
+A Home Assistant script exposed to an Assistant as the public entrypoint for an LLM Tool.
+_Avoid_: YAML wrapper, wrapper script
+
+**HA-native operation**:
+Work done inside an LLM Tool Script using Home Assistant's own script actions, template functions, or integrations.
+_Avoid_: backend, service layer
+
+**LLM Tool Python Helper**:
+A native Home Assistant `python_script` used by an LLM Tool Script for data shaping or handoff logic that is too awkward in YAML/Jinja.
+_Avoid_: backend, worker, integration
+
+**Structured response**:
+A mapping returned by an LLM Tool with predictable keys so an Assistant can use the result reliably.
+_Avoid_: text blob, raw output
+
+**Assist exposure**:
+The user-controlled Home Assistant step that makes an LLM Tool Script available to an Assistant.
+_Avoid_: auto expose, storage patching
+
+**Entity Index**:
+An LLM Tool that lets an Assistant discover Home Assistant entities it is allowed to know about before calling other LLM Tools.
+_Avoid_: entity registry dump, entity database, search backend
