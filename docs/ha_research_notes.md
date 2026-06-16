@@ -59,9 +59,11 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Native `python_script` can read state machine data through `hass.states.entity_ids`,
   `hass.states.all`, `hass.states.get`, `hass.states.is_state`, and
   `hass.states.is_state_attr`.
-- Script template variables can preserve list/dict values for native action data
-  when the rendered value is made of simple literal types. Non-primitive values
-  such as enum attributes can make the rendered value arrive as a string.
+- Complex block-template results can arrive in native action data as strings.
+  For list/dict handoff to a Python Helper, serialize with `to_json`, then pass
+  it through `from_json` at the action boundary.
+- Before serializing entity records for a Python Helper, convert enum-like
+  attributes such as `unit_of_measurement` and `state_class` to strings.
 
 ## Assumptions
 

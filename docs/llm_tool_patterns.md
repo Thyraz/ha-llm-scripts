@@ -64,6 +64,42 @@ Rules:
 - Reserve Home Assistant runtime errors for real unexpected failures.
 - Use `stop: ""` with `response_variable`.
 
+## Script-helper handoff
+
+For structured data from an LLM Tool Script to a Python Helper, use an explicit
+JSON boundary.
+
+Pattern:
+
+```yaml
+- variables:
+    records_json: >
+      {% set ns = namespace(items=[]) %}
+      ...
+      {{ ns.items | to_json }}
+
+- action: python_script.llmtool_example
+  data:
+    records: "{{ records_json | from_json }}"
+  response_variable: helper_result
+```
+
+Rules:
+
+- Use this pattern for lists or mappings. Do not rely on block-template output
+  being preserved as native list/dict action data.
+- Keep handoff records JSON-compatible: strings, numbers, booleans, lists,
+  mappings, and null-like empty values.
+- Convert enum-like Home Assistant objects to strings before `to_json`, such as
+  units, device classes, and state classes.
+- Give intermediate variables a `_json` suffix when they intentionally hold
+  serialized data.
+- In the Python Helper, validate expected handoff shape. If a list/dict arrives
+  as a string, return a soft failure with an actionable error instead of
+  returning an empty success.
+- The Python Helper should return data through `output`; the LLM Tool Script
+  still owns the final structured response returned to Assist.
+
 ## Tool descriptions
 
 Each LLM Tool Script description should say:

@@ -18,6 +18,8 @@ Keep the code easy to read. Prefer clear, boring control flow over defensive han
 - Prefer readable `variables`, `choose`, and sequential actions.
 - Use `action:` for Home Assistant actions in new YAML, not legacy `service:`.
 - Avoid complex nested templates when a Python Helper would be easier to understand.
+- For structured data sent to a Python Helper, serialize with `to_json` and
+  deserialize with `from_json` at the action boundary.
 - Return a structured response with `stop` and `response_variable`.
 
 ## Python Helpers
@@ -26,6 +28,8 @@ Keep the code easy to read. Prefer clear, boring control flow over defensive han
 - Do not use imports.
 - Use `output` for return data.
 - Use `logger.info()` / `logger.warning()` only for useful debugging.
+- Validate expected handoff shapes and return a soft error if a list/dict arrives
+  as a string.
 - Avoid broad defensive wrappers that hide useful failure signals during testing.
 
 ## Docs

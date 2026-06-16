@@ -44,6 +44,16 @@ Prefer `to_json` in this repo for consistency:
 {{ result | to_json }}
 ```
 
+For LLM Tool Script to Python Helper handoff, deserialize at the action boundary:
+
+```yaml
+data:
+  records: "{{ records_json | from_json }}"
+```
+
+Do not pass a block-template list/dict directly to a Python Helper and assume it
+will stay native. Use `to_json` first, then `from_json`.
+
 Home Assistant also exposes `tojson`; verify current docs before changing style.
 
 ## YAML strings

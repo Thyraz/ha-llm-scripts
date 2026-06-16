@@ -2,8 +2,8 @@ llmtool_entity_index:
   alias: LLM Tool Entity Index
   description: >
     Use Entity Index before other LLM Tools need Home Assistant entity IDs.
-    It returns only directly labeled entities whose label names are in the
-    allowlist. Query by comma-separated label names, choose location as inside,
+    It returns only directly labeled entities with the Everywhere visibility
+    label. Query by comma-separated label names, choose location as inside,
     outside, or everywhere, and inspect meta.truncated before assuming the
     result is complete.
   mode: queued
@@ -13,7 +13,7 @@ llmtool_entity_index:
       name: Label names
       description: >
         Comma-separated allowlisted Home Assistant label names. Required when
-        query_mode is by_labels. Do not include Inside or Outside; use location.
+        query_mode is by_labels. Do not include Everywhere, Inside, or Outside.
       required: false
       example: TemperatureSensor,Thermostat
       selector:
@@ -33,8 +33,7 @@ llmtool_entity_index:
     query_mode:
       name: Query mode
       description: >
-        by_labels requires labels. all_labeled returns all entities with at
-        least one allowlisted label.
+        by_labels requires labels. all_labeled returns all visible entities.
       required: false
       default: by_labels
       example: by_labels
@@ -89,7 +88,7 @@ llmtool_entity_index:
           max: 1000
           mode: box
   sequence:
-    # Static public label allowlist and separate location label names.
+    # Static public query label allowlist and internal visibility/location labels.
     - alias: Define Entity Index labels
       variables:
         known_label_names:
@@ -108,6 +107,7 @@ llmtool_entity_index:
           - RainSensor
           - Wohnzimmer
           - Erdgeschoss
+        visibility_label_name: Everywhere
         inside_label_name: Inside
         outside_label_name: Outside
 
@@ -131,6 +131,7 @@ llmtool_entity_index:
           {% if location_raw == 'inside' %}{{ inside_label_name }}{% elif location_raw == 'outside' %}{{ outside_label_name }}{% else %}{{ '' }}{% endif %}
         location_label_id: >-
           {% if location_label_name %}{{ label_id(location_label_name | trim) | default('', true) }}{% else %}{{ '' }}{% endif %}
+        visibility_label_id: "{{ label_id(visibility_label_name) | default('', true) }}"
         match_label_names: >
           {% set ns = namespace(items=[]) %}
           {% if query_mode_raw == 'all_labeled' %}
@@ -145,37 +146,25 @@ llmtool_entity_index:
             {% endfor %}
           {% endif %}
           {{ ns.items }}
-        candidate_label_ids: >
-          {% set ns = namespace(items=[]) %}
-          {% for label_name_text in match_label_names %}
-            {% set resolved_label_id = label_id(label_name_text) %}
-            {% if resolved_label_id and resolved_label_id not in ns.items %}
-              {% set ns.items = ns.items + [resolved_label_id] %}
-            {% endif %}
-          {% endfor %}
-          {% if location_label_id and location_label_id not in ns.items %}
-            {% set ns.items = ns.items + [location_label_id] %}
-          {% endif %}
-          {{ ns.items }}
 
-    # Ask Home Assistant for direct-label candidates only.
+    # Ask Home Assistant for visible candidates only.
     - alias: Gather candidate entity IDs
       variables:
         candidate_entity_ids: >
           {% set ns = namespace(items=[]) %}
-          {% for resolved_label_id in candidate_label_ids %}
-            {% for entity_id in label_entities(resolved_label_id) %}
+          {% if visibility_label_id %}
+            {% for entity_id in label_entities(visibility_label_id) %}
               {% if entity_id not in ns.items %}
                 {% set ns.items = ns.items + [entity_id] %}
               {% endif %}
             {% endfor %}
-          {% endfor %}
+          {% endif %}
           {{ ns.items }}
 
     # Gather one safe record shape. The helper decides final verbosity.
     - alias: Gather candidate records
       variables:
-        candidate_records: >
+        candidate_records_json: >
           {% set ns = namespace(items=[]) %}
           {% for entity_id in candidate_entity_ids %}
             {% set matched = namespace(labels=[]) %}
@@ -188,22 +177,38 @@ llmtool_entity_index:
             {% set unit = state_attr(entity_id, 'unit_of_measurement') %}
             {% set device_class = state_attr(entity_id, 'device_class') %}
             {% set state_class = state_attr(entity_id, 'state_class') %}
+            {% if unit is none %}
+              {% set unit_text = '' %}
+            {% else %}
+              {% set unit_text = unit | string %}
+            {% endif %}
+            {% if device_class is none %}
+              {% set device_class_text = '' %}
+            {% else %}
+              {% set device_class_text = device_class | string %}
+            {% endif %}
+            {% if state_class is none %}
+              {% set state_class_text = '' %}
+            {% else %}
+              {% set state_class_text = state_class | string %}
+            {% endif %}
             {% set record = {
               'entity_id': entity_id,
               'matched_labels': matched.labels,
+              'visibility_matched': visibility_label_id and entity_id in label_entities(visibility_label_id),
               'location_matched': not location_label_name or (location_label_id and entity_id in label_entities(location_label_id)),
               'state': states(entity_id),
               'friendly_name': state_attr(entity_id, 'friendly_name') | default(entity_id, true),
               'domain': entity_id.split('.')[0],
               'area_id': area_id(entity_id) | default('', true),
               'device_id': device_id(entity_id) | default('', true),
-              'unit_of_measurement': unit | string if unit is not none else '',
-              'device_class': device_class | string if device_class is not none else '',
-              'state_class': state_class | string if state_class is not none else ''
+              'unit_of_measurement': unit_text,
+              'device_class': device_class_text,
+              'state_class': state_class_text
             } %}
             {% set ns.items = ns.items + [record] %}
           {% endfor %}
-          {{ ns.items }}
+          {{ ns.items | to_json }}
 
     # Validate, match, sort, limit, and shape the response in Python.
     - alias: Call Entity Index Python Helper
@@ -217,9 +222,10 @@ llmtool_entity_index:
         state_filter: "{{ state_filter | default('', true) }}"
         limit: "{{ limit | default('', true) }}"
         known_labels: "{{ known_label_names }}"
+        visibility_label: "{{ visibility_label_name }}"
         inside_label: "{{ inside_label_name }}"
         outside_label: "{{ outside_label_name }}"
-        candidates: "{{ candidate_records }}"
+        candidates: "{{ candidate_records_json | from_json }}"
       response_variable: entity_index_helper
 
     # Own the final LLM Tool response in the Home Assistant script.

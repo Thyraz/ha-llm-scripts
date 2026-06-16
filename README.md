@@ -85,9 +85,15 @@ After install, Home Assistant should expose:
 - `python_script.llmtool_entity_index`
 
 Entity Index lets an Assistant discover only directly labeled entities whose
-friendly label names are in the allowlist.
+entity has the internal `Everywhere` visibility label.
 
-Allowlisted label names:
+Internal labels, not passed in `labels`:
+
+- `Everywhere` marks entities visible to Entity Index.
+- `Inside` is added when `location=inside`.
+- `Outside` is added when `location=outside`.
+
+Queryable label names:
 
 - `PhotovoltaicSystem`
 - `ElectricCar`
@@ -138,9 +144,10 @@ meta:
     - Thermostat
   location: inside
   effective_labels:
+    - Everywhere
+    - Inside
     - TemperatureSensor
     - Thermostat
-    - Inside
   match_mode: any
   state_filter: ""
   verbosity: compact
@@ -151,7 +158,7 @@ Invalid labels return a soft failure:
 
 ```yaml
 success: false
-error: "Unknown label name. Use data.known_labels and retry. Use location for Inside/Outside."
+error: "Unknown label name. Use data.known_labels and retry. Use query labels only; location controls Everywhere/Inside/Outside."
 data:
   unknown_labels:
     - UnknownLabel
@@ -192,6 +199,7 @@ For Entity Index, tell your Assistant:
 Before calling LLM tools that need Home Assistant entity IDs, call Entity Index.
 Use canonical friendly label names, not internal label IDs. Pass labels as a
 comma-separated string. Always choose location: inside, outside, or everywhere.
+Never pass Everywhere, Inside, or Outside as labels; those are internal labels.
 Use query_mode=by_labels for targeted lookup and all_labeled for inventory.
 Use meta.truncated to decide whether to retry with a narrower query or higher
 limit. On success, read data.entities. On validation failure, use error and data
@@ -206,6 +214,7 @@ to retry.
 - [Jinja patterns](docs/jinja_patterns.md)
 - [Python script notes](docs/python_script_notes.md)
 - [Coding guidelines](docs/coding_guidelines.md)
+- [HA trace debugging](docs/ha_trace_debugging.md)
 - [Architecture decisions](docs/adr/0001-ha-native-llm-tool-scripts.md)
 - [Tool plans](docs/plans/README.md)
 - [Demo tool plan](docs/plans/implemented/demo-tool.md)
@@ -230,3 +239,9 @@ For every tool:
 6. Expose the script to Assist.
 7. Ask the Assistant to use it.
 8. Inspect Conversation and Script traces.
+
+For Entity Index helper regression checks:
+
+```bash
+python3 tests/test_llmtool_entity_index.py
+```

@@ -14,6 +14,8 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 
 - Only manually labeled Home Assistant entities are visible through this tool.
 - Unlabeled Home Assistant entities are intentionally invisible to the Assistant.
+- Every returned entity must have the direct entity label `Everywhere`.
+- `Everywhere` is an internal visibility label, not a public query label.
 - The queryable labels are a static allowlist of canonical friendly Home Assistant label names.
 - Initial allowlist:
   - `PhotovoltaicSystem`
@@ -43,11 +45,12 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
   new `location` values.
 - Tool input accepts friendly label names only, not internal label IDs.
 - Tool input accepts multiple labels as a comma-separated string.
-- The user-provided label list must not include `Inside` or `Outside`; `location` owns those labels.
+- The user-provided label list must not include `Everywhere`, `Inside`, or
+  `Outside`; `location` owns the location labels and visibility is always required.
 - `location` is a mandatory parameter with values `inside`, `outside`, or `everywhere`.
-- `location=inside` internally adds the existing HA label named `Inside` as an AND filter.
-- `location=outside` internally adds the existing HA label named `Outside` as an AND filter.
-- `location=everywhere` does not add either location label.
+- `location=inside` internally requires `Everywhere` and the existing HA label named `Inside`.
+- `location=outside` internally requires `Everywhere` and the existing HA label named `Outside`.
+- `location=everywhere` requires `Everywhere` and does not add either location label.
 - If the requested location label does not exist in Home Assistant, return a successful empty result.
 - The Assistant sees `inside` / `outside` / `everywhere` as location choices, not as labels.
 - `match_mode=any` applies only to user-provided labels; `location=inside` and
@@ -60,7 +63,7 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - Missing or empty `limit` uses the default.
 - `query_mode` controls scope, such as `by_labels` or `all_labeled`.
 - `query_mode=by_labels` requires at least one non-empty label name.
-- `query_mode=all_labeled` returns entities with at least one allowlisted label, not entities with any Home Assistant label.
+- `query_mode=all_labeled` returns visible entities even if they have no query label.
 - `query_mode=all_labeled` ignores `match_mode`.
 - `match_mode` controls multi-label matching: `any` or `all`; default is `all`.
 - `verbosity` controls result size: `id_only`, `compact`, or `detailed`; default is `compact`.
@@ -68,7 +71,7 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - Success responses always return results under `data.entities`.
 - `compact` returns `entity_id`, `friendly_name`, `state`, and `matched_labels`.
 - `matched_labels` contains only query-relevant labels that caused the entity to match.
-- `matched_labels` excludes `Inside` and `Outside`; location appears in response metadata.
+- `matched_labels` excludes `Everywhere`, `Inside`, and `Outside`; location appears in response metadata.
 - `state_filter` is an exact Home Assistant state string.
 - Empty or missing `state_filter` means no state filter.
 - `unknown` and `unavailable` are included unless `state_filter` excludes them.
@@ -90,10 +93,12 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
   Python Helper.
 - The LLM Tool Script gathers one raw candidate shape for all verbosity modes;
   the helper decides which fields to return.
-- For `query_mode=by_labels`, the LLM Tool Script gathers candidates from the
-  requested labels plus any location label.
-- For `query_mode=all_labeled`, the LLM Tool Script gathers candidates from the
-  full allowlist plus any location label.
+- The LLM Tool Script gathers candidates from the `Everywhere` visibility label,
+  then marks query and location matches for the helper.
+- For `query_mode=by_labels`, the helper filters visible candidates by the
+  requested query labels plus any location label.
+- For `query_mode=all_labeled`, the helper returns visible candidates matching
+  the location filter.
 - The LLM Tool Python Helper handles validation, set matching, sorting, limiting,
   and result shaping.
 
@@ -101,7 +106,8 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 
 - Recheck current Home Assistant label helper behavior.
 - Verify exact friendly label names in a real Home Assistant instance.
-- Verify the friendly location label names `Inside` and `Outside` exist in the target Home Assistant instance.
+- Verify the friendly visibility/location label names `Everywhere`, `Inside`,
+  and `Outside` exist in the target Home Assistant instance.
 - Confirm response size stays useful for Assistants.
 
 ## Assistant call scenarios
@@ -111,10 +117,12 @@ These examples describe how the Home Assistant LLM Assistant should choose param
 - "Lowest room temperature" should use `location=inside` so outside temperature sensors are excluded.
 - "Outside temperature" should use `location=outside`.
 - Broad inventory questions may use `location=everywhere`.
+- Inventory uses `Everywhere` internally; the Assistant should not pass it in `labels`.
 
 ## Prompt guidance
 
 The plan defines the intended prompt guidance. README should include the
 copyable user-facing snippet after implementation. The snippet should tell the
 Assistant to call Entity Index before tools that need entity IDs, use friendly
-label names, choose `location`, and inspect `meta.truncated`.
+query label names, choose `location`, never pass `Everywhere` / `Inside` /
+`Outside` in `labels`, and inspect `meta.truncated`.

@@ -25,6 +25,7 @@ def validation_error(message, data_payload=None, meta_payload=None):
 
 
 known_label_names = data.get("known_labels") or []
+visibility_label_name = as_text(data.get("visibility_label")) or "Everywhere"
 inside_label_name = as_text(data.get("inside_label")) or "Inside"
 outside_label_name = as_text(data.get("outside_label")) or "Outside"
 
@@ -81,13 +82,14 @@ else:
 
     if output.get("success") is not False:
         unknown_labels = []
+        internal_labels = [visibility_label_name, inside_label_name, outside_label_name]
         for label in requested_labels:
-            if label in [inside_label_name, outside_label_name] or label not in known_label_names:
+            if label in internal_labels or label not in known_label_names:
                 unknown_labels.append(label)
 
         if unknown_labels:
             validation_error(
-                "Unknown label name. Use data.known_labels and retry. Use location for Inside/Outside.",
+                "Unknown label name. Use data.known_labels and retry. Use query labels only; location controls Everywhere/Inside/Outside.",
                 {
                     "unknown_labels": unknown_labels,
                     "known_labels": known_label_names,
@@ -109,22 +111,34 @@ if output.get("success") is not False:
         location_label = ""
 
     if query_mode == "all_labeled":
-        match_labels = []
+        required_match_labels = []
+        reported_match_labels = []
         for label in known_label_names:
-            match_labels.append(label)
+            reported_match_labels.append(label)
     else:
-        match_labels = []
+        required_match_labels = []
+        reported_match_labels = []
         for label in requested_labels:
-            match_labels.append(label)
+            required_match_labels.append(label)
+            reported_match_labels.append(label)
 
-    effective_labels = []
-    for label in match_labels:
-        effective_labels.append(label)
+    effective_labels = [visibility_label_name]
     if location_label:
         effective_labels.append(location_label)
+    for label in required_match_labels:
+        effective_labels.append(label)
 
+    candidates = data.get("candidates") or []
+    if isinstance(candidates, str):
+        validation_error(
+            "Invalid candidate handoff. Candidate records arrived as a string; inspect candidate_records_json and the from_json action handoff in the Script trace.",
+            {"expected": "list", "received": "string"},
+            {"effective_labels": effective_labels},
+        )
+
+if output.get("success") is not False:
     matches = []
-    for candidate in data.get("candidates") or []:
+    for candidate in candidates:
         if "entity_id" not in candidate:
             continue
 
@@ -132,12 +146,15 @@ if output.get("success") is not False:
         if not entity_id:
             continue
 
+        if "visibility_matched" not in candidate or not candidate["visibility_matched"]:
+            continue
+
         candidate_matched_labels = []
         if "matched_labels" in candidate:
             for label in candidate["matched_labels"] or []:
                 candidate_matched_labels.append(label)
 
-        if location_label and not candidate["location_matched"]:
+        if location_label and ("location_matched" not in candidate or not candidate["location_matched"]):
             continue
 
         state = ""
@@ -147,19 +164,21 @@ if output.get("success") is not False:
         if state_filter and state != state_filter:
             continue
 
+        required_labels_found = []
+        for label in required_match_labels:
+            if label in candidate_matched_labels and label not in required_labels_found:
+                required_labels_found.append(label)
+
+        if query_mode == "by_labels" and match_mode == "all":
+            if len(required_labels_found) != len(required_match_labels):
+                continue
+        elif query_mode == "by_labels" and not required_labels_found:
+            continue
+
         matched_labels = []
-        for label in match_labels:
+        for label in reported_match_labels:
             if label in candidate_matched_labels and label not in matched_labels:
                 matched_labels.append(label)
-
-        if query_mode == "all_labeled":
-            if not matched_labels:
-                continue
-        elif match_mode == "all":
-            if len(matched_labels) != len(match_labels):
-                continue
-        elif not matched_labels:
-            continue
 
         shaped = {
             "entity_id": entity_id,

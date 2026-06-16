@@ -11,7 +11,9 @@ llmtool_entity_index:
   description: Validate Entity Index input and shape matching labeled entities.
   fields:
     labels:
-      description: Comma-separated allowlisted label names.
+      description: >
+        Comma-separated allowlisted query label names. Do not include
+        Everywhere, Inside, or Outside.
       example: TemperatureSensor,Thermostat
     location:
       description: >
@@ -19,7 +21,8 @@ llmtool_entity_index:
       example: inside
     query_mode:
       description: >
-        Query scope: by_labels or all_labeled.
+        Query scope: by_labels or all_labeled. all_labeled returns all visible
+        entities for the chosen location.
       example: by_labels
     match_mode:
       description: >
