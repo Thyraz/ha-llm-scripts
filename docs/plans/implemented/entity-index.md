@@ -4,6 +4,8 @@ Status: implemented. Local validation covered YAML parsing, Python syntax, and
 direct helper simulations. Full Home Assistant validation still needs a target
 instance with the expected labels.
 
+Label name correction checked against Home Assistant docs on 2026-06-16.
+
 ## Purpose
 
 Entity Index helps an Assistant find Home Assistant entities it is allowed to know about before calling other tools.
@@ -12,7 +14,7 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 
 - Only manually labeled Home Assistant entities are visible through this tool.
 - Unlabeled Home Assistant entities are intentionally invisible to the Assistant.
-- The queryable labels are a static allowlist of canonical Home Assistant label IDs.
+- The queryable labels are a static allowlist of canonical friendly Home Assistant label names.
 - Initial allowlist:
   - `PhotovoltaicSystem`
   - `ElectricCar`
@@ -27,19 +29,24 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
   - `BatteryLevel`
   - `Selection`
   - `RainSensor`
-- Label ID matching is case-sensitive.
+  - `Wohnzimmer`
+  - `Erdgeschoss`
+- Friendly label name matching is case-sensitive because `label_id(label_name)` is case-sensitive.
+- The LLM Tool Script resolves friendly label names to internal label IDs with
+  `label_id()` before calling `label_entities()`.
+- Internal label IDs are implementation details and should not appear in the Assistant prompt.
 - The static allowlist lives in `llmtool_entity_index.yaml` variables and is
   passed to the Python Helper as `known_labels`.
-- `inside` and `outside` live as separate internal location-label variables, not
+- `Inside` and `Outside` live as separate location-label name variables, not
   in the queryable allowlist.
 - Future room and house-level labels are queryable labels in the allowlist, not
   new `location` values.
-- Tool input accepts label IDs only, not friendly label names.
+- Tool input accepts friendly label names only, not internal label IDs.
 - Tool input accepts multiple labels as a comma-separated string.
-- The user-provided label list must not include `inside` or `outside`; `location` owns those labels.
+- The user-provided label list must not include `Inside` or `Outside`; `location` owns those labels.
 - `location` is a mandatory parameter with values `inside`, `outside`, or `everywhere`.
-- `location=inside` internally adds the existing HA label `inside` as an AND filter.
-- `location=outside` internally adds the existing HA label `outside` as an AND filter.
+- `location=inside` internally adds the existing HA label named `Inside` as an AND filter.
+- `location=outside` internally adds the existing HA label named `Outside` as an AND filter.
 - `location=everywhere` does not add either location label.
 - If the requested location label does not exist in Home Assistant, return a successful empty result.
 - The Assistant sees `inside` / `outside` / `everywhere` as location choices, not as labels.
@@ -52,7 +59,7 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
   actionable error.
 - Missing or empty `limit` uses the default.
 - `query_mode` controls scope, such as `by_labels` or `all_labeled`.
-- `query_mode=by_labels` requires at least one non-empty label ID.
+- `query_mode=by_labels` requires at least one non-empty label name.
 - `query_mode=all_labeled` returns entities with at least one allowlisted label, not entities with any Home Assistant label.
 - `query_mode=all_labeled` ignores `match_mode`.
 - `match_mode` controls multi-label matching: `any` or `all`; default is `all`.
@@ -61,7 +68,7 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - Success responses always return results under `data.entities`.
 - `compact` returns `entity_id`, `friendly_name`, `state`, and `matched_labels`.
 - `matched_labels` contains only query-relevant labels that caused the entity to match.
-- `matched_labels` excludes `inside` and `outside`; location appears in response metadata.
+- `matched_labels` excludes `Inside` and `Outside`; location appears in response metadata.
 - `state_filter` is an exact Home Assistant state string.
 - Empty or missing `state_filter` means no state filter.
 - `unknown` and `unavailable` are included unless `state_filter` excludes them.
@@ -76,7 +83,7 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - Capped responses include `meta.truncated: true`.
 - Success `answer` is a short count summary; details stay in `data.entities`.
 - Results are sorted by `entity_id` ascending.
-- The LLM Tool Script handles fields, Home Assistant label template lookup, and
+- The LLM Tool Script handles fields, Home Assistant label name-to-ID lookup, and
   the final structured response.
 - The LLM Tool Script gathers raw candidate records with entity labels, state,
   safe attributes, area ID, and device ID, then passes them to the LLM Tool
@@ -93,8 +100,8 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 ## Research before implementation
 
 - Recheck current Home Assistant label helper behavior.
-- Verify exact label IDs/names in a real Home Assistant instance.
-- Verify the internal `inside` and `outside` labels exist in the target Home Assistant instance.
+- Verify exact friendly label names in a real Home Assistant instance.
+- Verify the friendly location label names `Inside` and `Outside` exist in the target Home Assistant instance.
 - Confirm response size stays useful for Assistants.
 
 ## Assistant call scenarios
@@ -109,5 +116,5 @@ These examples describe how the Home Assistant LLM Assistant should choose param
 
 The plan defines the intended prompt guidance. README should include the
 copyable user-facing snippet after implementation. The snippet should tell the
-Assistant to call Entity Index before tools that need entity IDs, use label IDs,
-choose `location`, and inspect `meta.truncated`.
+Assistant to call Entity Index before tools that need entity IDs, use friendly
+label names, choose `location`, and inspect `meta.truncated`.

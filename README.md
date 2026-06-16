@@ -85,9 +85,9 @@ After install, Home Assistant should expose:
 - `python_script.llmtool_entity_index`
 
 Entity Index lets an Assistant discover only directly labeled entities whose
-label IDs are in the allowlist.
+friendly label names are in the allowlist.
 
-Allowlisted label IDs:
+Allowlisted label names:
 
 - `PhotovoltaicSystem`
 - `ElectricCar`
@@ -102,6 +102,8 @@ Allowlisted label IDs:
 - `BatteryLevel`
 - `Selection`
 - `RainSensor`
+- `Wohnzimmer`
+- `Erdgeschoss`
 
 Run `script.llmtool_entity_index` from Developer Tools -> Actions:
 
@@ -138,7 +140,7 @@ meta:
   effective_labels:
     - TemperatureSensor
     - Thermostat
-    - inside
+    - Inside
   match_mode: any
   state_filter: ""
   verbosity: compact
@@ -149,7 +151,7 @@ Invalid labels return a soft failure:
 
 ```yaml
 success: false
-error: "Unknown label ID. Use data.known_labels and retry. Use location for inside/outside."
+error: "Unknown label name. Use data.known_labels and retry. Use location for Inside/Outside."
 data:
   unknown_labels:
     - UnknownLabel
@@ -188,7 +190,7 @@ For Entity Index, tell your Assistant:
 
 ```text
 Before calling LLM tools that need Home Assistant entity IDs, call Entity Index.
-Use canonical label IDs, not friendly label names. Pass labels as a
+Use canonical friendly label names, not internal label IDs. Pass labels as a
 comma-separated string. Always choose location: inside, outside, or everywhere.
 Use query_mode=by_labels for targeted lookup and all_labeled for inventory.
 Use meta.truncated to decide whether to retry with a narrower query or higher

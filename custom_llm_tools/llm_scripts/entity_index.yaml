@@ -2,18 +2,18 @@ llmtool_entity_index:
   alias: LLM Tool Entity Index
   description: >
     Use Entity Index before other LLM Tools need Home Assistant entity IDs.
-    It returns only directly labeled entities whose label IDs are in the
-    allowlist. Query by comma-separated label IDs, choose location as inside,
+    It returns only directly labeled entities whose label names are in the
+    allowlist. Query by comma-separated label names, choose location as inside,
     outside, or everywhere, and inspect meta.truncated before assuming the
     result is complete.
   mode: queued
   max: 2
   fields:
     labels:
-      name: Label IDs
+      name: Label names
       description: >
-        Comma-separated allowlisted Home Assistant label IDs. Required when
-        query_mode is by_labels. Do not include inside or outside; use location.
+        Comma-separated allowlisted Home Assistant label names. Required when
+        query_mode is by_labels. Do not include Inside or Outside; use location.
       required: false
       example: TemperatureSensor,Thermostat
       selector:
@@ -89,10 +89,10 @@ llmtool_entity_index:
           max: 1000
           mode: box
   sequence:
-    # Static public label allowlist and internal location labels.
+    # Static public label allowlist and separate location label names.
     - alias: Define Entity Index labels
       variables:
-        known_labels:
+        known_label_names:
           - PhotovoltaicSystem
           - ElectricCar
           - TemperatureSensor
@@ -106,48 +106,55 @@ llmtool_entity_index:
           - BatteryLevel
           - Selection
           - RainSensor
-        inside_label: inside
-        outside_label: outside
+          - Wohnzimmer
+          - Erdgeschoss
+        inside_label_name: Inside
+        outside_label_name: Outside
 
-    # Normalize enough input in YAML to gather only plausible candidates.
+    # Normalize input names and resolve them to HA's internal label IDs.
     - alias: Prepare candidate labels
       variables:
-        raw_label_ids: "{{ labels if labels is string else '' }}"
+        raw_label_names: "{{ labels if labels is string else '' }}"
         query_mode_raw: "{{ query_mode | default('by_labels', true) }}"
         location_raw: "{{ location | default('', true) }}"
-        user_label_list: >
-          {% set parts = raw_label_ids.split(',') %}
+        user_label_names: >
+          {% set parts = raw_label_names.split(',') %}
           {% set ns = namespace(items=[]) %}
           {% for part in parts %}
-            {% set label_id = part | trim %}
-            {% if label_id %}
-              {% set ns.items = ns.items + [label_id] %}
+            {% set label_name_text = part | trim %}
+            {% if label_name_text %}
+              {% set ns.items = ns.items + [label_name_text] %}
             {% endif %}
           {% endfor %}
           {{ ns.items }}
-        location_label: >
-          {% if location_raw == 'inside' %}
-            {{ inside_label }}
-          {% elif location_raw == 'outside' %}
-            {{ outside_label }}
-          {% else %}
-            {{ '' }}
-          {% endif %}
-        candidate_label_ids: >
+        location_label_name: >-
+          {% if location_raw == 'inside' %}{{ inside_label_name }}{% elif location_raw == 'outside' %}{{ outside_label_name }}{% else %}{{ '' }}{% endif %}
+        location_label_id: >-
+          {% if location_label_name %}{{ label_id(location_label_name | trim) | default('', true) }}{% else %}{{ '' }}{% endif %}
+        match_label_names: >
           {% set ns = namespace(items=[]) %}
           {% if query_mode_raw == 'all_labeled' %}
-            {% for label_id in known_labels %}
-              {% set ns.items = ns.items + [label_id] %}
+            {% for label_name_text in known_label_names %}
+              {% set ns.items = ns.items + [label_name_text] %}
             {% endfor %}
           {% else %}
-            {% for label_id in user_label_list %}
-              {% if label_id not in ns.items %}
-                {% set ns.items = ns.items + [label_id] %}
+            {% for label_name_text in user_label_names %}
+              {% if label_name_text not in ns.items %}
+                {% set ns.items = ns.items + [label_name_text] %}
               {% endif %}
             {% endfor %}
           {% endif %}
-          {% if location_label and location_label not in ns.items %}
-            {% set ns.items = ns.items + [location_label] %}
+          {{ ns.items }}
+        candidate_label_ids: >
+          {% set ns = namespace(items=[]) %}
+          {% for label_name_text in match_label_names %}
+            {% set resolved_label_id = label_id(label_name_text) %}
+            {% if resolved_label_id and resolved_label_id not in ns.items %}
+              {% set ns.items = ns.items + [resolved_label_id] %}
+            {% endif %}
+          {% endfor %}
+          {% if location_label_id and location_label_id not in ns.items %}
+            {% set ns.items = ns.items + [location_label_id] %}
           {% endif %}
           {{ ns.items }}
 
@@ -156,8 +163,8 @@ llmtool_entity_index:
       variables:
         candidate_entity_ids: >
           {% set ns = namespace(items=[]) %}
-          {% for label_id in candidate_label_ids %}
-            {% for entity_id in label_entities(label_id) %}
+          {% for resolved_label_id in candidate_label_ids %}
+            {% for entity_id in label_entities(resolved_label_id) %}
               {% if entity_id not in ns.items %}
                 {% set ns.items = ns.items + [entity_id] %}
               {% endif %}
@@ -171,17 +178,28 @@ llmtool_entity_index:
         candidate_records: >
           {% set ns = namespace(items=[]) %}
           {% for entity_id in candidate_entity_ids %}
+            {% set matched = namespace(labels=[]) %}
+            {% for label_name_text in match_label_names %}
+              {% set resolved_label_id = label_id(label_name_text) %}
+              {% if resolved_label_id and entity_id in label_entities(resolved_label_id) %}
+                {% set matched.labels = matched.labels + [label_name_text] %}
+              {% endif %}
+            {% endfor %}
+            {% set unit = state_attr(entity_id, 'unit_of_measurement') %}
+            {% set device_class = state_attr(entity_id, 'device_class') %}
+            {% set state_class = state_attr(entity_id, 'state_class') %}
             {% set record = {
               'entity_id': entity_id,
-              'labels': entity_id | labels,
+              'matched_labels': matched.labels,
+              'location_matched': not location_label_name or (location_label_id and entity_id in label_entities(location_label_id)),
               'state': states(entity_id),
-              'friendly_name': state_attr(entity_id, 'friendly_name'),
+              'friendly_name': state_attr(entity_id, 'friendly_name') | default(entity_id, true),
               'domain': entity_id.split('.')[0],
-              'area_id': area_id(entity_id),
-              'device_id': device_id(entity_id),
-              'unit_of_measurement': state_attr(entity_id, 'unit_of_measurement'),
-              'device_class': state_attr(entity_id, 'device_class'),
-              'state_class': state_attr(entity_id, 'state_class')
+              'area_id': area_id(entity_id) | default('', true),
+              'device_id': device_id(entity_id) | default('', true),
+              'unit_of_measurement': unit | string if unit is not none else '',
+              'device_class': device_class | string if device_class is not none else '',
+              'state_class': state_class | string if state_class is not none else ''
             } %}
             {% set ns.items = ns.items + [record] %}
           {% endfor %}
@@ -191,16 +209,16 @@ llmtool_entity_index:
     - alias: Call Entity Index Python Helper
       action: python_script.llmtool_entity_index
       data:
-        labels: "{{ raw_label_ids }}"
+        labels: "{{ raw_label_names }}"
         location: "{{ location | default('', true) }}"
         query_mode: "{{ query_mode | default('by_labels', true) }}"
         match_mode: "{{ match_mode | default('all', true) }}"
         verbosity: "{{ verbosity | default('compact', true) }}"
         state_filter: "{{ state_filter | default('', true) }}"
         limit: "{{ limit | default('', true) }}"
-        known_labels: "{{ known_labels }}"
-        inside_label: "{{ inside_label }}"
-        outside_label: "{{ outside_label }}"
+        known_labels: "{{ known_label_names }}"
+        inside_label: "{{ inside_label_name }}"
+        outside_label: "{{ outside_label_name }}"
         candidates: "{{ candidate_records }}"
       response_variable: entity_index_helper
 

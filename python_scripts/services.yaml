@@ -11,7 +11,7 @@ llmtool_entity_index:
   description: Validate Entity Index input and shape matching labeled entities.
   fields:
     labels:
-      description: Comma-separated allowlisted label IDs.
+      description: Comma-separated allowlisted label names.
       example: TemperatureSensor,Thermostat
     location:
       description: >

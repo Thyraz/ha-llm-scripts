@@ -1,6 +1,6 @@
 # Home Assistant Research Notes
 
-Checked: 2026-06-15
+Checked: 2026-06-16
 Docs version shown by Home Assistant pages: 2026.6.3
 
 Use this file as the source ledger for Home Assistant behavior we rely on. Before substantial changes, re-check official docs, release notes, and source for anything touched here.
@@ -24,6 +24,7 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   - https://www.home-assistant.io/template-functions/labels/
   - https://www.home-assistant.io/template-functions/label_entities/
   - https://www.home-assistant.io/template-functions/label_id/
+  - https://www.home-assistant.io/template-functions/label_name/
 - Home Assistant area/device template functions:
   - https://www.home-assistant.io/template-functions/area_id/
   - https://www.home-assistant.io/template-functions/device_id/
@@ -50,11 +51,17 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - `labels(entity_id)` returns labels assigned directly to that entity; device and area labels do not roll up.
 - `label_entities(label_id_or_name)` returns entity IDs with the label assigned directly; device and area labels do not roll up.
 - `label_entities()` returns an empty list when the label does not match any entities.
+- `label_id(label_name)` returns the internal label ID for a friendly label name, returns `None` when missing, and is case-sensitive.
+- `label_name(label_id)` returns the friendly label name for an internal label ID and returns `None` when missing.
+- LLM Tool parameters should use friendly label names when that is what the HA user sees; resolve to internal IDs inside templates when another helper expects or benefits from IDs.
 - `area_id(entity_id)` returns the area ID for an entity or `None`.
 - `device_id(entity_id)` returns the device ID for an entity or `None`.
 - Native `python_script` can read state machine data through `hass.states.entity_ids`,
   `hass.states.all`, `hass.states.get`, `hass.states.is_state`, and
   `hass.states.is_state_attr`.
+- Script template variables can preserve list/dict values for native action data
+  when the rendered value is made of simple literal types. Non-primitive values
+  such as enum attributes can make the rendered value arrive as a string.
 
 ## Assumptions
 

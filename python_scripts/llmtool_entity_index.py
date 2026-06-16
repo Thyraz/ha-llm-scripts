@@ -24,9 +24,9 @@ def validation_error(message, data_payload=None, meta_payload=None):
     output["meta"] = meta_payload or {}
 
 
-known_labels = data.get("known_labels") or []
-inside_label = as_text(data.get("inside_label")) or "inside"
-outside_label = as_text(data.get("outside_label")) or "outside"
+known_label_names = data.get("known_labels") or []
+inside_label_name = as_text(data.get("inside_label")) or "Inside"
+outside_label_name = as_text(data.get("outside_label")) or "Outside"
 
 requested_labels = parse_labels(data.get("labels", ""))
 location = as_text(data.get("location"))
@@ -82,35 +82,35 @@ else:
     if output.get("success") is not False:
         unknown_labels = []
         for label in requested_labels:
-            if label in [inside_label, outside_label] or label not in known_labels:
+            if label in [inside_label_name, outside_label_name] or label not in known_label_names:
                 unknown_labels.append(label)
 
         if unknown_labels:
             validation_error(
-                "Unknown label ID. Use data.known_labels and retry. Use location for inside/outside.",
+                "Unknown label name. Use data.known_labels and retry. Use location for Inside/Outside.",
                 {
                     "unknown_labels": unknown_labels,
-                    "known_labels": known_labels,
+                    "known_labels": known_label_names,
                 },
             )
 
     if output.get("success") is not False and query_mode == "by_labels" and not requested_labels:
         validation_error(
-            "query_mode=by_labels requires at least one label ID.",
-            {"known_labels": known_labels},
+            "query_mode=by_labels requires at least one label name.",
+            {"known_labels": known_label_names},
         )
 
 if output.get("success") is not False:
     if location == "inside":
-        location_label = inside_label
+        location_label = inside_label_name
     elif location == "outside":
-        location_label = outside_label
+        location_label = outside_label_name
     else:
         location_label = ""
 
     if query_mode == "all_labeled":
         match_labels = []
-        for label in known_labels:
+        for label in known_label_names:
             match_labels.append(label)
     else:
         match_labels = []
@@ -125,21 +125,31 @@ if output.get("success") is not False:
 
     matches = []
     for candidate in data.get("candidates") or []:
-        entity_id = as_text(candidate.get("entity_id"))
+        if "entity_id" not in candidate:
+            continue
+
+        entity_id = as_text(candidate["entity_id"])
         if not entity_id:
             continue
 
-        entity_labels = candidate.get("labels") or []
+        candidate_matched_labels = []
+        if "matched_labels" in candidate:
+            for label in candidate["matched_labels"] or []:
+                candidate_matched_labels.append(label)
 
-        if location_label and location_label not in entity_labels:
+        if location_label and not candidate["location_matched"]:
             continue
 
-        if state_filter and as_text(candidate.get("state")) != state_filter:
+        state = ""
+        if "state" in candidate:
+            state = as_text(candidate["state"])
+
+        if state_filter and state != state_filter:
             continue
 
         matched_labels = []
         for label in match_labels:
-            if label in entity_labels and label not in matched_labels:
+            if label in candidate_matched_labels and label not in matched_labels:
                 matched_labels.append(label)
 
         if query_mode == "all_labeled":
@@ -153,10 +163,10 @@ if output.get("success") is not False:
 
         shaped = {
             "entity_id": entity_id,
-            "friendly_name": as_text(candidate.get("friendly_name")) or entity_id,
-            "state": as_text(candidate.get("state")),
+            "friendly_name": as_text(candidate["friendly_name"]) or entity_id,
+            "state": state,
             "matched_labels": matched_labels,
-            "domain": as_text(candidate.get("domain")),
+            "domain": as_text(candidate["domain"]),
         }
 
         for optional_field in [
@@ -166,7 +176,9 @@ if output.get("success") is not False:
             "device_class",
             "state_class",
         ]:
-            optional_value = as_text(candidate.get(optional_field))
+            optional_value = ""
+            if optional_field in candidate:
+                optional_value = as_text(candidate[optional_field])
             if optional_value:
                 shaped[optional_field] = optional_value
 
