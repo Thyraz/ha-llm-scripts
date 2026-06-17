@@ -31,6 +31,11 @@ Keep the code easy to read. Prefer clear, boring control flow over defensive han
 ## Python Helpers
 
 - Use simple top-level code; native `python_script` is not normal Python.
+- Use short block comments before meaningful phases so a reader can scan the
+  file structure: normalize input, validate parameters, filter data, shape
+  response.
+- Do not comment obvious single lines. Prefer comments that explain why the next
+  block exists.
 - Do not use imports.
 - Use `output` for return data.
 - Use `logger.info()` / `logger.warning()` only for useful debugging.

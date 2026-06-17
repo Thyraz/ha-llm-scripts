@@ -2,6 +2,7 @@ DEFAULT_LIMIT = 50
 MAX_LIMIT = 1000
 
 
+# Small helpers keep the top-level python_script flow readable.
 def as_text(value):
     if value is None:
         return ""
@@ -24,6 +25,7 @@ def validation_error(message, data_payload=None, meta_payload=None):
     output["meta"] = meta_payload or {}
 
 
+# Normalize script input and internal label names.
 known_label_names = data.get("known_labels") or []
 visibility_label_name = as_text(data.get("visibility_label")) or "Everywhere"
 inside_label_name = as_text(data.get("inside_label")) or "Inside"
@@ -42,6 +44,7 @@ valid_query_modes = ["by_labels", "all_labeled"]
 valid_match_modes = ["all", "any"]
 valid_verbosity = ["id_only", "compact", "detailed"]
 
+# Validate caller parameters before touching candidate records.
 if location not in valid_locations:
     validation_error(
         "Invalid location. Use inside, outside, or everywhere.",
@@ -103,6 +106,7 @@ else:
         )
 
 if output.get("success") is not False:
+    # Convert public query choices into the matching rules used below.
     if location == "inside":
         location_label = inside_label_name
     elif location == "outside":
@@ -135,6 +139,7 @@ if output.get("success") is not False:
         )
 
 if output.get("success") is not False:
+    # Filter HA-collected candidates by visibility, location, labels, and state.
     matches = []
     for candidate in candidates:
         if "entity_id" not in candidate:
@@ -201,6 +206,7 @@ if output.get("success") is not False:
 
         matches.append(shaped)
 
+    # Sort, limit, and shape the final response for Assist.
     matches.sort(key=lambda item: item["entity_id"])
     total = len(matches)
     limited_matches = matches[:limit]
