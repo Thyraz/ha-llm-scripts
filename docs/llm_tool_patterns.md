@@ -122,6 +122,21 @@ Do not mention hidden filters, internal IDs, helper handoff details, or
 implementation labels in Assistant-facing descriptions. Put those details in
 YAML comments, plans, debugging docs, or research notes.
 
+Short negative guidance is allowed when it addresses an observed Assistant
+failure and does not expose implementation details. Example: "Room and floor
+names are label_names, not separate area or room parameters."
+
+For non-trivial tools, include one call example and one response example when
+the Assistant must inspect nested response data. Small realtime models often do
+better with concrete, human-like examples than abstract placeholders. Use
+plausible values such as `LivingRoom` rather than placeholders such as
+`RoomLabel`, and explicitly say that example values may need replacement with
+real supported values.
+
+Do not over-compress Assistant-facing text for realtime smart-home models. More
+human-like parameter descriptions can be useful when they explain how parameters
+interact, or when to use them.
+
 ## Prompt guidance
 
 README should include a short prompt snippet for each non-demo LLM Tool. Demo
@@ -139,4 +154,5 @@ The prompt should tell the Assistant:
 - how to react to validation errors or truncated results
 
 Prompt snippets should not teach the Assistant implementation details by telling
-it what not to do. Prefer a positive list of allowed values and actions.
+it what not to do. Prefer a positive list of allowed values and actions. Add
+short negative guidance only for repeated observed mistakes.

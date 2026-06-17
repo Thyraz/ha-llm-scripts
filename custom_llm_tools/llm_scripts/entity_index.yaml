@@ -1,10 +1,61 @@
 llmtool_entity_index:
   alias: LLM Tool Entity Index
   description: >
-    Use Entity Index before other LLM Tools need Home Assistant entity IDs.
-    Query by comma-separated label names, choose location as inside, outside,
-    or everywhere, and inspect meta.truncated before assuming the result is
-    complete.
+    Use Entity Index before other LLM Tools that need Home Assistant entity IDs.
+
+    Many Home Assistant installations have labels for device-categories, rooms, floors and more in a Home Assistant installation. 
+    Combine them (and their state with 'state_flter') to find only matching entities.
+
+    IMPORTANT: labels named after rooms or floors also have to be passed as labels 
+    and not as location or by inventing additional parameters like area that doesn't exist for this tool.
+
+    Use meta.truncated to decide whether to retry with a narrower query or higher limit. 
+    On success, read data.entities. On validation failure, use error and data
+    to retry.
+
+    Example:
+    ```
+      query_mode: by_labels
+      verbosity: compact
+      limit: 50
+      location: inside
+      label_names: LivingRoom,Light
+      state_filter: "on"
+      match_mode: all
+    ```
+
+    Return value example:
+    ```
+      success: true
+      answer: Found 2 matching entities.
+      data:
+        entities:
+          - entity_id: light.light1
+            friendly_name: Light1
+            state: "on"
+            matched_labels:
+              - LivingRoom
+              - Light
+          - entity_id: light.light2
+            friendly_name: Light2
+            state: "on"
+            matched_labels:
+              - LivingRoom
+              - Light
+      meta:
+        tool: llmtool_entity_index
+        count: 2
+        total: 2
+        query_mode: by_labels
+        label_names:
+          - LivingRoom
+          - Light
+        location: inside
+        match_mode: all
+        state_filter: "on"
+        verbosity: compact
+        limit: 50
+    ```
   mode: queued
   max: 2
   fields:
@@ -12,7 +63,7 @@ llmtool_entity_index:
       name: Label names
       description: >
         Comma-separated supported label names. Required when query_mode is
-        by_labels. Supported labels are configured in Home Assistant and shown
+        'by_labels'. Supported labels are configured in Home Assistant and shown
         in the Assistant instructions. (Warning: the values in the example string are just placeholders and might not be available in your system, check the instructions for the actual supported labels.)
       required: false
       example: TemperatureSensor,Light
@@ -21,7 +72,7 @@ llmtool_entity_index:
     location:
       name: Location
       description: >
-        Required location filter: inside, outside, or everywhere.
+        Required location filter: `inside`the house, `outside` the house, or `everywhere` which returns matching entities regardless of their inside/outside location.
       required: true
       example: inside
       selector:
@@ -33,8 +84,8 @@ llmtool_entity_index:
     query_mode:
       name: Query mode
       description: >
-        by_labels requires label_names. all_labeled returns all available
-        entities for the chosen location.
+        by_labels requires paramter 'label_names'. all_labeled returns all available
+        entities for the chosen location (inventory lookup).
       required: false
       default: by_labels
       example: by_labels
@@ -46,8 +97,8 @@ llmtool_entity_index:
     match_mode:
       name: Match mode
       description: >
-        For by_labels with multiple label names, all requires every label name
-        and any requires at least one.
+        For by_labels with multiple label names, 'all' requires that an entity has EVERY label name provided
+        and 'any' requires that at least one label name matches the entitys labels.
       required: false
       default: all
       example: all
@@ -59,7 +110,7 @@ llmtool_entity_index:
     verbosity:
       name: Verbosity
       description: >
-        id_only returns entity IDs, compact returns common fields, detailed adds
+        'id_only' returns entity IDs, compact returns common fields, detailed adds
         safe operational fields.
       required: false
       default: compact
@@ -72,7 +123,10 @@ llmtool_entity_index:
             - detailed
     state_filter:
       name: State filter
-      description: Optional exact Home Assistant state string. Empty means no state filter.
+      description: >
+        Optional exact Home Assistant state string to filter the search results. Empty means no state filter.
+        If you don't know the possible states for entities of a specific label, fetch the entities first without state_filter and rerun the tool call afterwards with the correct state_filter.
+        A few examples: Windows might be "on" when open and "off" when closed, Lights are "on" when switched on and "off" when switched off, a TemperatureSensor might not have a state where filter make sense at all.
       required: false
       example: "on"
       selector:
