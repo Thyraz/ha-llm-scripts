@@ -34,6 +34,9 @@ Jinja loop assignment has scoping rules. Use `namespace()` when a loop needs to 
 
 For large transforms, prefer an LLM Tool Python Helper instead of dense YAML/Jinja.
 
+Avoid variable names that shadow Home Assistant template functions, such as
+`labels`, `label_name`, `states`, `area_id`, or `device_id`.
+
 ## Serialization
 
 When rendering a list or mapping into a string field, serialize it explicitly.

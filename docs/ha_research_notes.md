@@ -1,6 +1,6 @@
 # Home Assistant Research Notes
 
-Checked: 2026-06-16
+Checked: 2026-06-17
 Docs version shown by Home Assistant pages: 2026.6.3
 
 Use this file as the source ledger for Home Assistant behavior we rely on. Before substantial changes, re-check official docs, release notes, and source for anything touched here.
@@ -28,6 +28,11 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Home Assistant area/device template functions:
   - https://www.home-assistant.io/template-functions/area_id/
   - https://www.home-assistant.io/template-functions/device_id/
+- Home Assistant conversation integrations:
+  - https://www.home-assistant.io/integrations/openai_conversation/
+  - https://www.home-assistant.io/integrations/google_generative_ai_conversation/
+- Home Assistant Input Select integration:
+  - https://www.home-assistant.io/integrations/input_select/
 - Home Assistant Core LLM helper source: `homeassistant/helpers/llm.py`
 - Home Assistant Core Python script source:
   `homeassistant/components/python_script/__init__.py`
@@ -54,6 +59,10 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - `label_id(label_name)` returns the internal label ID for a friendly label name, returns `None` when missing, and is case-sensitive.
 - `label_name(label_id)` returns the friendly label name for an internal label ID and returns `None` when missing.
 - LLM Tool parameters should use friendly label names when that is what the HA user sees; resolve to internal IDs inside templates when another helper expects or benefits from IDs.
+- Conversation agent Instructions for the official OpenAI and Google Gemini
+  integrations are written using Home Assistant templating.
+- Input Select helpers define an editable list of options and can be configured
+  in the UI or YAML.
 - `area_id(entity_id)` returns the area ID for an entity or `None`.
 - `device_id(entity_id)` returns the device ID for an entity or `None`.
 - Native `python_script` can read state machine data through `hass.states.entity_ids`,
@@ -70,6 +79,8 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Exposed scripts remain the simplest public interface for this project.
 - LLM integrations handle structured script responses best when the response includes a short `answer` plus structured `data`.
 - Scalar fields are safer for LLM tool calls than complex selector output until tested across Assist integrations.
+- Script descriptions and field descriptions should be treated as static UI/tool
+  metadata, not as rendered templates.
 
 ## Risks
 

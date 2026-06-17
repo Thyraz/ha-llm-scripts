@@ -129,7 +129,7 @@ if output.get("success") is not False:
             {"expected": "list", "received": "string"},
             {
                 "query_mode": query_mode,
-                "labels": requested_labels,
+                "label_names": requested_labels,
                 "location": location,
             },
         )
@@ -238,7 +238,7 @@ if output.get("success") is not False:
         "count": len(entities),
         "total": total,
         "query_mode": query_mode,
-        "labels": requested_labels,
+        "label_names": requested_labels,
         "location": location,
         "match_mode": match_mode,
         "state_filter": state_filter,

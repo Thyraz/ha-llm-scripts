@@ -12,7 +12,8 @@ llmtool_entity_index:
   fields:
     labels:
       description: >
-        Comma-separated supported query label names.
+        Internal helper input from script label_names. Comma-separated supported
+        query label names.
       example: TemperatureSensor,Thermostat
     location:
       description: >

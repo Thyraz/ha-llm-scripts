@@ -16,38 +16,34 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - Unlabeled Home Assistant entities are intentionally invisible to the Assistant.
 - Every returned entity must have the direct entity label `Everywhere`.
 - `Everywhere` is an internal visibility label, not a public query label.
-- The queryable labels are a static allowlist of canonical friendly Home Assistant label names.
-- Initial allowlist:
-  - `PhotovoltaicSystem`
-  - `ElectricCar`
-  - `TemperatureSensor`
-  - `Thermostat`
-  - `WaterMeter`
-  - `Light`
-  - `WindowSensor`
-  - `MediaPlayer`
-  - `PowerSensor`
-  - `EnergySensor`
-  - `BatteryLevel`
-  - `Selection`
-  - `RainSensor`
-  - `Wohnzimmer`
-  - `Erdgeschoss`
+- The queryable labels are discovered at runtime as friendly Home Assistant
+  label names.
+- If `input_select.llmtool_entity_index_labels` exists, its options are the
+  explicit query label allowlist.
+- Explicit helper options are used only when they resolve to real Home Assistant
+  labels.
+- If `input_select.llmtool_entity_index_labels` is missing, Entity Index falls
+  back to all Home Assistant label names except internal visibility/location
+  labels.
+- If `input_select.llmtool_entity_index_labels` exists but has no options,
+  Entity Index uses no query labels and returns validation errors for
+  `query_mode=by_labels`.
 - Friendly label name matching is case-sensitive because `label_id(label_name)` is case-sensitive.
 - The LLM Tool Script resolves friendly label names to internal label IDs with
   `label_id()` before calling `label_entities()`.
 - Internal label IDs and internal visibility/location labels are implementation
   details and should not appear in Assistant-facing text.
-- The static allowlist lives in `llmtool_entity_index.yaml` variables and is
-  passed to the Python Helper as `known_labels`.
+- The LLM Tool Script passes the runtime query label list to the Python Helper
+  as `known_labels`.
 - `Inside` and `Outside` live as separate location-label name variables, not
-  in the queryable allowlist.
-- Future room and house-level labels are queryable labels in the allowlist, not
+  in the query label source.
+- Future room and house-level labels are queryable labels in the label source, not
   new `location` values.
 - Tool input accepts friendly label names only, not internal label IDs.
-- Tool input accepts multiple labels as a comma-separated string.
-- The user-provided label list must not include `Everywhere`, `Inside`, or
-  `Outside`; `location` owns the location labels and visibility is always required.
+- Tool input accepts multiple label names as a comma-separated string in
+  `label_names`.
+- The user-provided `label_names` value must not include `Everywhere`, `Inside`,
+  or `Outside`; `location` owns the location labels and visibility is always required.
 - `location` is a mandatory parameter with values `inside`, `outside`, or `everywhere`.
 - `location=inside` internally requires `Everywhere` and the existing HA label named `Inside`.
 - `location=outside` internally requires `Everywhere` and the existing HA label named `Outside`.
@@ -82,8 +78,8 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - `limit` caps returned results; default is 50 and maximum is 1000.
 - Response metadata includes `count` for returned results and `total` for total matches before limit.
 - Response metadata echoes normalized public query parameters, including
-  `query_mode`, `labels`, `location`, `match_mode`, `state_filter`, `verbosity`,
-  and `limit`.
+  `query_mode`, `label_names`, `location`, `match_mode`, `state_filter`,
+  `verbosity`, and `limit`.
 - Runtime responses must not expose hidden visibility/location labels through
   `answer`, `error`, `data`, or `meta`.
 - Capped responses include `meta.truncated: true`.
@@ -125,6 +121,7 @@ These examples describe how the Home Assistant LLM Assistant should choose param
 ## Prompt guidance
 
 The plan defines the intended prompt guidance. README should include the
-copyable user-facing snippet after implementation. The snippet should tell the
-Assistant to call Entity Index before tools that need entity IDs, use only the
-public query label names, choose `location`, and inspect `meta.truncated`.
+copyable user-facing snippet after implementation. The snippet should render the
+same runtime query label source as the script, tell the Assistant to call Entity
+Index before tools that need entity IDs, use `label_names`, choose `location`,
+and inspect `meta.truncated`.

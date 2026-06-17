@@ -21,6 +21,9 @@ Use an LLM Tool Python Helper only when YAML/Jinja would be hard to read or when
 - Do not ask the Assistant to guess Home Assistant IDs. Use explicit parameters, documented examples, or a purpose-built lookup tool.
 - Assistant-facing text should describe only usable parameters, allowed public
   values, response fields, and retry behavior. Keep implementation details out.
+- For user-specific allowed values that must survive repo updates, prefer a
+  user-owned Home Assistant helper/source that both the prompt template and the
+  LLM Tool Script read. Do not hardcode those values in repo-owned scripts.
 
 ## Response schema
 

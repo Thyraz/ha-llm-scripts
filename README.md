@@ -87,28 +87,28 @@ After install, Home Assistant should expose:
 Entity Index lets an Assistant discover allowed Home Assistant entities by
 label and location.
 
-Queryable label names:
+Supported label names come from:
 
-- `PhotovoltaicSystem`
-- `ElectricCar`
-- `TemperatureSensor`
-- `Thermostat`
-- `WaterMeter`
-- `Light`
-- `WindowSensor`
-- `MediaPlayer`
-- `PowerSensor`
-- `EnergySensor`
-- `BatteryLevel`
-- `Selection`
-- `RainSensor`
-- `Wohnzimmer`
-- `Erdgeschoss`
+1. `input_select.llmtool_entity_index_labels` options, when that helper exists.
+2. Otherwise all Home Assistant label names except the internal Entity Index
+   labels.
+
+Optional strict label config:
+
+```yaml
+input_select:
+  llmtool_entity_index_labels:
+    name: LLM Tool Entity Index Labels
+    options:
+      - TemperatureSensor
+      - Thermostat
+      - Light
+```
 
 Run `script.llmtool_entity_index` from Developer Tools -> Actions:
 
 ```yaml
-labels: TemperatureSensor,Thermostat
+label_names: TemperatureSensor,Thermostat
 location: inside
 query_mode: by_labels
 match_mode: any
@@ -133,7 +133,7 @@ meta:
   count: 3
   total: 3
   query_mode: by_labels
-  labels:
+  label_names:
     - TemperatureSensor
     - Thermostat
   location: inside
@@ -143,7 +143,7 @@ meta:
   limit: 50
 ```
 
-Invalid labels return a soft failure:
+Invalid label names return a soft failure:
 
 ```yaml
 success: false
@@ -186,10 +186,27 @@ For Entity Index, tell your Assistant:
 
 ```text
 Before calling LLM tools that need Home Assistant entity IDs, call Entity Index.
-Use only these label names: PhotovoltaicSystem, ElectricCar, TemperatureSensor,
-Thermostat, WaterMeter, Light, WindowSensor, MediaPlayer, PowerSensor,
-EnergySensor, BatteryLevel, Selection, RainSensor, Wohnzimmer, Erdgeschoss.
-Pass labels as a comma-separated string. Always choose location: inside,
+Supported Entity Index label names:
+{% set configured = state_attr('input_select.llmtool_entity_index_labels', 'options') %}
+{% set hidden = ['Everywhere', 'Inside', 'Outside'] %}
+{% set ns = namespace(items=[]) %}
+{% if configured is not none %}
+  {% for label_name_text in configured %}
+    {% if label_name_text and label_id(label_name_text) and label_name_text not in hidden and label_name_text not in ns.items %}
+      {% set ns.items = ns.items + [label_name_text] %}
+    {% endif %}
+  {% endfor %}
+{% else %}
+  {% for label_id in labels() %}
+    {% set label_name_text = label_name(label_id) %}
+    {% if label_name_text and label_name_text not in hidden and label_name_text not in ns.items %}
+      {% set ns.items = ns.items + [label_name_text] %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{{ ns.items | sort | join(', ') }}
+
+Pass label_names as a comma-separated string. Always choose location: inside,
 outside, or everywhere.
 Use query_mode=by_labels for targeted lookup and all_labeled for inventory.
 Use meta.truncated to decide whether to retry with a narrower query or higher

@@ -92,6 +92,8 @@ class EntityIndexHelperTest(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(["light.good"], result["data"]["entities"])
+        self.assertEqual(["Light"], result["meta"]["label_names"])
+        self.assertNotIn("labels", result["meta"])
         self.assertNotIn("effective_labels", result["meta"])
 
     def test_by_labels_any_matches_any_requested_query_label(self):
@@ -139,6 +141,7 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertEqual("list", result["data"]["expected"])
         self.assertEqual("string", result["data"]["received"])
+        self.assertEqual([], result["meta"]["label_names"])
         self.assertIn("Candidate records arrived as a string", result["error"])
 
 

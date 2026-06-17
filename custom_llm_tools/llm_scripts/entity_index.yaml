@@ -8,16 +8,14 @@ llmtool_entity_index:
   mode: queued
   max: 2
   fields:
-    labels:
+    label_names:
       name: Label names
       description: >
         Comma-separated supported label names. Required when query_mode is
-        by_labels. Supported labels: PhotovoltaicSystem, ElectricCar,
-        TemperatureSensor, Thermostat, WaterMeter, Light, WindowSensor,
-        MediaPlayer, PowerSensor, EnergySensor, BatteryLevel, Selection,
-        RainSensor, Wohnzimmer, Erdgeschoss.
+        by_labels. Supported labels are configured in Home Assistant and shown
+        in the Assistant instructions. (Warning: the values in the example string are just placeholders and might not be available in your system, check the instructions for the actual supported labels.)
       required: false
-      example: TemperatureSensor,Thermostat
+      example: TemperatureSensor,Light
       selector:
         text:
     location:
@@ -35,8 +33,8 @@ llmtool_entity_index:
     query_mode:
       name: Query mode
       description: >
-        by_labels requires labels. all_labeled returns all available entities
-        for the chosen location.
+        by_labels requires label_names. all_labeled returns all available
+        entities for the chosen location.
       required: false
       default: by_labels
       example: by_labels
@@ -48,8 +46,8 @@ llmtool_entity_index:
     match_mode:
       name: Match mode
       description: >
-        For by_labels with multiple labels, all requires every label and any
-        requires at least one.
+        For by_labels with multiple label names, all requires every label name
+        and any requires at least one.
       required: false
       default: all
       example: all
@@ -91,33 +89,43 @@ llmtool_entity_index:
           max: 1000
           mode: box
   sequence:
-    # Static public query label allowlist and internal visibility/location labels.
-    - alias: Define Entity Index labels
+    # Query labels come from an optional user-owned input_select helper.
+    # If the helper is missing, all HA labels except the internal labels are usable.
+    - alias: Define Entity Index label source
       variables:
-        known_label_names:
-          - PhotovoltaicSystem
-          - ElectricCar
-          - TemperatureSensor
-          - Thermostat
-          - WaterMeter
-          - Light
-          - WindowSensor
-          - MediaPlayer
-          - PowerSensor
-          - EnergySensor
-          - BatteryLevel
-          - Selection
-          - RainSensor
-          - Wohnzimmer
-          - Erdgeschoss
+        query_label_source_entity_id: input_select.llmtool_entity_index_labels
         visibility_label_name: Everywhere
         inside_label_name: Inside
         outside_label_name: Outside
 
+    # Build the supported query label list from one source of truth.
+    - alias: Gather supported query labels
+      variables:
+        known_label_names_json: >
+          {% set hidden_label_names = [visibility_label_name, inside_label_name, outside_label_name] %}
+          {% set configured_label_names = state_attr(query_label_source_entity_id, 'options') %}
+          {% set ns = namespace(items=[]) %}
+          {% if configured_label_names is not none %}
+            {% for label_name_text in configured_label_names %}
+              {% set label_name_text = label_name_text | trim %}
+              {% if label_name_text and label_id(label_name_text) and label_name_text not in hidden_label_names and label_name_text not in ns.items %}
+                {% set ns.items = ns.items + [label_name_text] %}
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            {% for label_id_text in labels() %}
+              {% set label_name_text = label_name(label_id_text) %}
+              {% if label_name_text and label_name_text not in hidden_label_names and label_name_text not in ns.items %}
+                {% set ns.items = ns.items + [label_name_text] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {{ ns.items | sort | to_json }}
+
     # Normalize input names and resolve them to HA's internal label IDs.
     - alias: Prepare candidate labels
       variables:
-        raw_label_names: "{{ labels if labels is string else '' }}"
+        raw_label_names: "{{ label_names if label_names is string else '' }}"
         query_mode_raw: "{{ query_mode | default('by_labels', true) }}"
         location_raw: "{{ location | default('', true) }}"
         user_label_names: >
@@ -138,7 +146,7 @@ llmtool_entity_index:
         match_label_names: >
           {% set ns = namespace(items=[]) %}
           {% if query_mode_raw == 'all_labeled' %}
-            {% for label_name_text in known_label_names %}
+            {% for label_name_text in known_label_names_json | from_json %}
               {% set ns.items = ns.items + [label_name_text] %}
             {% endfor %}
           {% else %}
@@ -224,7 +232,7 @@ llmtool_entity_index:
         verbosity: "{{ verbosity | default('compact', true) }}"
         state_filter: "{{ state_filter | default('', true) }}"
         limit: "{{ limit | default('', true) }}"
-        known_labels: "{{ known_label_names }}"
+        known_labels: "{{ known_label_names_json | from_json }}"
         visibility_label: "{{ visibility_label_name }}"
         inside_label: "{{ inside_label_name }}"
         outside_label: "{{ outside_label_name }}"

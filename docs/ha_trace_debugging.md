@@ -66,6 +66,8 @@ Useful trace variables:
 - `visibility_label_id`
 - `inside_label_name`
 - `outside_label_name`
+- `query_label_source_entity_id`
+- `known_label_names_json`
 - `location_label_name`
 - `location_label_id`
 - `match_label_names`
@@ -77,11 +79,19 @@ Expected label model:
 - Every visible entity has direct entity label `Everywhere`.
 - Inside entities also have direct entity label `Inside`.
 - Outside entities also have direct entity label `Outside`.
-- Query labels such as `Light`, `Wohnzimmer`, or `TemperatureSensor` are direct
-  entity labels.
+- Query labels are direct entity labels.
+- If `input_select.llmtool_entity_index_labels` exists, its options are the
+  supported query labels.
+- If `input_select.llmtool_entity_index_labels` is missing, all Home Assistant
+  labels except the internal visibility/location labels are supported query
+  labels.
 
 If `visibility_label_id` is empty, the friendly label name does not match Home
 Assistant exactly.
+
+If `known_label_names_json` is empty, check whether
+`input_select.llmtool_entity_index_labels` exists with no options, or with
+options that do not resolve to real Home Assistant labels.
 
 If `candidate_entity_ids` is empty while `visibility_label_id` is set, no entity
 has the direct `Everywhere` label, or Home Assistant did not reload the updated
