@@ -101,7 +101,7 @@ llmtool_entity_index:
     # Build the supported query label list from one source of truth.
     - alias: Gather supported query labels
       variables:
-        known_label_names_json: >
+        known_label_names: >
           {% set hidden_label_names = [visibility_label_name, inside_label_name, outside_label_name] %}
           {% set configured_label_names = state_attr(query_label_source_entity_id, 'options') %}
           {% set ns = namespace(items=[]) %}
@@ -146,7 +146,7 @@ llmtool_entity_index:
         match_label_names: >
           {% set ns = namespace(items=[]) %}
           {% if query_mode_raw == 'all_labeled' %}
-            {% for label_name_text in known_label_names_json | from_json %}
+            {% for label_name_text in known_label_names %}
               {% set ns.items = ns.items + [label_name_text] %}
             {% endfor %}
           {% else %}
@@ -232,7 +232,7 @@ llmtool_entity_index:
         verbosity: "{{ verbosity | default('compact', true) }}"
         state_filter: "{{ state_filter | default('', true) }}"
         limit: "{{ limit | default('', true) }}"
-        known_labels: "{{ known_label_names_json | from_json }}"
+        known_labels: "{{ known_label_names }}"
         visibility_label: "{{ visibility_label_name }}"
         inside_label: "{{ inside_label_name }}"
         outside_label: "{{ outside_label_name }}"

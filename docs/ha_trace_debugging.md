@@ -67,7 +67,7 @@ Useful trace variables:
 - `inside_label_name`
 - `outside_label_name`
 - `query_label_source_entity_id`
-- `known_label_names_json`
+- `known_label_names`
 - `location_label_name`
 - `location_label_id`
 - `match_label_names`
@@ -89,13 +89,16 @@ Expected label model:
 If `visibility_label_id` is empty, the friendly label name does not match Home
 Assistant exactly.
 
-If `known_label_names_json` is empty, check whether
+If `known_label_names` is empty, check whether
 `input_select.llmtool_entity_index_labels` exists with no options, or with
 options that do not resolve to real Home Assistant labels.
 
 If `candidate_entity_ids` is empty while `visibility_label_id` is set, no entity
 has the direct `Everywhere` label, or Home Assistant did not reload the updated
 script.
+
+`known_label_names` is expected to be a native list in the Script trace. Do not
+pipe it through `from_json` again.
 
 `candidate_records_json` is expected to be a JSON string in the Script trace.
 The Python Helper `candidates` service data must be a list. If `candidates` is

@@ -21,8 +21,9 @@ Keep the code easy to read. Prefer clear, boring control flow over defensive han
 - Prefer readable `variables`, `choose`, and sequential actions.
 - Use `action:` for Home Assistant actions in new YAML, not legacy `service:`.
 - Avoid complex nested templates when a Python Helper would be easier to understand.
-- For structured data sent to a Python Helper, serialize with `to_json` and
-  deserialize with `from_json` at the action boundary.
+- For structured data sent to a Python Helper, serialize with `to_json` when a
+  block template would otherwise become a string. Use `from_json` only when the
+  Script trace shows the value is still a JSON string.
 - Return a structured response with `stop` and `response_variable`.
 - Put implementation details in YAML comments or stable docs, not in script
   descriptions, field descriptions, prompt snippets, or runtime text returned to

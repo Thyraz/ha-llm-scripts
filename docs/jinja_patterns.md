@@ -47,7 +47,8 @@ Prefer `to_json` in this repo for consistency:
 {{ result | to_json }}
 ```
 
-For LLM Tool Script to Python Helper handoff, deserialize at the action boundary:
+For LLM Tool Script to Python Helper handoff, deserialize strings at the action
+boundary:
 
 ```yaml
 data:
@@ -56,6 +57,10 @@ data:
 
 Do not pass a block-template list/dict directly to a Python Helper and assume it
 will stay native. Use `to_json` first, then `from_json`.
+
+Home Assistant may store simple `to_json` variable output as a native list/dict
+in a script variable. Check the Script trace before adding `from_json` again.
+Calling `from_json` on a value that is already native raises a template error.
 
 Home Assistant also exposes `tojson`; verify current docs before changing style.
 

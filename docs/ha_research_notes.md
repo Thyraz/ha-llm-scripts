@@ -71,6 +71,9 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Complex block-template results can arrive in native action data as strings.
   For list/dict handoff to a Python Helper, serialize with `to_json`, then pass
   it through `from_json` at the action boundary.
+- Script trace from 2026-06-17 showed a simple list rendered with `to_json` in a
+  script variable can be stored as a native list. Do not call `from_json` on a
+  value that the trace already shows as a list/dict.
 - Before serializing entity records for a Python Helper, convert enum-like
   attributes such as `unit_of_measurement` and `state_class` to strings.
 

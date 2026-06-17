@@ -71,8 +71,8 @@ Rules:
 
 ## Script-helper handoff
 
-For structured data from an LLM Tool Script to a Python Helper, use an explicit
-JSON boundary.
+For structured data from an LLM Tool Script to a Python Helper, make the type
+boundary explicit.
 
 Pattern:
 
@@ -93,6 +93,10 @@ Rules:
 
 - Use this pattern for lists or mappings. Do not rely on block-template output
   being preserved as native list/dict action data.
+- Check the Script trace. If a script variable already appears as a native
+  list/dict, pass it directly and do not call `from_json` again.
+- If a script variable appears as a JSON string, deserialize it with `from_json`
+  at the Python Helper action boundary.
 - Keep handoff records JSON-compatible: strings, numbers, booleans, lists,
   mappings, and null-like empty values.
 - Convert enum-like Home Assistant objects to strings before `to_json`, such as
