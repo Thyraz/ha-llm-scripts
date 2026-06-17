@@ -10,6 +10,9 @@ Keep the code easy to read. Prefer clear, boring control flow over defensive han
 - Prefer small, direct scripts over clever abstractions.
 - Keep secrets out of repo files, logs, comments, and responses.
 - Do not invent entity IDs, labels, areas, floors, devices, or action names. Use values from the user, HA docs, or a verified HA instance.
+- Keep Assistant-facing text focused on choices the Assistant can act on. Do
+  not mention hidden labels, internal IDs, helper mechanics, or implementation
+  constraints unless the Assistant must use them directly.
 
 ## YAML LLM Tool Scripts
 
@@ -21,6 +24,9 @@ Keep the code easy to read. Prefer clear, boring control flow over defensive han
 - For structured data sent to a Python Helper, serialize with `to_json` and
   deserialize with `from_json` at the action boundary.
 - Return a structured response with `stop` and `response_variable`.
+- Put implementation details in YAML comments or stable docs, not in script
+  descriptions, field descriptions, prompt snippets, or runtime text returned to
+  Assist.
 
 ## Python Helpers
 

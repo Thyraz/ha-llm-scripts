@@ -36,7 +36,8 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - Friendly label name matching is case-sensitive because `label_id(label_name)` is case-sensitive.
 - The LLM Tool Script resolves friendly label names to internal label IDs with
   `label_id()` before calling `label_entities()`.
-- Internal label IDs are implementation details and should not appear in the Assistant prompt.
+- Internal label IDs and internal visibility/location labels are implementation
+  details and should not appear in Assistant-facing text.
 - The static allowlist lives in `llmtool_entity_index.yaml` variables and is
   passed to the Python Helper as `known_labels`.
 - `Inside` and `Outside` live as separate location-label name variables, not
@@ -80,9 +81,11 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - `detailed` omits unavailable optional fields and never dumps all attributes.
 - `limit` caps returned results; default is 50 and maximum is 1000.
 - Response metadata includes `count` for returned results and `total` for total matches before limit.
-- Response metadata echoes normalized query parameters, including `query_mode`,
-  `labels`, `location`, `effective_labels`, `match_mode`, `state_filter`,
-  `verbosity`, and `limit`.
+- Response metadata echoes normalized public query parameters, including
+  `query_mode`, `labels`, `location`, `match_mode`, `state_filter`, `verbosity`,
+  and `limit`.
+- Runtime responses must not expose hidden visibility/location labels through
+  `answer`, `error`, `data`, or `meta`.
 - Capped responses include `meta.truncated: true`.
 - Success `answer` is a short count summary; details stay in `data.entities`.
 - Results are sorted by `entity_id` ascending.
@@ -117,12 +120,11 @@ These examples describe how the Home Assistant LLM Assistant should choose param
 - "Lowest room temperature" should use `location=inside` so outside temperature sensors are excluded.
 - "Outside temperature" should use `location=outside`.
 - Broad inventory questions may use `location=everywhere`.
-- Inventory uses `Everywhere` internally; the Assistant should not pass it in `labels`.
+- Broad inventory should use `query_mode=all_labeled` and no labels.
 
 ## Prompt guidance
 
 The plan defines the intended prompt guidance. README should include the
 copyable user-facing snippet after implementation. The snippet should tell the
-Assistant to call Entity Index before tools that need entity IDs, use friendly
-query label names, choose `location`, never pass `Everywhere` / `Inside` /
-`Outside` in `labels`, and inspect `meta.truncated`.
+Assistant to call Entity Index before tools that need entity IDs, use only the
+public query label names, choose `location`, and inspect `meta.truncated`.

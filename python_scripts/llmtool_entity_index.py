@@ -89,7 +89,7 @@ else:
 
         if unknown_labels:
             validation_error(
-                "Unknown label name. Use data.known_labels and retry. Use query labels only; location controls Everywhere/Inside/Outside.",
+                "Unknown label name. Use data.known_labels and retry.",
                 {
                     "unknown_labels": unknown_labels,
                     "known_labels": known_label_names,
@@ -122,18 +122,16 @@ if output.get("success") is not False:
             required_match_labels.append(label)
             reported_match_labels.append(label)
 
-    effective_labels = [visibility_label_name]
-    if location_label:
-        effective_labels.append(location_label)
-    for label in required_match_labels:
-        effective_labels.append(label)
-
     candidates = data.get("candidates") or []
     if isinstance(candidates, str):
         validation_error(
             "Invalid candidate handoff. Candidate records arrived as a string; inspect candidate_records_json and the from_json action handoff in the Script trace.",
             {"expected": "list", "received": "string"},
-            {"effective_labels": effective_labels},
+            {
+                "query_mode": query_mode,
+                "labels": requested_labels,
+                "location": location,
+            },
         )
 
 if output.get("success") is not False:
@@ -242,7 +240,6 @@ if output.get("success") is not False:
         "query_mode": query_mode,
         "labels": requested_labels,
         "location": location,
-        "effective_labels": effective_labels,
         "match_mode": match_mode,
         "state_filter": state_filter,
         "verbosity": verbosity,

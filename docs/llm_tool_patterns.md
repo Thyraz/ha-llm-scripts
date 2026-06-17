@@ -19,6 +19,8 @@ Use an LLM Tool Python Helper only when YAML/Jinja would be hard to read or when
 - Prefer comma-separated strings over list selectors until LLM tool parameter behavior is tested.
 - Keep descriptions precise; the Assistant sees them as tool guidance.
 - Do not ask the Assistant to guess Home Assistant IDs. Use explicit parameters, documented examples, or a purpose-built lookup tool.
+- Assistant-facing text should describe only usable parameters, allowed public
+  values, response fields, and retry behavior. Keep implementation details out.
 
 ## Response schema
 
@@ -109,6 +111,10 @@ Each LLM Tool Script description should say:
 - what response format to expect
 - important safety limits
 
+Do not mention hidden filters, internal IDs, helper handoff details, or
+implementation labels in Assistant-facing descriptions. Put those details in
+YAML comments, plans, debugging docs, or research notes.
+
 ## Prompt guidance
 
 README should include a short prompt snippet for each non-demo LLM Tool. Demo
@@ -124,3 +130,6 @@ The prompt should tell the Assistant:
 - when to call each non-demo tool
 - how to choose important parameters
 - how to react to validation errors or truncated results
+
+Prompt snippets should not teach the Assistant implementation details by telling
+it what not to do. Prefer a positive list of allowed values and actions.

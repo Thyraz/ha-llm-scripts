@@ -12,8 +12,7 @@ llmtool_entity_index:
   fields:
     labels:
       description: >
-        Comma-separated allowlisted query label names. Do not include
-        Everywhere, Inside, or Outside.
+        Comma-separated supported query label names.
       example: TemperatureSensor,Thermostat
     location:
       description: >
@@ -21,8 +20,8 @@ llmtool_entity_index:
       example: inside
     query_mode:
       description: >
-        Query scope: by_labels or all_labeled. all_labeled returns all visible
-        entities for the chosen location.
+        Query scope: by_labels or all_labeled. all_labeled returns all
+        available entities for the chosen location.
       example: by_labels
     match_mode:
       description: >

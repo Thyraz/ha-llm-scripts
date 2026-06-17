@@ -55,7 +55,7 @@ class EntityIndexHelperTest(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(["light.inside_visible"], result["data"]["entities"])
-        self.assertEqual(["Everywhere", "Inside"], result["meta"]["effective_labels"])
+        self.assertNotIn("effective_labels", result["meta"])
 
     def test_all_labeled_everywhere_only_requires_visibility(self):
         result = run_helper(
@@ -71,7 +71,7 @@ class EntityIndexHelperTest(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(["light.visible"], result["data"]["entities"])
-        self.assertEqual(["Everywhere"], result["meta"]["effective_labels"])
+        self.assertNotIn("effective_labels", result["meta"])
 
     def test_by_labels_requires_visibility_location_and_query_label(self):
         result = run_helper(
@@ -92,7 +92,7 @@ class EntityIndexHelperTest(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(["light.good"], result["data"]["entities"])
-        self.assertEqual(["Everywhere", "Inside", "Light"], result["meta"]["effective_labels"])
+        self.assertNotIn("effective_labels", result["meta"])
 
     def test_by_labels_any_matches_any_requested_query_label(self):
         result = run_helper(

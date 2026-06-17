@@ -2,18 +2,20 @@ llmtool_entity_index:
   alias: LLM Tool Entity Index
   description: >
     Use Entity Index before other LLM Tools need Home Assistant entity IDs.
-    It returns only directly labeled entities with the Everywhere visibility
-    label. Query by comma-separated label names, choose location as inside,
-    outside, or everywhere, and inspect meta.truncated before assuming the
-    result is complete.
+    Query by comma-separated label names, choose location as inside, outside,
+    or everywhere, and inspect meta.truncated before assuming the result is
+    complete.
   mode: queued
   max: 2
   fields:
     labels:
       name: Label names
       description: >
-        Comma-separated allowlisted Home Assistant label names. Required when
-        query_mode is by_labels. Do not include Everywhere, Inside, or Outside.
+        Comma-separated supported label names. Required when query_mode is
+        by_labels. Supported labels: PhotovoltaicSystem, ElectricCar,
+        TemperatureSensor, Thermostat, WaterMeter, Light, WindowSensor,
+        MediaPlayer, PowerSensor, EnergySensor, BatteryLevel, Selection,
+        RainSensor, Wohnzimmer, Erdgeschoss.
       required: false
       example: TemperatureSensor,Thermostat
       selector:
@@ -33,7 +35,8 @@ llmtool_entity_index:
     query_mode:
       name: Query mode
       description: >
-        by_labels requires labels. all_labeled returns all visible entities.
+        by_labels requires labels. all_labeled returns all available entities
+        for the chosen location.
       required: false
       default: by_labels
       example: by_labels

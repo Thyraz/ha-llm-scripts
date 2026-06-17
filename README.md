@@ -84,14 +84,8 @@ After install, Home Assistant should expose:
 - `script.llmtool_entity_index`
 - `python_script.llmtool_entity_index`
 
-Entity Index lets an Assistant discover only directly labeled entities whose
-entity has the internal `Everywhere` visibility label.
-
-Internal labels, not passed in `labels`:
-
-- `Everywhere` marks entities visible to Entity Index.
-- `Inside` is added when `location=inside`.
-- `Outside` is added when `location=outside`.
+Entity Index lets an Assistant discover allowed Home Assistant entities by
+label and location.
 
 Queryable label names:
 
@@ -143,11 +137,6 @@ meta:
     - TemperatureSensor
     - Thermostat
   location: inside
-  effective_labels:
-    - Everywhere
-    - Inside
-    - TemperatureSensor
-    - Thermostat
   match_mode: any
   state_filter: ""
   verbosity: compact
@@ -158,7 +147,7 @@ Invalid labels return a soft failure:
 
 ```yaml
 success: false
-error: "Unknown label name. Use data.known_labels and retry. Use query labels only; location controls Everywhere/Inside/Outside."
+error: "Unknown label name. Use data.known_labels and retry."
 data:
   unknown_labels:
     - UnknownLabel
@@ -197,9 +186,11 @@ For Entity Index, tell your Assistant:
 
 ```text
 Before calling LLM tools that need Home Assistant entity IDs, call Entity Index.
-Use canonical friendly label names, not internal label IDs. Pass labels as a
-comma-separated string. Always choose location: inside, outside, or everywhere.
-Never pass Everywhere, Inside, or Outside as labels; those are internal labels.
+Use only these label names: PhotovoltaicSystem, ElectricCar, TemperatureSensor,
+Thermostat, WaterMeter, Light, WindowSensor, MediaPlayer, PowerSensor,
+EnergySensor, BatteryLevel, Selection, RainSensor, Wohnzimmer, Erdgeschoss.
+Pass labels as a comma-separated string. Always choose location: inside,
+outside, or everywhere.
 Use query_mode=by_labels for targeted lookup and all_labeled for inventory.
 Use meta.truncated to decide whether to retry with a narrower query or higher
 limit. On success, read data.entities. On validation failure, use error and data

@@ -28,6 +28,10 @@ _Avoid_: text blob, raw output
 The user-controlled Home Assistant step that makes an LLM Tool Script available to an Assistant.
 _Avoid_: auto expose, storage patching
 
+**Assistant-facing text**:
+Text an Assistant may read when choosing, calling, or interpreting an LLM Tool.
+_Avoid_: implementation notes, internal docs
+
 **Entity Index**:
 An LLM Tool that lets an Assistant discover Home Assistant entities it is allowed to know about before calling other LLM Tools.
 _Avoid_: entity registry dump, entity database, search backend
