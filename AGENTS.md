@@ -17,6 +17,7 @@ Single-context repo: root `CONTEXT.md` and `docs/adr/`. See `docs/agents/domain.
 ### Coding guidelines
 
 Keep code easy to read. Do not guard against unlikely errors just to be defensive. In YAML script files, use comments because comments are preserved outside GUI mode. See `docs/coding_guidelines.md`.
+Ensure to read the provided docs carefully. A lot common errors that LLMs make when writing HA scripts (and how to avoid them) can be found here.
 
 ## Github
 
