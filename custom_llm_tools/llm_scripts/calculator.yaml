@@ -1,0 +1,124 @@
+llmtool_calculator:
+  alias: LLM Tool Calculator
+  description: >
+    Use Calculator when arithmetic must be calculated exactly from values the
+    Assistant already has.
+
+    Pass operation as one of: sum, difference, product, quotient, minimum,
+    maximum, average.
+
+    Pass values as comma-separated decimal numbers without units. Use "." as
+    the decimal separator, independent of the user's locale settings. Commas
+    separate values.
+
+    Optional precision rounds the result to 0-10 decimal places. On success,
+    read data.result. If precision was used, data.raw_result contains the
+    unrounded result. On validation failure, use error and data to retry.
+
+    Example:
+    ```
+      operation: average
+      values: 21.5,22,20.8
+      precision: 1
+    ```
+
+    Return value example:
+    ```
+      success: true
+      answer: "Result: 21.4."
+      data:
+        result: 21.4
+        raw_result: 21.433333333333334
+        values:
+          - 21.5
+          - 22
+          - 20.8
+      meta:
+        tool: llmtool_calculator
+        operation: average
+        value_count: 3
+        precision: 1
+    ```
+  mode: queued
+  max: 2
+  fields:
+    operation:
+      name: Operation
+      description: >
+        Arithmetic operation to apply to values. Use one of: sum, difference,
+        product, quotient, minimum, maximum, average. For difference and
+        quotient, value order matters.
+      required: true
+      example: average
+      selector:
+        select:
+          options:
+            - sum
+            - difference
+            - product
+            - quotient
+            - minimum
+            - maximum
+            - average
+    values:
+      name: Values
+      description: >
+        Comma-separated decimal numbers without units. Use "." as decimal
+        separator, independent of locale settings. Commas separate values.
+      required: true
+      example: 21.5,22,20.8
+      selector:
+        text:
+    precision:
+      name: Precision
+      description: >
+        Optional decimal places for rounding the result. Use an integer from 0
+        to 10. Empty means no requested rounding.
+      required: false
+      example: "2"
+      selector:
+        number:
+          min: 0
+          max: 10
+          mode: box
+  sequence:
+    # Normalize fields enough for predictable helper handoff.
+    - alias: Prepare Calculator helper input
+      variables:
+        helper_operation: "{{ operation | default('', true) }}"
+        helper_values: "{{ values | default('', true) }}"
+        helper_precision: "{{ precision | default('', true) }}"
+
+    # Validate, calculate, round, and shape the helper response in Python.
+    - alias: Call Calculator Python Helper
+      action: python_script.llmtool_calculator
+      data:
+        operation: "{{ helper_operation }}"
+        values: "{{ helper_values }}"
+        precision: "{{ helper_precision }}"
+      response_variable: calculator_helper
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ calculator_helper.success }}"
+          sequence:
+            - variables:
+                calculator_response:
+                  success: true
+                  answer: "{{ calculator_helper.answer }}"
+                  data: "{{ calculator_helper.data }}"
+                  meta: "{{ calculator_helper.meta }}"
+      default:
+        - variables:
+            calculator_response:
+              success: false
+              error: "{{ calculator_helper.error }}"
+              data: "{{ calculator_helper.data }}"
+              meta: "{{ calculator_helper.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Calculator complete
+      response_variable: calculator_response

@@ -10,6 +10,7 @@ Current implementation includes:
 
 - `script.llmtool_demo` for install and response-shape validation
 - `script.llmtool_entity_index` for safe labeled-entity discovery
+- `script.llmtool_calculator` for deterministic arithmetic
 
 ## Install
 
@@ -156,6 +157,70 @@ data:
 meta: {}
 ```
 
+## Calculator tool
+
+After install, Home Assistant should expose:
+
+- `script.llmtool_calculator`
+- `python_script.llmtool_calculator`
+
+Calculator performs arithmetic over values the Assistant already has. It does
+not fetch entities, states, units, or history.
+
+Supported operations:
+
+- `sum`
+- `difference`
+- `product`
+- `quotient`
+- `minimum`
+- `maximum`
+- `average`
+
+Run `script.llmtool_calculator` from Developer Tools -> Actions:
+
+```yaml
+operation: average
+values: 21.5,22,20.8
+precision: 1
+```
+
+Expected response shape:
+
+```yaml
+success: true
+answer: "Result: 21.4."
+data:
+  result: 21.4
+  raw_result: 21.433333333333334
+  values:
+    - 21.5
+    - 22
+    - 20.8
+meta:
+  tool: llmtool_calculator
+  operation: average
+  value_count: 3
+  precision: 1
+```
+
+Use decimal numbers without units. Use `.` as decimal separator, independent of
+locale settings. Commas separate values.
+
+Invalid values return a soft failure:
+
+```yaml
+success: false
+error: "Invalid Calculator value. Use decimal numbers with '.' as decimal separator."
+data:
+  invalid_values:
+    - token: "21 C"
+      position: 2
+  expected: "Comma-separated decimal numbers without units. Commas separate values; use '.' for decimals."
+meta:
+  tool: llmtool_calculator
+```
+
 ## LLM tool response format
 
 Tools return a structured response in Developer Tools -> Actions:
@@ -214,6 +279,25 @@ limit. On success, read data.entities. On validation failure, use error and data
 to retry.
 ```
 
+For Calculator, tell your Assistant:
+
+```text
+Use Calculator when arithmetic must be calculated exactly from values you
+already have. It does not fetch entities, states, units, or history.
+
+Choose operation from: sum, difference, product, quotient, minimum, maximum,
+average.
+
+Pass values as a comma-separated string of decimal numbers without units. Use
+"." as decimal separator, independent of locale settings. Commas separate
+values. For difference and quotient, value order matters.
+
+Use precision only when the user asks for rounded output, or rounded output is
+more useful. On success, read data.result. If precision was used, data.raw_result
+contains the unrounded result. On validation failure, use error and data to
+retry.
+```
+
 ## Docs
 
 - [Glossary](CONTEXT.md)
@@ -225,6 +309,7 @@ to retry.
 - [HA trace debugging](docs/ha_trace_debugging.md)
 - [Architecture decisions](docs/adr/0001-ha-native-llm-tool-scripts.md)
 - [Tool plans](docs/plans/README.md)
+- [Calculator plan](docs/plans/implemented/calculator.md)
 - [Demo tool plan](docs/plans/implemented/demo-tool.md)
 - [Entity Index plan](docs/plans/implemented/entity-index.md)
 
@@ -252,4 +337,10 @@ For Entity Index helper regression checks:
 
 ```bash
 python3 tests/test_llmtool_entity_index.py
+```
+
+For Calculator helper regression checks:
+
+```bash
+python3 tests/test_llmtool_calculator.py
 ```

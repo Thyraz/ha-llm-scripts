@@ -35,3 +35,19 @@ _Avoid_: implementation notes, internal docs
 **Entity Index**:
 An LLM Tool that lets an Assistant discover Home Assistant entities it is allowed to know about before calling other LLM Tools.
 _Avoid_: entity registry dump, entity database, search backend
+
+**Calculator**:
+An LLM Tool that performs deterministic arithmetic over values supplied by the Assistant.
+_Avoid_: expression engine, history fetcher, statistics backend
+
+**Calculator operation**:
+A named arithmetic action the Calculator applies to supplied values.
+_Avoid_: operator symbol, expression
+
+**Calculator value**:
+A locale-independent decimal number supplied to the Calculator, using `.` as the decimal separator.
+_Avoid_: value with unit, localized number
+
+**Calculator precision**:
+An optional decimal-place limit for the Calculator result.
+_Avoid_: display format, unit conversion

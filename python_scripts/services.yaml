@@ -39,3 +39,21 @@ llmtool_entity_index:
       description: >
         Optional maximum returned entities. Default 50, maximum 1000.
       example: "50"
+
+llmtool_calculator:
+  name: LLM Tool Calculator
+  description: Validate Calculator input and return deterministic arithmetic.
+  fields:
+    operation:
+      description: >
+        Arithmetic operation: sum, difference, product, quotient, minimum,
+        maximum, or average.
+      example: average
+    values:
+      description: >
+        Comma-separated decimal numbers without units. Use "." as decimal
+        separator, independent of locale settings.
+      example: 21.5,22,20.8
+    precision:
+      description: Optional decimal places for rounding. Use 0 through 10.
+      example: "2"
