@@ -37,8 +37,11 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
   as `known_labels`.
 - `Inside` and `Outside` live as separate location-label name variables, not
   in the query label source.
-- Future room and house-level labels are queryable labels in the label source, not
-  new `location` values.
+- Entity labels representing rooms or floors are queryable labels in the label
+  source, not new `location` values.
+- Entity labels representing rooms or floors are not Home Assistant area labels
+  for this tool, and should not become separate `area`, `room`, or `floor`
+  parameters.
 - Tool input accepts friendly label names only, not internal label IDs.
 - Tool input accepts multiple label names as a comma-separated string in
   `label_names`.
@@ -124,4 +127,5 @@ The plan defines the intended prompt guidance. README should include the
 copyable user-facing snippet after implementation. The snippet should render the
 same runtime query label source as the script, tell the Assistant to call Entity
 Index before tools that need entity IDs, use `label_names`, choose `location`,
+explain that entity labels representing rooms or floors belong in `label_names`,
 and inspect `meta.truncated`.

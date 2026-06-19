@@ -273,6 +273,8 @@ Supported Entity Index label names:
 
 Pass label_names as a comma-separated string. Always choose location: inside,
 outside, or everywhere.
+Entity labels representing rooms or floors have to be passed as label_names, not
+as location. Location only accepts inside, outside, or everywhere.
 Use query_mode=by_labels for targeted lookup and all_labeled for inventory.
 Use meta.truncated to decide whether to retry with a narrower query or higher
 limit. On success, read data.entities. On validation failure, use error and data

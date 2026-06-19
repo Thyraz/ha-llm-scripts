@@ -3,11 +3,13 @@ llmtool_entity_index:
   description: >
     Use Entity Index before other LLM Tools that need Home Assistant entity IDs.
 
-    Many Home Assistant installations have labels for device-categories, rooms, floors and more in a Home Assistant installation. 
-    Combine them (and their state with 'state_flter') to find only matching entities.
+    Many Home Assistant installations have labels for device-categories, rooms,
+    floors and more. Combine them and their state with state_filter to find only
+    matching entities.
 
-    IMPORTANT: labels named after rooms or floors also have to be passed as labels 
-    and not as location or by inventing additional parameters like area that doesn't exist for this tool.
+    IMPORTANT: Entity labels representing rooms or floors have to be passed as
+    label_names, not as location. Location only accepts inside, outside, or
+    everywhere.
 
     Use meta.truncated to decide whether to retry with a narrower query or higher limit. 
     On success, read data.entities. On validation failure, use error and data
@@ -72,7 +74,9 @@ llmtool_entity_index:
     location:
       name: Location
       description: >
-        Required location filter: `inside`the house, `outside` the house, or `everywhere` which returns matching entities regardless of their inside/outside location.
+        Required location filter: `inside` the house, `outside` the house, or
+        `everywhere` which returns matching entities regardless of their
+        inside/outside location.
       required: true
       example: inside
       selector:
@@ -84,7 +88,7 @@ llmtool_entity_index:
     query_mode:
       name: Query mode
       description: >
-        by_labels requires paramter 'label_names'. all_labeled returns all available
+        by_labels requires parameter 'label_names'. all_labeled returns all available
         entities for the chosen location (inventory lookup).
       required: false
       default: by_labels
@@ -98,7 +102,7 @@ llmtool_entity_index:
       name: Match mode
       description: >
         For by_labels with multiple label names, 'all' requires that an entity has EVERY label name provided
-        and 'any' requires that at least one label name matches the entitys labels.
+        and 'any' requires that at least one label name matches the entity's labels.
       required: false
       default: all
       example: all
@@ -126,7 +130,9 @@ llmtool_entity_index:
       description: >
         Optional exact Home Assistant state string to filter the search results. Empty means no state filter.
         If you don't know the possible states for entities of a specific label, fetch the entities first without state_filter and rerun the tool call afterwards with the correct state_filter.
-        A few examples: Windows might be "on" when open and "off" when closed, Lights are "on" when switched on and "off" when switched off, a TemperatureSensor might not have a state where filter make sense at all.
+        A few examples: Windows might be "on" when open and "off" when closed,
+        Lights are "on" when switched on and "off" when switched off, a
+        TemperatureSensor might not have a state where a filter makes sense.
       required: false
       example: "on"
       selector:

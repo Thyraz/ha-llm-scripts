@@ -123,8 +123,8 @@ implementation labels in Assistant-facing descriptions. Put those details in
 YAML comments, plans, debugging docs, or research notes.
 
 Short negative guidance is allowed when it addresses an observed Assistant
-failure and does not expose implementation details. Example: "Room and floor
-names are label_names, not separate area or room parameters."
+failure and does not expose implementation details. Example: "Entity labels
+representing rooms or floors are label_names, not location values."
 
 For non-trivial tools, include one call example and one response example when
 the Assistant must inspect nested response data. Small realtime models often do
