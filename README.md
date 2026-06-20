@@ -10,6 +10,7 @@ Current implementation includes:
 
 - `script.llmtool_demo` for install and response-shape validation
 - `script.llmtool_entity_index` for safe labeled-entity discovery
+- `script.llmtool_long_term_aggregated_statistics` for aggregated long-term statistics
 - `script.llmtool_calculator` for deterministic arithmetic
 
 ## Install
@@ -157,6 +158,109 @@ data:
 meta: {}
 ```
 
+## Long-Term Aggregated Statistics tool
+
+After install, Home Assistant should expose:
+
+- `script.llmtool_long_term_aggregated_statistics`
+- `python_script.llmtool_long_term_aggregated_statistics`
+
+Long-Term Aggregated Statistics returns Home Assistant recorder long-term
+statistics for entity IDs the Assistant already knows, usually from Entity
+Index. It does not return raw state history.
+
+Supported aggregation types:
+
+- `mean`
+- `min`
+- `max`
+- `change`
+
+Supported aggregation periods:
+
+- `5minute`
+- `hour`
+- `day`
+- `week`
+- `month`
+- `year`
+- `total`
+
+Use local Home Assistant time in exactly this format:
+
+```text
+YYYY-MM-DD HH:MM:SS
+```
+
+Run `script.llmtool_long_term_aggregated_statistics` from Developer Tools ->
+Actions:
+
+```yaml
+entity_ids: sensor.living_room_temperature
+start_time: "2025-07-30 14:00:00"
+end_time: "2025-07-31 14:00:00"
+aggregation_type: mean
+aggregation_period: hour
+```
+
+Expected response shape:
+
+```yaml
+success: true
+answer: "Found 24 statistics rows."
+data:
+  entities:
+    - entity_id: sensor.living_room_temperature
+      friendly_name: Living room temperature
+      unit_of_measurement: C
+      values:
+        - start: "2025-07-30 14:00:00"
+          end: "2025-07-30 15:00:00"
+          mean: 21.4
+  missing_entities: []
+meta:
+  tool: llmtool_long_term_aggregated_statistics
+  entity_ids:
+    - sensor.living_room_temperature
+  start_time: "2025-07-30 14:00:00"
+  end_time: "2025-07-31 14:00:00"
+  aggregation_type: mean
+  aggregation_period: hour
+  count: 24
+  total: 24
+```
+
+If some requested entities have no statistics in the requested range, the tool
+returns available entities and lists the rest under `data.missing_entities`. If
+no requested entity has data, it returns a soft failure:
+
+```yaml
+success: false
+error: "No statistics found for requested entity IDs and time range."
+data:
+  entities: []
+  missing_entities:
+    - sensor.unknown_temperature
+meta:
+  tool: llmtool_long_term_aggregated_statistics
+  entity_ids:
+    - sensor.unknown_temperature
+  start_time: "2025-07-30 14:00:00"
+  end_time: "2025-07-31 14:00:00"
+  aggregation_type: mean
+  aggregation_period: hour
+  count: 0
+  total: 0
+```
+
+Responses are capped at 500 value rows. Capped responses include
+`meta.truncated: true`; retry with a narrower time range or coarser
+`aggregation_period`.
+
+`aggregation_period=total` returns one value per entity for the whole requested
+time range. It is derived from Home Assistant statistics rows. For `mean`, the
+result is an unweighted mean of period means.
+
 ## Calculator tool
 
 After install, Home Assistant should expose:
@@ -281,6 +385,39 @@ limit. On success, read data.entities. On validation failure, use error and data
 to retry.
 ```
 
+For Long-Term Aggregated Statistics, tell your Assistant:
+
+```text
+Use Long-Term Aggregated Statistics when the user asks about aggregated
+long-term history, trends, averages, minimums, maximums, or changes for known
+Home Assistant entities. It does not fetch raw state history.
+
+If you do not already know the exact entity IDs, call Entity Index first. Then
+pass entity_ids as a comma-separated string of entity IDs from Entity Index. Use
+at most 10 entity IDs.
+
+Pass start_time and optional end_time as local Home Assistant times in exactly
+this format: YYYY-MM-DD HH:MM:SS. Resolve relative user requests like
+"yesterday" or "last week" yourself before calling the tool. Empty end_time
+means now. Do not pass relative time text or timezone suffixes.
+
+Choose aggregation_type from: mean, min, max, change. Use mean for average
+questions, min for lowest, max for highest, and change for increase/decrease
+over the time range.
+
+Choose aggregation_period from: 5minute, hour, day, week, month, year, total.
+Use total when the user wants one value for the whole requested time range. Use
+hour/day/week/month/year when the user asks for a timeline or comparison over
+time.
+
+On success, read data.entities[].values. Each value has start and end local
+times plus the requested aggregation_type. If data.missing_entities is not
+empty, tell the user those requested entities had no statistics for the
+requested time range. Use meta.truncated to decide whether to retry with a
+narrower time range or coarser aggregation_period. On validation failure, use
+error and data to retry.
+```
+
 For Calculator, tell your Assistant:
 
 ```text
@@ -311,6 +448,7 @@ retry.
 - [HA trace debugging](docs/ha_trace_debugging.md)
 - [Architecture decisions](docs/adr/0001-ha-native-llm-tool-scripts.md)
 - [Tool plans](docs/plans/README.md)
+- [Long-Term Aggregated Statistics plan](docs/plans/implemented/long-term-aggregated-statistics.md)
 - [Calculator plan](docs/plans/implemented/calculator.md)
 - [Demo tool plan](docs/plans/implemented/demo-tool.md)
 - [Entity Index plan](docs/plans/implemented/entity-index.md)
@@ -345,4 +483,10 @@ For Calculator helper regression checks:
 
 ```bash
 python3 tests/test_llmtool_calculator.py
+```
+
+For Long-Term Aggregated Statistics helper regression checks:
+
+```bash
+python3 tests/test_llmtool_long_term_aggregated_statistics.py
 ```

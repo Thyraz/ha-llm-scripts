@@ -57,3 +57,32 @@ llmtool_calculator:
     precision:
       description: Optional decimal places for rounding. Use 0 through 10.
       example: "2"
+
+llmtool_long_term_aggregated_statistics:
+  name: LLM Tool Long-Term Aggregated Statistics
+  description: >
+    Validate Long-Term Aggregated Statistics input, call recorder statistics,
+    and shape the response.
+  fields:
+    entity_ids:
+      description: >
+        Internal helper input from script entity_ids. Comma-separated Home
+        Assistant entity IDs.
+      example: sensor.living_room_temperature,sensor.bedroom_temperature
+    start_time:
+      description: >
+        Local Home Assistant start time in format YYYY-MM-DD HH:MM:SS.
+      example: "2025-07-30 14:00:00"
+    end_time:
+      description: >
+        Optional local Home Assistant end time in format YYYY-MM-DD HH:MM:SS.
+        Empty means now.
+      example: "2025-07-31 14:00:00"
+    aggregation_type:
+      description: >
+        Statistic value to return: mean, min, max, or change.
+      example: mean
+    aggregation_period:
+      description: >
+        Statistics period: 5minute, hour, day, week, month, year, or total.
+      example: hour

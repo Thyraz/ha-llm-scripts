@@ -6,10 +6,11 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 
 ## Current active plans
 
-- [Long-Term Aggregated Statistics](long-term-aggregated-statistics.md)
+None.
 
 ## Implemented plans
 
 - [Demo LLM Tool](implemented/demo-tool.md)
 - [Entity Index](implemented/entity-index.md)
 - [Calculator](implemented/calculator.md)
+- [Long-Term Aggregated Statistics](implemented/long-term-aggregated-statistics.md)
