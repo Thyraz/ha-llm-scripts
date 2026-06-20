@@ -4,7 +4,7 @@
 
 ### Issue tracker
 
-Issues live in GitHub Issues for `Thyraz/ha-llm-scripts`; use `gh`. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues for `Thyraz/ha-llm-scripts`; use `gh`. External PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

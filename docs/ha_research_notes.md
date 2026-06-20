@@ -1,6 +1,6 @@
 # Home Assistant Research Notes
 
-Checked: 2026-06-17
+Checked: 2026-06-19
 Docs version shown by Home Assistant pages: 2026.6.3
 
 Use this file as the source ledger for Home Assistant behavior we rely on. Before substantial changes, re-check official docs, release notes, and source for anything touched here.
@@ -19,6 +19,10 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Home Assistant Python Scripts integration: https://www.home-assistant.io/integrations/python_script/
 - Home Assistant RESTful Command integration: https://www.home-assistant.io/integrations/rest_command/
 - Home Assistant REST API: https://developers.home-assistant.io/docs/api/rest/
+- Home Assistant Recorder statistics action:
+  https://www.home-assistant.io/actions/recorder.get_statistics/
+- Home Assistant sensor long-term statistics developer docs:
+  https://developers.home-assistant.io/docs/core/entity/sensor/#long-term-statistics
 - Home Assistant template functions: https://www.home-assistant.io/template-functions/
 - Home Assistant label template functions:
   - https://www.home-assistant.io/template-functions/labels/
@@ -36,6 +40,8 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Home Assistant Core LLM helper source: `homeassistant/helpers/llm.py`
 - Home Assistant Core Python script source:
   `homeassistant/components/python_script/__init__.py`
+- Home Assistant Core Recorder services source:
+  `homeassistant/components/recorder/services.py`
 
 ## Verified
 
@@ -68,6 +74,13 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Native `python_script` can read state machine data through `hass.states.entity_ids`,
   `hass.states.all`, `hass.states.get`, `hass.states.is_state`, and
   `hass.states.is_state_attr`.
+- Native `python_script` exposes `datetime`, `time`, and selected `dt_util`
+  helpers including `now`, `parse_datetime`, `as_utc`, and `as_local`.
+- Native `python_script` cannot access `hass.config`; use exposed `dt_util`
+  helpers instead of reading `hass.config.time_zone`.
+- `dt_util.as_utc` assumes a naive datetime is in Home Assistant's default time
+  zone; `dt_util.as_local` converts UTC datetimes back to the same local time
+  zone.
 - Complex block-template results can arrive in native action data as strings.
   For list/dict handoff to a Python Helper, serialize with `to_json`, then pass
   it through `from_json` at the action boundary.
@@ -76,6 +89,31 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   value that the trace already shows as a list/dict.
 - Before serializing entity records for a Python Helper, convert enum-like
   attributes such as `unit_of_measurement` and `state_class` to strings.
+- `recorder.get_statistics` retrieves long-term statistics for one or more
+  statistic IDs and returns data through a response variable.
+- `recorder.get_statistics` accepts entities or statistics as statistic IDs. For
+  Home Assistant recorder-owned sensor statistics, the statistic ID is the
+  entity ID. External statistics can use a separate `domain:statistic` ID
+  format.
+- `recorder.get_statistics` is registered as an administrator-only action.
+- `recorder.get_statistics` accepts `start_time`, optional `end_time`,
+  `statistic_ids`, `period`, `types`, and optional `units`.
+- `recorder.get_statistics` periods are `5minute`, `hour`, `day`, `week`,
+  `month`, and `year`.
+- `recorder.get_statistics` types are `change`, `last_reset`, `max`, `mean`,
+  `min`, `state`, and `sum`.
+- `recorder.get_statistics` response data is keyed by statistic ID under
+  `statistics`; each row includes `start` and `end`, plus requested value types
+  when present.
+- If a requested statistic ID has no statistics, `recorder.get_statistics` does
+  not include it in the response.
+- Long-term statistics are available for sensors with `state_class` of
+  `measurement`, `total`, or `total_increasing`.
+- Home Assistant records short-term statistics every 5 minutes and stores
+  hourly long-term aggregates. Short-term statistics are purged after a
+  configured period, default 10 days. Long-term statistics are not purged.
+- Native `python_script` can call actions with `blocking=True` and
+  `return_response=True` to retrieve response data.
 
 ## Assumptions
 
@@ -90,3 +128,5 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Assist tool schema generation from script fields may differ between LLM integrations.
 - `success: false` is a soft error convention for the Assistant, not a Home Assistant runtime error.
 - History access through REST commands needs careful token handling with `secrets.yaml`.
+- The permission behavior of exposed Assist scripts that call administrator-only
+  actions needs validation in a real Home Assistant instance.

@@ -6,7 +6,7 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 
 ## Current active plans
 
-None.
+- [Long-Term Aggregated Statistics](long-term-aggregated-statistics.md)
 
 ## Implemented plans
 

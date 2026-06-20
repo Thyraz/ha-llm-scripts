@@ -36,6 +36,22 @@ _Avoid_: implementation notes, internal docs
 An LLM Tool that lets an Assistant discover Home Assistant entities it is allowed to know about before calling other LLM Tools.
 _Avoid_: entity registry dump, entity database, search backend
 
+**Long-Term Aggregated Statistics**:
+An LLM Tool that returns aggregated Home Assistant long-term statistics for a requested time range.
+_Avoid_: Aggregated Longterm History Access, raw state history, history fetcher
+
+**Long-Term Statistics Entity ID**:
+An entity ID supplied to Long-Term Aggregated Statistics and passed to Home Assistant as a statistic ID.
+_Avoid_: external statistic ID, raw history entity
+
+**Long-Term Statistics Time Range**:
+A local Home Assistant time range with a required start time and optional end time used to query Long-Term Aggregated Statistics.
+_Avoid_: relative time text, UTC-only range
+
+**Long-Term Statistics Period**:
+A grouping choice for Long-Term Aggregated Statistics results, including Home Assistant statistics periods and one total-range aggregate.
+_Avoid_: arbitrary interval, sample rate
+
 **Calculator**:
 An LLM Tool that performs deterministic arithmetic over values supplied by the Assistant.
 _Avoid_: expression engine, history fetcher, statistics backend
