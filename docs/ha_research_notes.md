@@ -81,6 +81,14 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - `dt_util.as_utc` assumes a naive datetime is in Home Assistant's default time
   zone; `dt_util.as_local` converts UTC datetimes back to the same local time
   zone.
+- In native `python_script`, `datetime.datetime.strptime` and
+  `datetime.datetime.strftime` can trigger a blocked import and fail with
+  `ImportError: Not allowed to import time`; parse and format strict timestamp
+  fields manually or use exposed `dt_util` helpers.
+- Native `python_script` does not expose every Python type constructor as a
+  named builtin. Avoid checks such as `isinstance(value, dict)` or
+  `isinstance(value, list)` in helpers; use existing local type boundaries or
+  simple method-shape checks instead.
 - Complex block-template results can arrive in native action data as strings.
   For list/dict handoff to a Python Helper, serialize with `to_json`, then pass
   it through `from_json` at the action boundary.
@@ -105,6 +113,8 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - `recorder.get_statistics` response data is keyed by statistic ID under
   `statistics`; each row includes `start` and `end`, plus requested value types
   when present.
+- `recorder.get_statistics` formats returned `start` and `end` as UTC ISO
+  datetime strings.
 - If a requested statistic ID has no statistics, `recorder.get_statistics` does
   not include it in the response.
 - Long-term statistics are available for sensors with `state_class` of

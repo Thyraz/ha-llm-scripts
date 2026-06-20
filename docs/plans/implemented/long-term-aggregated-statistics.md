@@ -1,6 +1,6 @@
 # Long-Term Aggregated Statistics Plan
 
-Status: planning.
+Status: implemented with local helper tests. Home Assistant validation pending.
 
 ## Purpose
 

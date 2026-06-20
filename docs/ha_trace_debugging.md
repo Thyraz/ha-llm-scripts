@@ -104,3 +104,55 @@ pipe it through `from_json` again.
 The Python Helper `candidates` service data must be a list. If `candidates` is
 shown as one quoted string, the `from_json` handoff at the Python Helper action
 did not produce a native list.
+
+### Long-Term Aggregated Statistics
+
+Useful trace variables:
+
+- `helper_entity_ids`
+- `helper_start_time`
+- `helper_end_time`
+- `helper_aggregation_type`
+- `helper_aggregation_period`
+- `long_term_aggregated_statistics_helper`
+- `long_term_aggregated_statistics_response`
+
+Useful Python Helper response fields:
+
+- `meta.entity_ids`
+- `meta.start_time`
+- `meta.end_time`
+- `meta.end_time_was_defaulted`
+- `meta.aggregation_type`
+- `meta.aggregation_period`
+- `meta.count`
+- `meta.total`
+- `meta.truncated`
+- `data.entities`
+- `data.missing_entities`
+
+Expected recorder model:
+
+- The public `entity_ids` input is passed to recorder as `statistic_ids`.
+- For normal Home Assistant recorder-owned sensor statistics, statistic ID and
+  entity ID are the same string.
+- The helper calls `recorder.get_statistics` with the selected
+  `aggregation_type` only.
+- `aggregation_period=total` calls recorder with either `5minute` or `hour`,
+  then returns `meta.aggregation_period: total`.
+- Input and output times are local Home Assistant times in
+  `YYYY-MM-DD HH:MM:SS`.
+
+If the helper returns an invalid time format error, check the exact value passed
+in the script fields. ISO `T`, timezone suffixes, date-only values, and missing
+seconds are intentionally invalid.
+
+If the helper returns no data for an entity that exists, check whether that
+entity actually has long-term statistics. Raw state history does not count.
+
+If `meta.truncated` is true, the helper found more value rows than it returned.
+Retry with a narrower time range or coarser `aggregation_period`.
+
+If the trace shows a Home Assistant runtime error from `recorder.get_statistics`,
+check that recorder is loaded and that Assist-exposed script calls can access
+administrator-only recorder actions in the target Home Assistant instance.

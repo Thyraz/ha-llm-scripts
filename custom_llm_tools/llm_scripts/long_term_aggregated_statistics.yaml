@@ -1,0 +1,164 @@
+llmtool_long_term_aggregated_statistics:
+  alias: LLM Tool Long-Term Aggregated Statistics
+  description: >
+    Use Long-Term Aggregated Statistics after Entity Index when you need
+    aggregated Home Assistant long-term statistics for known entity IDs.
+    This tool is not for raw state history.
+
+    Pass entity_ids as comma-separated Home Assistant entity IDs.
+
+    Pass start_time and optional end_time as local Home Assistant times in
+    exactly this format: YYYY-MM-DD HH:MM:SS. Empty end_time means now.
+
+    Pass aggregation_type as one of: mean, min, max, change.
+
+    Pass aggregation_period as one of: 5minute, hour, day, week, month, year,
+    total. Use total when one aggregate value for the whole requested time range
+    is enough.
+
+    On success, read data.entities. Each entity has a values array. On partial
+    success, data.missing_entities lists requested entity IDs with no statistics
+    for the requested time range. Use meta.truncated to decide whether to retry
+    with a narrower time range or coarser aggregation_period.
+
+    Example:
+    ```
+      entity_ids: sensor.living_room_temperature
+      start_time: "2025-07-30 14:00:00"
+      end_time: "2025-07-31 14:00:00"
+      aggregation_type: mean
+      aggregation_period: hour
+    ```
+
+    Return value example:
+    ```
+      success: true
+      answer: Found 24 statistics rows.
+      data:
+        entities:
+          - entity_id: sensor.living_room_temperature
+            friendly_name: Living room temperature
+            unit_of_measurement: C
+            values:
+              - start: "2025-07-30 14:00:00"
+                end: "2025-07-30 15:00:00"
+                mean: 21.4
+        missing_entities: []
+      meta:
+        tool: llmtool_long_term_aggregated_statistics
+        entity_ids:
+          - sensor.living_room_temperature
+        start_time: "2025-07-30 14:00:00"
+        end_time: "2025-07-31 14:00:00"
+        aggregation_type: mean
+        aggregation_period: hour
+        count: 24
+        total: 24
+    ```
+  mode: queued
+  max: 2
+  fields:
+    entity_ids:
+      name: Entity IDs
+      description: >
+        Comma-separated Home Assistant entity IDs from Entity Index. Use at most
+        10 entity IDs.
+      required: true
+      example: sensor.living_room_temperature,sensor.bedroom_temperature
+      selector:
+        text:
+    start_time:
+      name: Start time
+      description: >
+        Required local Home Assistant start time. Use exactly
+        YYYY-MM-DD HH:MM:SS. Relative time text and timezone suffixes are not
+        valid.
+      required: true
+      example: "2025-07-30 14:00:00"
+      selector:
+        text:
+    end_time:
+      name: End time
+      description: >
+        Optional local Home Assistant end time. Use exactly
+        YYYY-MM-DD HH:MM:SS. Empty means now.
+      required: false
+      example: "2025-07-31 14:00:00"
+      selector:
+        text:
+    aggregation_type:
+      name: Aggregation type
+      description: >
+        Statistic value to return. Use one of: mean, min, max, change.
+      required: true
+      example: mean
+      selector:
+        select:
+          options:
+            - mean
+            - min
+            - max
+            - change
+    aggregation_period:
+      name: Aggregation period
+      description: >
+        Period grouping for returned statistics. Use one of: 5minute, hour, day,
+        week, month, year, total. total returns one value for the whole
+        requested time range.
+      required: true
+      example: hour
+      selector:
+        select:
+          options:
+            - 5minute
+            - hour
+            - day
+            - week
+            - month
+            - year
+            - total
+  sequence:
+    # Normalize fields enough for predictable helper handoff.
+    - alias: Prepare Long-Term Aggregated Statistics helper input
+      variables:
+        helper_entity_ids: "{{ entity_ids | default('', true) }}"
+        helper_start_time: "{{ start_time | default('', true) }}"
+        helper_end_time: "{{ end_time | default('', true) }}"
+        helper_aggregation_type: "{{ aggregation_type | default('', true) }}"
+        helper_aggregation_period: "{{ aggregation_period | default('', true) }}"
+
+    # Validate, query recorder, aggregate, limit, and shape the helper response.
+    - alias: Call Long-Term Aggregated Statistics Python Helper
+      action: python_script.llmtool_long_term_aggregated_statistics
+      data:
+        entity_ids: "{{ helper_entity_ids }}"
+        start_time: "{{ helper_start_time }}"
+        end_time: "{{ helper_end_time }}"
+        aggregation_type: "{{ helper_aggregation_type }}"
+        aggregation_period: "{{ helper_aggregation_period }}"
+      response_variable: long_term_aggregated_statistics_helper
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ long_term_aggregated_statistics_helper.success }}"
+          sequence:
+            - variables:
+                long_term_aggregated_statistics_response:
+                  success: true
+                  answer: "{{ long_term_aggregated_statistics_helper.answer }}"
+                  data: "{{ long_term_aggregated_statistics_helper.data }}"
+                  meta: "{{ long_term_aggregated_statistics_helper.meta }}"
+      default:
+        - variables:
+            long_term_aggregated_statistics_response:
+              success: false
+              error: "{{ long_term_aggregated_statistics_helper.error }}"
+              data: "{{ long_term_aggregated_statistics_helper.data }}"
+              meta: "{{ long_term_aggregated_statistics_helper.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Long-Term Aggregated Statistics complete
+      response_variable: long_term_aggregated_statistics_response
