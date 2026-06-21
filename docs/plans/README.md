@@ -6,7 +6,7 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 
 ## Current active plans
 
-None.
+- [Raw Entity History](raw-entity-history.md)
 
 ## Implemented plans
 

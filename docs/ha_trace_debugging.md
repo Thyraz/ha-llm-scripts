@@ -156,3 +156,61 @@ Retry with a narrower time range or coarser `aggregation_period`.
 If the trace shows a Home Assistant runtime error from `recorder.get_statistics`,
 check that recorder is loaded and that Assist-exposed script calls can access
 administrator-only recorder actions in the target Home Assistant instance.
+
+### Raw Entity History
+
+Useful trace variables:
+
+- `raw_entity_history_prepare`
+- `raw_entity_history_rest`
+- `raw_entity_history_payload_json`
+- `raw_entity_history_helper`
+- `raw_entity_history_response`
+
+Useful Python Helper response fields:
+
+- `meta.entity_ids`
+- `meta.start_time`
+- `meta.end_time`
+- `meta.end_time_was_defaulted`
+- `meta.count`
+- `meta.total`
+- `meta.truncated`
+- `meta.limit`
+- `data.entities`
+- `data.missing_entities`
+
+Expected REST model:
+
+- The public `entity_ids` input is passed to the History REST API as
+  `filter_entity_id`.
+- The REST command uses `minimal_response`, `no_attributes`, and
+  `significant_changes_only=0`.
+- The REST API token comes from `secrets.yaml` as
+  `llmtool_home_assistant_bearer_token`.
+- Input and output times are local Home Assistant times in
+  `YYYY-MM-DD HH:MM:SS`.
+- `state_at_start.active_at` is the requested start time, while
+  `state_at_start.changed_at` is when that state originally became active.
+- `state_at_end.active_at` is the requested end time, while
+  `state_at_end.changed_at` is when that state originally became active.
+- History entries include `duration_until_next_change_seconds` only when a next
+  returned untruncated history entry exists.
+
+If the helper returns an authentication error, check that
+`llmtool_home_assistant_bearer_token` exists in `secrets.yaml`, includes the
+`Bearer ` prefix, and uses a valid Long-Lived Access Token.
+
+If the helper returns a non-200 History API error, inspect
+`raw_entity_history_rest.status` and confirm
+`rest_command.llmtool_raw_entity_history` is loaded.
+
+If the helper returns invalid JSON or response shape, inspect
+`raw_entity_history_rest.content` and `raw_entity_history_payload_json`.
+
+If the helper returns no data for an entity that exists, check Recorder
+retention, Recorder include/exclude filters, and whether the requested time
+range is inside the raw history retention period.
+
+If `meta.truncated` is true, retry with a narrower time range or higher
+`limit`.
