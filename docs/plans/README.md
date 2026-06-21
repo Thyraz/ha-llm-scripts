@@ -6,7 +6,7 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 
 ## Current active plans
 
-- [Raw Entity History](raw-entity-history.md)
+None.
 
 ## Implemented plans
 
@@ -14,3 +14,4 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 - [Entity Index](implemented/entity-index.md)
 - [Calculator](implemented/calculator.md)
 - [Long-Term Aggregated Statistics](implemented/long-term-aggregated-statistics.md)
+- [Raw Entity History](implemented/raw-entity-history.md)

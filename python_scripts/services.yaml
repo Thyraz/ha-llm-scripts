@@ -98,6 +98,11 @@ llmtool_raw_entity_history:
         Helper mode: prepare validates input and builds the REST request; shape
         validates and shapes the REST response.
       example: prepare
+    base_url:
+      description: >
+        Home Assistant base URL used by prepare mode to build History REST API
+        URL parameters.
+      example: http://localhost:8123
     entity_ids:
       description: >
         Comma-separated Home Assistant entity IDs.

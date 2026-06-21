@@ -99,6 +99,115 @@ def parse_local_time(value):
     return parsed
 
 
+def days_before_year(year):
+    previous_year = year - 1
+    return (
+        previous_year * 365
+        + previous_year // 4
+        - previous_year // 100
+        + previous_year // 400
+    )
+
+
+def is_leap_year(year):
+    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+
+
+def days_before_month(year, month):
+    month_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    total = 0
+    for index in range(month - 1):
+        total = total + month_days[index]
+    if month > 2 and is_leap_year(year):
+        total = total + 1
+    return total
+
+
+def utc_timestamp_from_parts(year, month, day, hour, minute, second, microsecond, offset_seconds):
+    days = (
+        days_before_year(year)
+        - days_before_year(1970)
+        + days_before_month(year, month)
+        + day
+        - 1
+    )
+    timestamp = days * 86400 + hour * 3600 + minute * 60 + second
+    timestamp = timestamp - offset_seconds
+    if microsecond:
+        timestamp = timestamp + microsecond / 1000000.0
+    return timestamp
+
+
+def parse_rest_timestamp(value):
+    text = as_text(value)
+    if len(text) < 20:
+        return None
+
+    if text[4] != "-" or text[7] != "-" or text[10] != "T":
+        return None
+    if text[13] != ":" or text[16] != ":":
+        return None
+
+    try:
+        year = int(text[0:4])
+        month = int(text[5:7])
+        day = int(text[8:10])
+        hour = int(text[11:13])
+        minute = int(text[14:16])
+        second = int(text[17:19])
+    except ValueError:
+        return None
+
+    fraction_end = 19
+    microsecond = 0
+    if len(text) > 19 and text[19] == ".":
+        fraction_end = 20
+        fraction = ""
+        while fraction_end < len(text):
+            char = text[fraction_end]
+            if char < "0" or char > "9":
+                break
+            fraction = fraction + char
+            fraction_end = fraction_end + 1
+
+        if not fraction:
+            return None
+
+        microsecond = int((fraction + "000000")[0:6])
+
+    suffix = text[fraction_end:]
+    if suffix == "Z":
+        offset_seconds = 0
+    elif len(suffix) == 6 and (suffix[0] == "+" or suffix[0] == "-") and suffix[3] == ":":
+        try:
+            offset_hours = int(suffix[1:3])
+            offset_minutes = int(suffix[4:6])
+        except ValueError:
+            return None
+
+        offset_seconds = offset_hours * 3600 + offset_minutes * 60
+        if suffix[0] == "-":
+            offset_seconds = -offset_seconds
+    else:
+        return None
+
+    try:
+        datetime.datetime(year, month, day, hour, minute, second, microsecond)
+    except ValueError:
+        return None
+
+    return utc_timestamp_from_parts(
+        year,
+        month,
+        day,
+        hour,
+        minute,
+        second,
+        microsecond,
+        offset_seconds,
+    )
+
+
 def two_digit(value):
     if value < 10:
         return "0{}".format(value)
@@ -118,12 +227,14 @@ def local_time_text(value):
 
 def local_text_from_datetime(value):
     if isinstance(value, str):
-        parsed = dt_util.parse_datetime(value)
+        parsed = parse_rest_timestamp(value)
     else:
         parsed = value
 
     if parsed is None:
         return ""
+    if isinstance(parsed, int) or isinstance(parsed, float):
+        parsed = dt_util.utc_from_timestamp(parsed)
 
     return local_time_text(dt_util.as_local(parsed))
 
@@ -200,6 +311,11 @@ def parse_limit(raw_limit):
     return limit, None
 
 
+def clean_base_url(value):
+    base_url = as_text(value) or DEFAULT_BASE_URL
+    return base_url.rstrip("/")
+
+
 def build_meta(entity_ids, start_text, end_text, count, total, limit, end_time_was_defaulted):
     meta = {
         "tool": TOOL_NAME,
@@ -255,24 +371,30 @@ def normalize_duration(seconds):
 
 def row_value(row, key):
     try:
-        return row.get(key)
-    except AttributeError:
+        return row[key]
+    except (KeyError, TypeError):
+        return None
+
+
+def optional_mapping_value(value, key):
+    try:
+        return value[key]
+    except (KeyError, TypeError):
         return None
 
 
 def shape_history_row(row):
     raw_changed_at = as_text(row_value(row, "last_changed"))
     state = as_text(row_value(row, "state"))
-    changed_at = dt_util.parse_datetime(raw_changed_at)
+    changed_at_timestamp = parse_rest_timestamp(raw_changed_at)
 
-    if changed_at is None or state == "":
+    if changed_at_timestamp is None or state == "":
         return None
 
-    changed_at_utc = dt_util.as_utc(changed_at)
     return {
-        "changed_at_utc": changed_at_utc,
+        "changed_at_timestamp": changed_at_timestamp,
         "entry": {
-            "changed_at": local_text_from_datetime(changed_at_utc),
+            "changed_at": local_text_from_datetime(changed_at_timestamp),
             "state": state,
         },
     }
@@ -297,6 +419,7 @@ def group_entity_id(group):
 
 
 def prepare_mode():
+    base_url = clean_base_url(data.get("base_url"))
     raw_entity_ids = as_text(data.get("entity_ids"))
     raw_start_time = as_text(data.get("start_time"))
     raw_end_time = as_text(data.get("end_time"))
@@ -382,10 +505,8 @@ def prepare_mode():
         start_url = url_encode(iso_offset_text(start_utc))
         end_url = url_encode(iso_offset_text(end_utc))
         entity_ids_url = url_encode(",".join(entity_ids))
-
-        history_url = (
-            DEFAULT_BASE_URL
-            + "/api/history/period/"
+        api_path = (
+            "history/period/"
             + start_url
             + "?end_time="
             + end_url
@@ -398,7 +519,8 @@ def prepare_mode():
 
         output["success"] = True
         output["data"] = {
-            "history_url": history_url,
+            "base_url": base_url,
+            "api_path": api_path,
             "entity_ids": entity_ids,
             "start_time": start_text,
             "end_time": end_text,
@@ -436,6 +558,7 @@ def shape_mode():
     if output.get("success") is not False:
         start_utc = dt_util.as_utc(start_local)
         end_utc = dt_util.as_utc(end_local)
+        start_timestamp = dt_util.as_timestamp(start_utc)
         base_meta = build_meta(
             entity_ids,
             start_text,
@@ -460,21 +583,18 @@ def shape_mode():
                 except ValueError:
                     status_value = 0
             validation_error(
-                "History API request failed. Inspect rest_command.llmtool_raw_entity_history in the Script trace.",
+                "History API request failed. Inspect rest_command.llmtool_home_assistant_api_get in the Script trace.",
                 {"status": status_value},
                 base_meta,
             )
 
     if output.get("success") is not False:
         history_payload = data.get("history_payload")
-        try:
-            invalid_json = history_payload.get("llmtool_invalid_json")
-        except AttributeError:
-            invalid_json = False
+        invalid_json = optional_mapping_value(history_payload, "llmtool_invalid_json")
 
         if invalid_json:
             validation_error(
-                "Invalid History API JSON response. Inspect rest_command.llmtool_raw_entity_history content in the Script trace.",
+                "Invalid History API JSON response. Inspect rest_command.llmtool_home_assistant_api_get content in the Script trace.",
                 {"expected": "JSON array"},
                 base_meta,
             )
@@ -538,7 +658,7 @@ def shape_mode():
             if output.get("success") is False:
                 break
 
-            shaped_rows.sort(key=lambda item: item["changed_at_utc"])
+            shaped_rows.sort(key=lambda item: item["changed_at_timestamp"])
             if not shaped_rows:
                 missing_entities.append(entity_id)
                 continue
@@ -549,7 +669,7 @@ def shape_mode():
             first_row = shaped_rows[0]
             last_row = shaped_rows[-1]
 
-            if first_row["changed_at_utc"] <= start_utc:
+            if first_row["changed_at_timestamp"] <= start_timestamp:
                 entity["state_at_start"] = shape_boundary(first_row["entry"], start_text)
 
             entity["state_at_end"] = shape_boundary(last_row["entry"], end_text)
@@ -579,9 +699,9 @@ def shape_mode():
 
                 if index + 1 < len(source_rows) and remaining > 1:
                     duration = (
-                        source_rows[index + 1]["changed_at_utc"]
-                        - source_rows[index]["changed_at_utc"]
-                    ).total_seconds()
+                        source_rows[index + 1]["changed_at_timestamp"]
+                        - source_rows[index]["changed_at_timestamp"]
+                    )
                     entry["duration_until_next_change_seconds"] = normalize_duration(duration)
 
                 history_entries.append(entry)

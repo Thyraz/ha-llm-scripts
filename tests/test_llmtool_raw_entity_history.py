@@ -32,6 +32,12 @@ class FakeDtUtil:
             value = value.replace(tzinfo=timezone.utc)
         return value.astimezone(LOCAL_TZ)
 
+    def as_timestamp(self, value):
+        return value.timestamp()
+
+    def utc_from_timestamp(self, value):
+        return datetime.fromtimestamp(value, tz=timezone.utc)
+
 
 class FakeState:
     def __init__(self, attributes):
@@ -51,7 +57,29 @@ class FakeHass:
         self.states = FakeStates(states or {})
 
 
-def run_helper(overrides, states=None, now=None, restricted_builtins=None):
+class FakeDtUtilWithoutParse(FakeDtUtil):
+    parse_datetime = None
+
+
+class GuardedDateTimeModule:
+    class datetime(datetime):
+        pass
+
+    timezone = None
+    timedelta = None
+
+
+class NativeListWithMissingGet(list):
+    get = None
+
+
+def run_helper(overrides, states=None, now=None, restricted_builtins=None, datetime_module=None):
+    dt_util = overrides.get("dt_util", FakeDtUtil(now=now))
+    clean_overrides = {}
+    for key in overrides:
+        if key != "dt_util":
+            clean_overrides[key] = overrides[key]
+
     data = {
         "mode": "prepare",
         "entity_ids": "binary_sensor.window",
@@ -59,7 +87,7 @@ def run_helper(overrides, states=None, now=None, restricted_builtins=None):
         "end_time": "2026-06-20 12:00:00",
         "limit": "",
     }
-    data.update(overrides)
+    data.update(clean_overrides)
 
     output = {}
     exec(
@@ -68,8 +96,8 @@ def run_helper(overrides, states=None, now=None, restricted_builtins=None):
             "data": data,
             "output": output,
             "hass": FakeHass(states=states),
-            "dt_util": FakeDtUtil(now=now),
-            "datetime": __import__("datetime"),
+            "dt_util": dt_util,
+            "datetime": datetime_module or __import__("datetime"),
             "__builtins__": restricted_builtins or builtins.__dict__,
         },
     )
@@ -91,7 +119,13 @@ def minimal_row(changed_at, state):
     }
 
 
-def shape_payload(payload, overrides=None, states=None, restricted_builtins=None):
+def shape_payload(
+    payload,
+    overrides=None,
+    states=None,
+    restricted_builtins=None,
+    datetime_module=None,
+):
     data = {
         "mode": "shape",
         "rest_status": "200",
@@ -104,24 +138,34 @@ def shape_payload(payload, overrides=None, states=None, restricted_builtins=None
     }
     if overrides:
         data.update(overrides)
-    return run_helper(data, states=states, restricted_builtins=restricted_builtins)
+    return run_helper(
+        data,
+        states=states,
+        restricted_builtins=restricted_builtins,
+        datetime_module=datetime_module,
+    )
 
 
 class RawEntityHistoryHelperTest(unittest.TestCase):
     def test_prepare_builds_rest_url_and_defaults(self):
-        result = run_helper({"end_time": "", "limit": ""})
+        result = run_helper(
+            {
+                "base_url": "https://ha.example.local/",
+                "end_time": "",
+                "limit": "",
+            }
+        )
 
         self.assertTrue(result["success"])
         self.assertEqual(["binary_sensor.window"], result["data"]["entity_ids"])
         self.assertEqual("2026-06-20 12:00:00", result["data"]["end_time"])
         self.assertTrue(result["data"]["end_time_was_defaulted"])
         self.assertEqual(100, result["data"]["limit"])
-        self.assertIn("/api/history/period/2026-06-20T10%3A00%3A00%2B02%3A00", result["data"]["history_url"])
-        self.assertIn("end_time=2026-06-20T12%3A00%3A00%2B02%3A00", result["data"]["history_url"])
-        self.assertIn("filter_entity_id=binary_sensor.window", result["data"]["history_url"])
-        self.assertIn("minimal_response", result["data"]["history_url"])
-        self.assertIn("no_attributes", result["data"]["history_url"])
-        self.assertIn("significant_changes_only=0", result["data"]["history_url"])
+        self.assertEqual("https://ha.example.local", result["data"]["base_url"])
+        self.assertEqual(
+            "history/period/2026-06-20T10%3A00%3A00%2B02%3A00?end_time=2026-06-20T12%3A00%3A00%2B02%3A00&filter_entity_id=binary_sensor.window&minimal_response&no_attributes&significant_changes_only=0",
+            result["data"]["api_path"],
+        )
 
     def test_prepare_validation_errors(self):
         invalid_entity = run_helper({"entity_ids": "binary_sensor.window,Light.Bad"})
@@ -192,6 +236,47 @@ class RawEntityHistoryHelperTest(unittest.TestCase):
             ],
             entity["history"],
         )
+
+    def test_shape_does_not_need_dt_util_parse_datetime(self):
+        payload = [
+            [
+                row("binary_sensor.window", "2026-06-20T22:00:00+00:00", "on"),
+                minimal_row("2026-06-21T05:43:40.473577+00:00", "off"),
+            ]
+        ]
+
+        result = shape_payload(payload, overrides={"dt_util": FakeDtUtilWithoutParse()})
+
+        self.assertTrue(result["success"])
+        self.assertEqual(2, result["meta"]["count"])
+
+    def test_shape_does_not_need_datetime_timezone_or_timedelta(self):
+        payload = [
+            [
+                row("binary_sensor.window", "2026-06-20T22:00:00+00:00", "on"),
+                minimal_row("2026-06-21T05:43:40.473577+00:00", "off"),
+            ]
+        ]
+
+        result = shape_payload(payload, datetime_module=GuardedDateTimeModule())
+
+        self.assertTrue(result["success"])
+        self.assertEqual(2, result["meta"]["count"])
+
+    def test_shape_does_not_call_missing_get_on_native_list_payload(self):
+        payload = NativeListWithMissingGet(
+            [
+                [
+                    row("binary_sensor.window", "2026-06-20T22:00:00+00:00", "on"),
+                    minimal_row("2026-06-21T05:43:40.473577+00:00", "off"),
+                ]
+            ]
+        )
+
+        result = shape_payload(payload)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(2, result["meta"]["count"])
 
     def test_shape_partial_missing_entities_returns_success(self):
         payload = [

@@ -184,10 +184,14 @@ Expected REST model:
 
 - The public `entity_ids` input is passed to the History REST API as
   `filter_entity_id`.
-- The REST command uses `minimal_response`, `no_attributes`, and
-  `significant_changes_only=0`.
+- The shared REST command is `rest_command.llmtool_home_assistant_api_get`.
+- The Raw Entity History `api_path` uses `minimal_response`, `no_attributes`,
+  and `significant_changes_only=0`.
 - The REST API token comes from `secrets.yaml` as
   `llmtool_home_assistant_bearer_token`.
+- The REST base URL defaults to `http://localhost:8123`; if
+  `input_text.llmtool_home_assistant_base_url` exists and has a value, the
+  script uses that value instead.
 - Input and output times are local Home Assistant times in
   `YYYY-MM-DD HH:MM:SS`.
 - `state_at_start.active_at` is the requested start time, while
@@ -203,10 +207,20 @@ If the helper returns an authentication error, check that
 
 If the helper returns a non-200 History API error, inspect
 `raw_entity_history_rest.status` and confirm
-`rest_command.llmtool_raw_entity_history` is loaded.
+`rest_command.llmtool_home_assistant_api_get` is loaded.
 
 If the helper returns invalid JSON or response shape, inspect
 `raw_entity_history_rest.content` and `raw_entity_history_payload_json`.
+`raw_entity_history_rest.content` may already be a native list. In that case the
+script must not call `from_json` on it before passing it to the Python Helper.
+`raw_entity_history_payload_json` may also be stored as a native list after the
+intermediate variable step; the helper action data must only call `from_json`
+when that variable is still a string.
+
+If the helper raises `TypeError: 'NoneType' object is not callable` while
+shaping state rows, check for accidental use of unavailable native
+`python_script` helpers or constructors such as `dt_util.parse_datetime` and
+`datetime.timezone`, or calling missing methods such as `.get` on native lists.
 
 If the helper returns no data for an entity that exists, check Recorder
 retention, Recorder include/exclude filters, and whether the requested time

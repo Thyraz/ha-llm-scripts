@@ -1,5 +1,5 @@
-llmtool_raw_entity_history:
-  url: "{{ history_url }}"
+llmtool_home_assistant_api_get:
+  url: "{{ base_url }}/api/{{ api_path }}"
   method: GET
   headers:
     authorization: !secret llmtool_home_assistant_bearer_token

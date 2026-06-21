@@ -1,6 +1,6 @@
 # Raw Entity History Plan
 
-Status: planning.
+Status: implemented and validated with Home Assistant Developer Tools -> Actions.
 
 ## Purpose
 
@@ -14,7 +14,7 @@ long-term aggregated statistics.
 - Script ID: `llmtool_raw_entity_history`.
 - Entity after reload: `script.llmtool_raw_entity_history`.
 - Python action: `python_script.llmtool_raw_entity_history`.
-- REST action: `rest_command.llmtool_raw_entity_history`.
+- REST action: `rest_command.llmtool_home_assistant_api_get`.
 - The public input uses `entity_ids`, because Assist can pass entity IDs from
   Entity Index directly.
 - This tool reads raw Home Assistant state history. Long-term aggregated
@@ -25,8 +25,16 @@ long-term aggregated statistics.
   `llmtool_home_assistant_bearer_token`.
 - The secret value includes the `Bearer ` prefix.
 - The repo must never store or log the token.
-- The documented default REST URL targets `http://localhost:8123`; users may
-  adjust it if their Home Assistant install needs a different local URL.
+- The documented default REST base URL is `http://localhost:8123`.
+- If `input_text.llmtool_home_assistant_base_url` exists and has a value, the
+  LLM Tool Script uses it instead of the default base URL.
+- Users may create `input_text.llmtool_home_assistant_base_url` if their Home
+  Assistant install needs a different local URL.
+- The Python Helper builds the URL-safe `api_path` passed to the shared REST
+  command.
+- The shared REST command owns the fixed `/api/` base path and remains GET-only.
+- The shared REST command is internal plumbing for LLM Tool Scripts and should
+  not be exposed to Assist.
 - Parameters are scalar/simple values:
   - `entity_ids`
   - `start_time`
@@ -83,7 +91,7 @@ long-term aggregated statistics.
 - Add `custom_llm_tools/rest_commands/raw_entity_history.yaml`.
 - Users install rest commands with
   `rest_command: !include_dir_merge_named custom_llm_tools/rest_commands/`.
-- REST API calls use `minimal_response`, `no_attributes`, and
+- The Raw Entity History `api_path` uses `minimal_response`, `no_attributes`, and
   `significant_changes_only=0`.
 - REST API non-200 responses return soft failures.
 - HTTP 401/403 returns an authentication-focused soft failure.
@@ -204,7 +212,7 @@ meta:
   separate optional install section.
 - Update `docs/ha_trace_debugging.md` with trace variables for this tool.
 - Use `action: python_script.llmtool_raw_entity_history`.
-- Use `action: rest_command.llmtool_raw_entity_history`.
+- Use `action: rest_command.llmtool_home_assistant_api_get`.
 - Use `stop` with `response_variable`.
 - Keep Assistant-facing text focused on entity IDs, local time format, response
   fields, no-data behavior, truncation, and retry behavior.
@@ -244,13 +252,13 @@ meta:
 
 1. Copy or sync files into Home Assistant config.
 2. Add `llmtool_home_assistant_bearer_token` to `secrets.yaml`.
-3. Add documented `rest_command.llmtool_raw_entity_history` to
+3. Add documented `rest_command.llmtool_home_assistant_api_get` to
    `configuration.yaml`.
 4. Reload scripts or restart Home Assistant.
 5. Run `python_script.reload` for the new Python Helper.
 6. Confirm `script.llmtool_raw_entity_history` exists.
 7. Confirm `python_script.llmtool_raw_entity_history` exists.
-8. Confirm `rest_command.llmtool_raw_entity_history` exists.
+8. Confirm `rest_command.llmtool_home_assistant_api_get` exists.
 9. Confirm fields appear in Developer Tools -> Actions.
 10. Run successful and failing examples from Developer Tools -> Actions.
 11. Check structured response shape.

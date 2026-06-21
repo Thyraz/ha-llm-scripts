@@ -62,6 +62,9 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Native `python_script` can return data by writing to `output`; callers read it through `response_variable`.
 - Native `python_script.reload` reloads available scripts and `services.yaml`; changing an existing Python script does not require that reload.
 - `rest_command` returns a dictionary with `status`, `content`, and `headers`; callers can capture it with `response_variable`.
+- `rest_command` can expose JSON response content as native Home Assistant
+  template data instead of a JSON string. Check whether `content is string`
+  before applying `from_json`.
 - Home Assistant template functions include JSON serialization filters/functions such as `to_json` and `tojson`.
 - Home Assistant `from_json` accepts a `default` value that is returned instead
   of raising a template error when the input is invalid JSON.
@@ -84,6 +87,16 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   `hass.states.is_state_attr`.
 - Native `python_script` exposes `datetime`, `time`, and selected `dt_util`
   helpers including `now`, `parse_datetime`, `as_utc`, and `as_local`.
+- Raw Entity History trace from 2026-06-21 showed a native `python_script`
+  `TypeError: 'NoneType' object is not callable` when shaping REST timestamp
+  rows with `dt_util.parse_datetime`. Parse strict REST timestamps manually in
+  that helper.
+- Native `python_script` source allows `datetime.timedelta` but does not expose
+  `datetime.timezone`. Avoid timezone constructors in helpers; use timestamps
+  and `dt_util.utc_from_timestamp` when shaping REST API timestamps.
+- Native `python_script` protected attribute access can return `None` for
+  missing methods, such as `.get` on a list. Avoid calling `.get` on values that
+  may be lists or non-mappings; use guarded item access instead.
 - Native `python_script` cannot access `hass.config`; use exposed `dt_util`
   helpers instead of reading `hass.config.time_zone`.
 - `dt_util.as_utc` assumes a naive datetime is in Home Assistant's default time

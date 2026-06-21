@@ -42,9 +42,11 @@ rest_command: !include_dir_merge_named custom_llm_tools/rest_commands/
 python_script:
 ```
 
-The bundled Raw Entity History REST command uses `http://localhost:8123`. If
-your Home Assistant install needs a different local URL, update
-`custom_llm_tools/rest_commands/raw_entity_history.yaml` after copying it.
+If you already have a `rest_command:` section, do not add a second top-level
+`rest_command:` key. Instead, either move your existing REST commands into the
+same included directory, or copy the `llmtool_home_assistant_api_get` command from
+`custom_llm_tools/rest_commands/raw_entity_history.yaml` into your existing
+`rest_command:` mapping.
 
 Reload scripts or restart Home Assistant. For a new or renamed Python Helper,
 run `python_script.reload`.
@@ -282,7 +284,7 @@ After install, Home Assistant should expose:
 
 - `script.llmtool_raw_entity_history`
 - `python_script.llmtool_raw_entity_history`
-- `rest_command.llmtool_raw_entity_history`
+- `rest_command.llmtool_home_assistant_api_get`
 
 Raw Entity History returns unaggregated Home Assistant recorder state history
 for entity IDs the Assistant already knows, usually from Entity Index. It does
@@ -581,7 +583,7 @@ retry.
 - [Raw Entity History REST decision](docs/adr/0002-raw-entity-history-rest-command.md)
 - [Tool plans](docs/plans/README.md)
 - [Long-Term Aggregated Statistics plan](docs/plans/implemented/long-term-aggregated-statistics.md)
-- [Raw Entity History plan](docs/plans/raw-entity-history.md)
+- [Raw Entity History plan](docs/plans/implemented/raw-entity-history.md)
 - [Calculator plan](docs/plans/implemented/calculator.md)
 - [Demo tool plan](docs/plans/implemented/demo-tool.md)
 - [Entity Index plan](docs/plans/implemented/entity-index.md)
@@ -592,6 +594,8 @@ retry.
 - Do not log or return tokens.
 - Do not patch `.storage/*`.
 - Expose only intended `script.llmtool_*` entities to Assist.
+- Do not expose `rest_command.llmtool_home_assistant_api_get` to Assist; it is
+  shared internal plumbing for LLM Tool Scripts.
 - Keep `llmtool_home_assistant_bearer_token` in `secrets.yaml`, never in repo
   files.
 
@@ -608,7 +612,7 @@ For every tool:
 7. Ask the Assistant to use it.
 8. Inspect Conversation and Script traces.
 
-For Raw Entity History, also confirm `rest_command.llmtool_raw_entity_history`
+For Raw Entity History, also confirm `rest_command.llmtool_home_assistant_api_get`
 exists and the bearer token secret works.
 
 For Entity Index helper regression checks:

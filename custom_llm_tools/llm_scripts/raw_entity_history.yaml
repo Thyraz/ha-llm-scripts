@@ -71,11 +71,18 @@ llmtool_raw_entity_history:
           max: 1000
           mode: box
   sequence:
+    # Users can override this with input_text.llmtool_home_assistant_base_url.
+    - alias: Define Raw Entity History REST source
+      variables:
+        history_base_url: >-
+          {{ states('input_text.llmtool_home_assistant_base_url') if states('input_text.llmtool_home_assistant_base_url') not in ['unknown', 'unavailable', 'none', ''] else 'http://localhost:8123' }}
+
     # Normalize fields and build REST API parameters in the Python Helper.
     - alias: Prepare Raw Entity History REST request
       action: python_script.llmtool_raw_entity_history
       data:
         mode: prepare
+        base_url: "{{ history_base_url }}"
         entity_ids: "{{ entity_ids | default('', true) }}"
         start_time: "{{ start_time | default('', true) }}"
         end_time: "{{ end_time | default('', true) }}"
@@ -89,22 +96,34 @@ llmtool_raw_entity_history:
             - condition: template
               value_template: "{{ raw_entity_history_prepare.success }}"
           sequence:
-            - action: rest_command.llmtool_raw_entity_history
+            - action: rest_command.llmtool_home_assistant_api_get
               data:
-                history_url: "{{ raw_entity_history_prepare.data.history_url }}"
+                base_url: "{{ raw_entity_history_prepare.data.base_url }}"
+                api_path: "{{ raw_entity_history_prepare.data.api_path }}"
               response_variable: raw_entity_history_rest
 
             # Parse JSON with a default so malformed API content becomes a soft
-            # helper error instead of a template runtime error.
+            # helper error instead of a template runtime error. Home Assistant
+            # may already expose JSON responses as native lists.
             - variables:
                 raw_entity_history_payload_json: >
-                  {{ raw_entity_history_rest.content | default('', true) | from_json(default={'llmtool_invalid_json': true}) | to_json }}
+                  {% set content = raw_entity_history_rest.content | default('', true) %}
+                  {% if content is string %}
+                    {{ content | from_json(default={'llmtool_invalid_json': true}) | to_json }}
+                  {% else %}
+                    {{ content | to_json }}
+                  {% endif %}
 
             - action: python_script.llmtool_raw_entity_history
               data:
                 mode: shape
                 rest_status: "{{ raw_entity_history_rest.status | default(0, true) }}"
-                history_payload: "{{ raw_entity_history_payload_json | from_json }}"
+                history_payload: >
+                  {% if raw_entity_history_payload_json is string %}
+                    {{ raw_entity_history_payload_json | from_json(default={'llmtool_invalid_json': true}) }}
+                  {% else %}
+                    {{ raw_entity_history_payload_json }}
+                  {% endif %}
                 entity_ids: "{{ raw_entity_history_prepare.data.entity_ids | join(',') }}"
                 start_time: "{{ raw_entity_history_prepare.data.start_time }}"
                 end_time: "{{ raw_entity_history_prepare.data.end_time }}"
