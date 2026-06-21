@@ -52,6 +52,10 @@ _Avoid_: relative time text, UTC-only range
 A grouping choice for Long-Term Aggregated Statistics results, including Home Assistant statistics periods and one total-range aggregate.
 _Avoid_: arbitrary interval, sample rate
 
+**Raw Entity History**:
+An LLM Tool that returns unaggregated Home Assistant entity state history for a requested time range.
+_Avoid_: Short-Term RAW Entity History, raw recorder dump, history fetcher
+
 **Calculator**:
 An LLM Tool that performs deterministic arithmetic over values supplied by the Assistant.
 _Avoid_: expression engine, history fetcher, statistics backend

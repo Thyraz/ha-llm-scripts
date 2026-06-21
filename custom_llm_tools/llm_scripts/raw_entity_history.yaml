@@ -1,0 +1,145 @@
+llmtool_raw_entity_history:
+  alias: LLM Tool Raw Entity History
+  description: >
+    Use Raw Entity History after Entity Index when you need unaggregated Home
+    Assistant state history for known entity IDs. This tool is not for
+    long-term aggregated statistics.
+
+    Pass entity_ids as comma-separated Home Assistant entity IDs.
+
+    Pass start_time and optional end_time as local Home Assistant times in
+    exactly this format: YYYY-MM-DD HH:MM:SS. Empty end_time means now.
+
+    Optional limit caps the returned history entries globally across all
+    requested entities. Empty limit uses 100. Maximum limit is 1000.
+
+    On success, read data.entities. Each entity has state_at_start,
+    state_at_end, and a history array when available. History entries contain
+    changed_at, state, and duration_until_next_change_seconds when another
+    returned history entry follows. Use meta.truncated to decide whether to
+    retry with a narrower time range or higher limit.
+
+    Example:
+    ```
+      entity_ids: binary_sensor.window
+      start_time: "2026-06-20 10:00:00"
+      end_time: "2026-06-20 12:00:00"
+      limit: 100
+    ```
+  mode: queued
+  max: 2
+  fields:
+    entity_ids:
+      name: Entity IDs
+      description: >
+        Comma-separated Home Assistant entity IDs from Entity Index. Use at most
+        10 entity IDs.
+      required: true
+      example: binary_sensor.window,sensor.living_room_temperature
+      selector:
+        text:
+    start_time:
+      name: Start time
+      description: >
+        Required local Home Assistant start time. Use exactly
+        YYYY-MM-DD HH:MM:SS. Relative time text and timezone suffixes are not
+        valid.
+      required: true
+      example: "2026-06-20 10:00:00"
+      selector:
+        text:
+    end_time:
+      name: End time
+      description: >
+        Optional local Home Assistant end time. Use exactly
+        YYYY-MM-DD HH:MM:SS. Empty means now.
+      required: false
+      example: "2026-06-20 12:00:00"
+      selector:
+        text:
+    limit:
+      name: Limit
+      description: >
+        Optional maximum returned history entries across all requested entities.
+        Default 100. Maximum 1000.
+      required: false
+      default: 100
+      example: "100"
+      selector:
+        number:
+          min: 1
+          max: 1000
+          mode: box
+  sequence:
+    # Normalize fields and build REST API parameters in the Python Helper.
+    - alias: Prepare Raw Entity History REST request
+      action: python_script.llmtool_raw_entity_history
+      data:
+        mode: prepare
+        entity_ids: "{{ entity_ids | default('', true) }}"
+        start_time: "{{ start_time | default('', true) }}"
+        end_time: "{{ end_time | default('', true) }}"
+        limit: "{{ limit | default('', true) }}"
+      response_variable: raw_entity_history_prepare
+
+    # Call the user-configured REST command only after validation succeeds.
+    - alias: Fetch and shape Raw Entity History
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ raw_entity_history_prepare.success }}"
+          sequence:
+            - action: rest_command.llmtool_raw_entity_history
+              data:
+                history_url: "{{ raw_entity_history_prepare.data.history_url }}"
+              response_variable: raw_entity_history_rest
+
+            # Parse JSON with a default so malformed API content becomes a soft
+            # helper error instead of a template runtime error.
+            - variables:
+                raw_entity_history_payload_json: >
+                  {{ raw_entity_history_rest.content | default('', true) | from_json(default={'llmtool_invalid_json': true}) | to_json }}
+
+            - action: python_script.llmtool_raw_entity_history
+              data:
+                mode: shape
+                rest_status: "{{ raw_entity_history_rest.status | default(0, true) }}"
+                history_payload: "{{ raw_entity_history_payload_json | from_json }}"
+                entity_ids: "{{ raw_entity_history_prepare.data.entity_ids | join(',') }}"
+                start_time: "{{ raw_entity_history_prepare.data.start_time }}"
+                end_time: "{{ raw_entity_history_prepare.data.end_time }}"
+                end_time_was_defaulted: "{{ raw_entity_history_prepare.data.end_time_was_defaulted }}"
+                limit: "{{ raw_entity_history_prepare.data.limit }}"
+              response_variable: raw_entity_history_helper
+      default:
+        - variables:
+            raw_entity_history_helper:
+              success: false
+              error: "{{ raw_entity_history_prepare.error }}"
+              data: "{{ raw_entity_history_prepare.data }}"
+              meta: "{{ raw_entity_history_prepare.meta }}"
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ raw_entity_history_helper.success }}"
+          sequence:
+            - variables:
+                raw_entity_history_response:
+                  success: true
+                  answer: "{{ raw_entity_history_helper.answer }}"
+                  data: "{{ raw_entity_history_helper.data }}"
+                  meta: "{{ raw_entity_history_helper.meta }}"
+      default:
+        - variables:
+            raw_entity_history_response:
+              success: false
+              error: "{{ raw_entity_history_helper.error }}"
+              data: "{{ raw_entity_history_helper.data }}"
+              meta: "{{ raw_entity_history_helper.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Raw Entity History complete
+      response_variable: raw_entity_history_response

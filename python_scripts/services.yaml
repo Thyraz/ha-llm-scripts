@@ -86,3 +86,33 @@ llmtool_long_term_aggregated_statistics:
       description: >
         Statistics period: 5minute, hour, day, week, month, year, or total.
       example: hour
+
+llmtool_raw_entity_history:
+  name: LLM Tool Raw Entity History
+  description: >
+    Validate Raw Entity History input, prepare the REST history request, and
+    shape the history response.
+  fields:
+    mode:
+      description: >
+        Helper mode: prepare validates input and builds the REST request; shape
+        validates and shapes the REST response.
+      example: prepare
+    entity_ids:
+      description: >
+        Comma-separated Home Assistant entity IDs.
+      example: binary_sensor.window,sensor.living_room_temperature
+    start_time:
+      description: >
+        Local Home Assistant start time in format YYYY-MM-DD HH:MM:SS.
+      example: "2026-06-20 10:00:00"
+    end_time:
+      description: >
+        Optional local Home Assistant end time in format YYYY-MM-DD HH:MM:SS.
+        Empty means now.
+      example: "2026-06-20 12:00:00"
+    limit:
+      description: >
+        Optional maximum returned history entries across all requested entities.
+        Default 100, maximum 1000.
+      example: "100"

@@ -1,7 +1,7 @@
 # Home Assistant Research Notes
 
-Checked: 2026-06-19
-Docs version shown by Home Assistant pages: 2026.6.3
+Checked: 2026-06-20
+Docs version shown by Home Assistant pages: 2026.6.4
 
 Use this file as the source ledger for Home Assistant behavior we rely on. Before substantial changes, re-check official docs, release notes, and source for anything touched here.
 
@@ -21,6 +21,8 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Home Assistant REST API: https://developers.home-assistant.io/docs/api/rest/
 - Home Assistant Recorder statistics action:
   https://www.home-assistant.io/actions/recorder.get_statistics/
+- Home Assistant History integration:
+  https://www.home-assistant.io/integrations/history/
 - Home Assistant sensor long-term statistics developer docs:
   https://developers.home-assistant.io/docs/core/entity/sensor/#long-term-statistics
 - Home Assistant template functions: https://www.home-assistant.io/template-functions/
@@ -42,6 +44,10 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   `homeassistant/components/python_script/__init__.py`
 - Home Assistant Core Recorder services source:
   `homeassistant/components/recorder/services.py`
+- Home Assistant Core History source:
+  `homeassistant/components/history/__init__.py`
+- Home Assistant `from_json` template function:
+  https://www.home-assistant.io/template-functions/from_json/
 
 ## Verified
 
@@ -57,6 +63,8 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Native `python_script.reload` reloads available scripts and `services.yaml`; changing an existing Python script does not require that reload.
 - `rest_command` returns a dictionary with `status`, `content`, and `headers`; callers can capture it with `response_variable`.
 - Home Assistant template functions include JSON serialization filters/functions such as `to_json` and `tojson`.
+- Home Assistant `from_json` accepts a `default` value that is returned instead
+  of raising a template error when the input is invalid JSON.
 - Home Assistant REST API requires bearer token auth and exposes `/api/history/period`.
 - `labels()` returns all label IDs when called without an argument.
 - `labels(entity_id)` returns labels assigned directly to that entity; device and area labels do not roll up.
@@ -124,6 +132,21 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   configured period, default 10 days. Long-term statistics are not purged.
 - Native `python_script` can call actions with `blocking=True` and
   `return_response=True` to retrieve response data.
+- Home Assistant History depends on Recorder. If Recorder excludes an entity,
+  history is not available for that entity.
+- By default, Recorder stores raw history for 10 days; users can change the
+  retention period, trading storage usage for longer full-resolution history.
+- Official Recorder actions include `recorder.get_statistics` for long-term
+  statistics, but no documented action for raw entity history.
+- Home Assistant raw entity history is available through the REST API
+  `/api/history/period/<timestamp>` with `filter_entity_id`, `end_time`,
+  `minimal_response`, `no_attributes`, and `significant_changes_only`.
+- Home Assistant History REST defaults `significant_changes_only` to enabled;
+  callers must pass `significant_changes_only=0` to request all recorded state
+  changes.
+- Home Assistant history websocket source exposes `history/history_during_period`,
+  but LLM Tool Scripts have no native websocket action and native
+  `python_script` cannot import a websocket client.
 
 ## Assumptions
 

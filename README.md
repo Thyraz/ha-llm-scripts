@@ -11,6 +11,7 @@ Current implementation includes:
 - `script.llmtool_demo` for install and response-shape validation
 - `script.llmtool_entity_index` for safe labeled-entity discovery
 - `script.llmtool_long_term_aggregated_statistics` for aggregated long-term statistics
+- `script.llmtool_raw_entity_history` for unaggregated raw entity history
 - `script.llmtool_calculator` for deterministic arithmetic
 
 ## Install
@@ -20,7 +21,15 @@ Copy or sync these folders into your Home Assistant config folder:
 ```text
 custom_llm_tools/
   llm_scripts/
+  rest_commands/
 python_scripts/
+```
+
+Create a Home Assistant Long-Lived Access Token and add it to `secrets.yaml`.
+Keep the `Bearer ` prefix in the secret value:
+
+```yaml
+llmtool_home_assistant_bearer_token: "Bearer <long-lived-access-token>"
 ```
 
 Add this to `configuration.yaml`:
@@ -28,8 +37,14 @@ Add this to `configuration.yaml`:
 ```yaml
 script llm_tools: !include_dir_merge_named custom_llm_tools/llm_scripts/
 
+rest_command: !include_dir_merge_named custom_llm_tools/rest_commands/
+
 python_script:
 ```
+
+The bundled Raw Entity History REST command uses `http://localhost:8123`. If
+your Home Assistant install needs a different local URL, update
+`custom_llm_tools/rest_commands/raw_entity_history.yaml` after copying it.
 
 Reload scripts or restart Home Assistant. For a new or renamed Python Helper,
 run `python_script.reload`.
@@ -261,6 +276,94 @@ Responses are capped at 500 value rows. Capped responses include
 time range. It is derived from Home Assistant statistics rows. For `mean`, the
 result is an unweighted mean of period means.
 
+## Raw Entity History tool
+
+After install, Home Assistant should expose:
+
+- `script.llmtool_raw_entity_history`
+- `python_script.llmtool_raw_entity_history`
+- `rest_command.llmtool_raw_entity_history`
+
+Raw Entity History returns unaggregated Home Assistant recorder state history
+for entity IDs the Assistant already knows, usually from Entity Index. It does
+not return long-term aggregated statistics.
+
+Use local Home Assistant time in exactly this format:
+
+```text
+YYYY-MM-DD HH:MM:SS
+```
+
+Run `script.llmtool_raw_entity_history` from Developer Tools -> Actions:
+
+```yaml
+entity_ids: binary_sensor.window
+start_time: "2026-06-20 10:00:00"
+end_time: "2026-06-20 12:00:00"
+limit: 100
+```
+
+Expected response shape:
+
+```yaml
+success: true
+answer: "Found 2 history entries."
+data:
+  entities:
+    - entity_id: binary_sensor.window
+      friendly_name: Window
+      state_at_start:
+        changed_at: "2026-06-20 10:00:00"
+        active_at: "2026-06-20 10:00:00"
+        state: "off"
+      state_at_end:
+        changed_at: "2026-06-20 11:00:00"
+        active_at: "2026-06-20 12:00:00"
+        state: "on"
+      history:
+        - changed_at: "2026-06-20 10:00:00"
+          state: "off"
+          duration_until_next_change_seconds: 3600
+        - changed_at: "2026-06-20 11:00:00"
+          state: "on"
+  missing_entities: []
+meta:
+  tool: llmtool_raw_entity_history
+  entity_ids:
+    - binary_sensor.window
+  start_time: "2026-06-20 10:00:00"
+  end_time: "2026-06-20 12:00:00"
+  count: 2
+  total: 2
+  limit: 100
+```
+
+Raw history is limited by Recorder retention and filtering. By default, Home
+Assistant keeps raw history for 10 days. If no requested entity has raw history
+in the range, the tool returns a soft failure:
+
+```yaml
+success: false
+error: "No raw history found for requested entity IDs and time range."
+data:
+  entities: []
+  missing_entities:
+    - binary_sensor.window
+meta:
+  tool: llmtool_raw_entity_history
+  entity_ids:
+    - binary_sensor.window
+  start_time: "2026-06-20 10:00:00"
+  end_time: "2026-06-20 12:00:00"
+  count: 0
+  total: 0
+  limit: 100
+```
+
+Responses are capped by `limit`, default 100 and maximum 1000. Capped responses
+include `meta.truncated: true`; retry with a narrower time range or higher
+limit.
+
 ## Calculator tool
 
 After install, Home Assistant should expose:
@@ -418,6 +521,34 @@ narrower time range or coarser aggregation_period. On validation failure, use
 error and data to retry.
 ```
 
+For Raw Entity History, tell your Assistant:
+
+```text
+Use Raw Entity History when the user asks for exact recent state history,
+state changes, or how long an entity stayed in a raw Home Assistant state. It
+does not fetch long-term aggregated statistics.
+
+If you do not already know the exact entity IDs, call Entity Index first. Then
+pass entity_ids as a comma-separated string of entity IDs from Entity Index. Use
+at most 10 entity IDs.
+
+Pass start_time and optional end_time as local Home Assistant times in exactly
+this format: YYYY-MM-DD HH:MM:SS. Resolve relative user requests like
+"today", "yesterday", or "last night" yourself before calling the tool. Empty
+end_time means now. Do not pass relative time text or timezone suffixes.
+
+Use limit to cap returned history entries when the time range may contain many
+changes. Empty limit means 100. Maximum limit is 1000.
+
+On success, read data.entities[].history. Each entry has changed_at and state,
+and may have duration_until_next_change_seconds when another returned entry
+follows. state_at_start and state_at_end show the state active at the requested
+range boundaries when known. If data.missing_entities is not empty, tell the
+user those requested entities had no raw history for the requested time range.
+Use meta.truncated to decide whether to retry with a narrower time range or
+higher limit. On validation failure, use error and data to retry.
+```
+
 For Calculator, tell your Assistant:
 
 ```text
@@ -447,8 +578,10 @@ retry.
 - [Coding guidelines](docs/coding_guidelines.md)
 - [HA trace debugging](docs/ha_trace_debugging.md)
 - [Architecture decisions](docs/adr/0001-ha-native-llm-tool-scripts.md)
+- [Raw Entity History REST decision](docs/adr/0002-raw-entity-history-rest-command.md)
 - [Tool plans](docs/plans/README.md)
 - [Long-Term Aggregated Statistics plan](docs/plans/implemented/long-term-aggregated-statistics.md)
+- [Raw Entity History plan](docs/plans/raw-entity-history.md)
 - [Calculator plan](docs/plans/implemented/calculator.md)
 - [Demo tool plan](docs/plans/implemented/demo-tool.md)
 - [Entity Index plan](docs/plans/implemented/entity-index.md)
@@ -459,6 +592,8 @@ retry.
 - Do not log or return tokens.
 - Do not patch `.storage/*`.
 - Expose only intended `script.llmtool_*` entities to Assist.
+- Keep `llmtool_home_assistant_bearer_token` in `secrets.yaml`, never in repo
+  files.
 
 ## Validation
 
@@ -472,6 +607,9 @@ For every tool:
 6. Expose the script to Assist.
 7. Ask the Assistant to use it.
 8. Inspect Conversation and Script traces.
+
+For Raw Entity History, also confirm `rest_command.llmtool_raw_entity_history`
+exists and the bearer token secret works.
 
 For Entity Index helper regression checks:
 
@@ -489,4 +627,10 @@ For Long-Term Aggregated Statistics helper regression checks:
 
 ```bash
 python3 tests/test_llmtool_long_term_aggregated_statistics.py
+```
+
+For Raw Entity History helper regression checks:
+
+```bash
+python3 tests/test_llmtool_raw_entity_history.py
 ```
