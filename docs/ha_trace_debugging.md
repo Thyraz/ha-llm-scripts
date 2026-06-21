@@ -218,9 +218,9 @@ intermediate variable step; the helper action data must only call `from_json`
 when that variable is still a string.
 
 If the helper raises `TypeError: 'NoneType' object is not callable` while
-shaping state rows, check for accidental use of unavailable native
-`python_script` helpers or constructors such as `dt_util.parse_datetime` and
-`datetime.timezone`, or calling missing methods such as `.get` on native lists.
+shaping state rows, check for calling missing methods such as `.get` on native
+lists. In native `python_script`, protected attribute access can return `None`
+instead of raising `AttributeError`.
 
 If the helper returns no data for an entity that exists, check Recorder
 retention, Recorder include/exclude filters, and whether the requested time
