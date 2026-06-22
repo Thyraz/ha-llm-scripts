@@ -107,6 +107,59 @@ llmtool_date_calculator:
         Optional maximum returned calendar days. Default 366, maximum 3660.
       example: "366"
 
+llmtool_calendar_manager:
+  name: LLM Tool Calendar Manager
+  description: >
+    Validate Calendar Manager input, prepare calendar.get_events requests, and
+    shape returned calendar events.
+  fields:
+    mode:
+      description: >
+        Helper mode: prepare validates input and builds the calendar request;
+        shape validates and shapes the calendar.get_events response.
+      example: prepare
+    operation:
+      description: >
+        Calendar Manager operation: search_events, list_upcoming, or
+        list_range.
+      example: list_upcoming
+    calendar_entity_ids:
+      description: >
+        Comma-separated Home Assistant calendar.* entity IDs. Empty means all
+        available calendar.* entities.
+      example: calendar.family,calendar.garbage
+    keyword:
+      description: >
+        Required for search_events. Case-insensitive exact phrase matched
+        against event title, description, and location.
+      example: dentist
+    start_time:
+      description: >
+        Local Home Assistant start time in format YYYY-MM-DD HH:MM:SS.
+      example: "2026-06-22 00:00:00"
+    end_time:
+      description: >
+        Local Home Assistant end time in format YYYY-MM-DD HH:MM:SS.
+      example: "2026-06-23 00:00:00"
+    days_ahead:
+      description: >
+        Future search window for list_upcoming and defaulted search_events.
+        Default 31, maximum 3660.
+      example: "31"
+    limit:
+      description: >
+        Optional maximum returned events across all calendars. Default 100,
+        maximum 1000.
+      example: "100"
+    event_type:
+      description: >
+        Event type filter: all, all_day, or timed.
+      example: all
+    verbosity:
+      description: >
+        Response detail: compact or detailed.
+      example: compact
+
 llmtool_long_term_aggregated_statistics:
   name: LLM Tool Long-Term Aggregated Statistics
   description: >

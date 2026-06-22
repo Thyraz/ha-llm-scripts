@@ -1,0 +1,237 @@
+llmtool_calendar_manager:
+  alias: LLM Tool Calendar Manager
+  icon: mdi:calendar-search
+  description: >
+    Use Calendar Manager when you need to read Home Assistant calendar events.
+    Calendar Manager may support write operations later, but this version only
+    reads events.
+
+    Pass operation as one of: search_events, list_upcoming, list_range.
+
+    Pass calendar_entity_ids as comma-separated Home Assistant calendar.*
+    entity IDs. Empty calendar_entity_ids searches all available calendar.*
+    entities. If you do not know calendar entity IDs, use Entity Index first or
+    use IDs from the Assistant instructions.
+
+    Pass start_time and end_time as local Home Assistant times in exactly this
+    format: YYYY-MM-DD HH:MM:SS. Relative time text and timezone suffixes are
+    not valid.
+
+    search_events requires keyword. Empty start_time means now. Empty end_time
+    means now plus days_ahead. Keyword search matches title, description, and
+    location as a case-insensitive exact phrase.
+
+    list_upcoming uses now through now plus days_ahead.
+
+    list_range requires start_time and end_time.
+
+    event_type filters returned events: all, all_day, or timed. Empty means all.
+
+    verbosity controls event fields: compact or detailed. Empty means compact.
+    Event description is returned only with verbosity=detailed and may be
+    truncated.
+
+    limit caps returned events globally across all calendars. Empty means 100.
+    Maximum is 1000. Use meta.truncated to decide whether to retry with a
+    narrower time range.
+
+    On success, read data.calendars. Results are grouped by calendar. All-day
+    event end times are returned as the final day at 23:59:59.
+  mode: queued
+  max: 2
+  fields:
+    operation:
+      name: Operation
+      description: >
+        Calendar Manager operation to apply. Use one of: search_events,
+        list_upcoming, list_range.
+      required: true
+      example: list_upcoming
+      selector:
+        select:
+          options:
+            - search_events
+            - list_upcoming
+            - list_range
+    calendar_entity_ids:
+      name: Calendar entity IDs
+      description: >
+        Optional comma-separated Home Assistant calendar.* entity IDs. Empty
+        means all available calendar.* entities.
+      required: false
+      example: calendar.family,calendar.garbage
+      selector:
+        text:
+    keyword:
+      name: Keyword
+      description: >
+        Required for search_events. Case-insensitive exact phrase matched
+        against event title, description, and location.
+      required: false
+      example: dentist
+      selector:
+        text:
+    start_time:
+      name: Start time
+      description: >
+        Required for list_range. Optional for search_events. Use local Home
+        Assistant time in exactly YYYY-MM-DD HH:MM:SS.
+      required: false
+      example: "2026-06-22 00:00:00"
+      selector:
+        text:
+    end_time:
+      name: End time
+      description: >
+        Required for list_range. Optional for search_events. Use local Home
+        Assistant time in exactly YYYY-MM-DD HH:MM:SS.
+      required: false
+      example: "2026-06-23 00:00:00"
+      selector:
+        text:
+    days_ahead:
+      name: Days ahead
+      description: >
+        Optional future search window for list_upcoming and defaulted
+        search_events. Default 31. Maximum 3660.
+      required: false
+      default: 31
+      example: "31"
+      selector:
+        number:
+          min: 1
+          max: 3660
+          mode: box
+    limit:
+      name: Limit
+      description: >
+        Optional maximum returned events across all calendars. Default 100.
+        Maximum 1000.
+      required: false
+      default: 100
+      example: "100"
+      selector:
+        number:
+          min: 1
+          max: 1000
+          mode: box
+    event_type:
+      name: Event type
+      description: >
+        Optional event type filter. Use all, all_day, or timed. Empty means all.
+      required: false
+      default: all
+      example: all
+      selector:
+        select:
+          options:
+            - all
+            - all_day
+            - timed
+    verbosity:
+      name: Verbosity
+      description: >
+        compact returns title, event type, start, end, and location. detailed
+        also returns event description, capped for response size.
+      required: false
+      default: compact
+      example: compact
+      selector:
+        select:
+          options:
+            - compact
+            - detailed
+  sequence:
+    # Normalize fields enough for predictable helper handoff.
+    - alias: Prepare Calendar Manager helper input
+      action: python_script.llmtool_calendar_manager
+      data:
+        mode: prepare
+        operation: "{{ operation | default('', true) }}"
+        calendar_entity_ids: "{{ calendar_entity_ids | default('', true) }}"
+        keyword: "{{ keyword | default('', true) }}"
+        start_time: "{{ start_time | default('', true) }}"
+        end_time: "{{ end_time | default('', true) }}"
+        days_ahead: "{{ days_ahead | default('', true) }}"
+        limit: "{{ limit | default('', true) }}"
+        event_type: "{{ event_type | default('', true) }}"
+        verbosity: "{{ verbosity | default('', true) }}"
+      response_variable: calendar_manager_prepare
+
+    # Call Home Assistant calendar events only after helper validation succeeds.
+    - alias: Fetch and shape Calendar Manager events
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ calendar_manager_prepare.success }}"
+          sequence:
+            - action: calendar.get_events
+              target:
+                entity_id: "{{ calendar_manager_prepare.data.calendar_entity_ids }}"
+              data:
+                start_date_time: "{{ calendar_manager_prepare.data.start_time }}"
+                end_date_time: "{{ calendar_manager_prepare.data.end_time }}"
+              response_variable: calendar_manager_events
+
+            # Home Assistant should expose calendar response data as a mapping.
+            # Serialize explicitly before handing it to the Python Helper.
+            - variables:
+                calendar_manager_events_json: >
+                  {% set response = calendar_manager_events | default({}, true) %}
+                  {% if response is string %}
+                    {{ response | from_json(default={'llmtool_invalid_response': true}) | to_json }}
+                  {% else %}
+                    {{ response | to_json }}
+                  {% endif %}
+
+            - action: python_script.llmtool_calendar_manager
+              data:
+                mode: shape
+                operation: "{{ calendar_manager_prepare.data.operation }}"
+                calendar_entity_ids: "{{ calendar_manager_prepare.data.calendar_entity_ids | join(',') }}"
+                keyword: "{{ calendar_manager_prepare.data.keyword }}"
+                start_time: "{{ calendar_manager_prepare.data.start_time }}"
+                end_time: "{{ calendar_manager_prepare.data.end_time }}"
+                days_ahead: "{{ calendar_manager_prepare.data.days_ahead }}"
+                limit: "{{ calendar_manager_prepare.data.limit }}"
+                event_type: "{{ calendar_manager_prepare.data.event_type }}"
+                verbosity: "{{ calendar_manager_prepare.data.verbosity }}"
+                events_response: >
+                  {% if calendar_manager_events_json is string %}
+                    {{ calendar_manager_events_json | from_json(default={'llmtool_invalid_response': true}) }}
+                  {% else %}
+                    {{ calendar_manager_events_json }}
+                  {% endif %}
+              response_variable: calendar_manager_helper
+      default:
+        - variables:
+            calendar_manager_helper:
+              success: false
+              error: "{{ calendar_manager_prepare.error }}"
+              data: "{{ calendar_manager_prepare.data }}"
+              meta: "{{ calendar_manager_prepare.meta }}"
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ calendar_manager_helper.success }}"
+          sequence:
+            - variables:
+                calendar_manager_response:
+                  success: true
+                  answer: "{{ calendar_manager_helper.answer }}"
+                  data: "{{ calendar_manager_helper.data }}"
+                  meta: "{{ calendar_manager_helper.meta }}"
+      default:
+        - variables:
+            calendar_manager_response:
+              success: false
+              error: "{{ calendar_manager_helper.error }}"
+              data: "{{ calendar_manager_helper.data }}"
+              meta: "{{ calendar_manager_helper.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Calendar Manager complete
+      response_variable: calendar_manager_response

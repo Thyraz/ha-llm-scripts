@@ -1,6 +1,6 @@
 # Home Assistant Research Notes
 
-Checked: 2026-06-20
+Checked: 2026-06-22
 Docs version shown by Home Assistant pages: 2026.6.4
 
 Use this file as the source ledger for Home Assistant behavior we rely on. Before substantial changes, re-check official docs, release notes, and source for anything touched here.
@@ -23,6 +23,10 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   https://www.home-assistant.io/actions/recorder.get_statistics/
 - Home Assistant History integration:
   https://www.home-assistant.io/integrations/history/
+- Home Assistant Calendar integration:
+  https://www.home-assistant.io/integrations/calendar/
+- Home Assistant Calendar get events action:
+  https://www.home-assistant.io/actions/calendar.get_events/
 - Home Assistant sensor long-term statistics developer docs:
   https://developers.home-assistant.io/docs/core/entity/sensor/#long-term-statistics
 - Home Assistant template functions: https://www.home-assistant.io/template-functions/
@@ -157,6 +161,22 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Home Assistant history websocket source exposes `history/history_during_period`,
   but LLM Tool Scripts have no native websocket action and native
   `python_script` cannot import a websocket client.
+- Home Assistant calendar entities expose whether there is an active event
+  through entity state, but event details are read through calendar actions.
+- Home Assistant Calendar docs list `calendar.create_event` and
+  `calendar.get_events`; some calendar integrations support writing events.
+- `calendar.get_events` reads events on one or more calendars within a date
+  range and returns response data through a response variable.
+- `calendar.get_events` accepts `start_date_time`, `end_date_time`, or
+  `duration`; `end_date_time` is exclusive and cannot be used together with
+  `duration`.
+- `calendar.get_events` requires a target. It can target calendar entities,
+  devices, areas, floors, or labels. Calendar Manager uses explicit calendar
+  entity IDs.
+- `calendar.get_events` response data is keyed by calendar entity ID; each
+  value contains an `events` list.
+- Calendar event response rows include `summary`, optional `description`,
+  `start`, `end`, and optional `location`. Event `end` is exclusive.
 
 ## Assumptions
 
