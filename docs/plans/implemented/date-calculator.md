@@ -1,8 +1,8 @@
 # Date Calculator Plan
 
-Status: planned. This plan transfers the legacy Date Calculator tool into the
-repo's LLM Tool Script, Python Helper, structured response, and scalar parameter
-patterns.
+Status: implemented and validated with Home Assistant Developer Tools -> Actions.
+This plan transfers the legacy Date Calculator tool into the repo's LLM Tool
+Script, Python Helper, structured response, and scalar parameter patterns.
 
 ## Purpose
 
@@ -23,9 +23,12 @@ entities, history, or statistics.
   - `date`
   - `date2`
   - `segments`
+  - `month`
   - `weekday`
   - `day_of_month`
-  - `n`
+  - `hour`
+  - `minute`
+  - `second`
   - `epoch_time_s`
   - `limit`
 - Use `operation`, not `function`.
@@ -33,8 +36,7 @@ entities, history, or statistics.
   - `duration_between_dates`
   - `date_by_adding_segments`
   - `weekday_for_date`
-  - `date_for_weekday_in_n_weeks`
-  - `date_for_day_of_month_in_n_months`
+  - `next_matching_date`
   - `list_calendar_days`
   - `epoch_to_date`
   - `date_to_epoch`
@@ -92,24 +94,30 @@ entities, history, or statistics.
   epoch seconds.
 - `epoch_to_date` treats `epoch_time_s` as UTC epoch seconds and returns local
   Home Assistant date and weekday.
-- `date_for_weekday_in_n_weeks` accepts optional `date` as an anchor.
-- Empty `date` for `date_for_weekday_in_n_weeks` means local now.
-- The weekday calculation uses the anchor local date and ignores anchor time.
-- `date_for_weekday_in_n_weeks` returns midnight.
-- `n=0` for `date_for_weekday_in_n_weeks` means the next occurrence including
-  today when the weekday matches.
-- `date_for_day_of_month_in_n_months` accepts optional `date` as an anchor.
-- Empty `date` for `date_for_day_of_month_in_n_months` means local now.
-- The day-of-month calculation uses the anchor local date and ignores anchor
-  time.
-- `date_for_day_of_month_in_n_months` returns midnight.
-- If `n=0`, choose this month when `day_of_month >= anchor day`; otherwise
-  choose next month.
-- If `n>0`, first resolve the `n=0` occurrence, then add `n` months.
-- Invalid target day-of-month values are clamped to the last valid day of the
-  target month.
-- `date_for_day_of_month_in_n_months` returns requested `day_of_month`.
-- If clamping happens, also return `actual_day_of_month`.
+- `next_matching_date` accepts optional `date` as an anchor.
+- Empty `date` for `next_matching_date` means local now.
+- `next_matching_date` resolves recurring calendar dates that small Assist
+  models should not have to reason through manually, such as birthdays,
+  anniversaries, Friday the 13th, and Tuesday meetings in December.
+- `next_matching_date` supports matching with:
+  - `month`
+  - `day_of_month`
+  - `weekday`
+- At least one matching field is required.
+- `month` alone is too broad and returns a soft validation failure.
+- Any combination of `month`, `day_of_month`, and `weekday` is allowed when it
+  is not `month` alone.
+- `next_matching_date` searches from the anchor date forward, including the
+  anchor date when the requested time has not already passed.
+- `next_matching_date` uses an internal fixed search horizon of 3660 days.
+- If no date matches inside the search horizon, return a soft validation
+  failure.
+- `next_matching_date` accepts optional `hour`, `minute`, and `second`.
+- Missing `hour`, `minute`, or `second` means `0`.
+- If the matching calendar date is the anchor date but the requested time has
+  already passed, search for the next matching calendar date.
+- `next_matching_date` returns `date`, `weekday`, `days_from_anchor`, and
+  `matched_parts`.
 - Weekday input accepts exact English names only:
   - `Monday`
   - `Tuesday`
@@ -120,8 +128,11 @@ entities, history, or statistics.
   - `Sunday`
 - Weekday output uses the same spelling.
 - Invalid weekday returns a soft validation failure with `data.known_weekdays`.
-- `n` is an integer greater than or equal to 0.
+- `month` is an integer from 1 through 12.
 - `day_of_month` is an integer from 1 through 31.
+- `hour` is an integer from 0 through 23.
+- `minute` is an integer from 0 through 59.
+- `second` is an integer from 0 through 59.
 - `limit` is used by `list_calendar_days`.
 - `limit` default is 366.
 - `limit` maximum is 3660.
@@ -168,9 +179,14 @@ meta:
 - Missing `segments`.
 - Invalid segment key.
 - Invalid segment value.
+- Missing matching date parts.
+- Invalid matching date parts.
 - Missing or invalid `weekday`.
+- Missing or invalid `month`.
 - Missing or invalid `day_of_month`.
-- Missing or invalid `n`.
+- Missing or invalid `hour`.
+- Missing or invalid `minute`.
+- Missing or invalid `second`.
 - Missing or invalid `epoch_time_s`.
 - Invalid `limit`.
 
@@ -201,17 +217,20 @@ meta:
 - Convert epoch seconds to local date.
 - Compute positive and negative duration scalar values.
 - Compute signed unsigned duration segments.
-- Resolve weekday in zero and non-zero weeks from explicit anchor date.
-- Default weekday anchor date to local now.
-- Resolve day-of-month in zero and non-zero months from explicit anchor date.
-- Default day-of-month anchor date to local now.
-- Clamp day-of-month result and return `actual_day_of_month`.
+- Resolve next matching weekday from explicit anchor date.
+- Default matching-date anchor date to local now.
+- Resolve next matching month and day-of-month.
+- Resolve leap day.
+- Resolve next matching weekday and day-of-month.
+- Resolve next matching month and weekday.
+- Skip same-day matching dates when requested time has already passed.
 - List calendar days inclusively.
 - Truncate calendar day list globally and set `meta.truncated`.
 - Reject reversed calendar day list range.
 - Reject invalid weekdays with `known_weekdays`.
 - Reject invalid segment keys and values.
-- Reject invalid `n`, `day_of_month`, `epoch_time_s`, and `limit`.
+- Reject invalid `month`, `day_of_month`, `hour`, `minute`, `second`,
+  `epoch_time_s`, and `limit`.
 - Run under restricted native `python_script` builtins without imports.
 
 ## Manual validation
@@ -237,5 +256,4 @@ meta:
 
 ## Unresolved questions
 
-- Response examples per operation?
-- Implement now?
+None.

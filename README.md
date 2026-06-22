@@ -13,6 +13,7 @@ Current implementation includes:
 - `script.llmtool_long_term_aggregated_statistics` for aggregated long-term statistics
 - `script.llmtool_raw_entity_history` for unaggregated raw entity history
 - `script.llmtool_calculator` for deterministic arithmetic
+- `script.llmtool_date_calculator` for deterministic calendar and local-time calculations
 
 ## Install
 
@@ -430,6 +431,77 @@ meta:
   tool: llmtool_calculator
 ```
 
+## Date Calculator tool
+
+After install, Home Assistant should expose:
+
+- `script.llmtool_date_calculator`
+- `python_script.llmtool_date_calculator`
+
+Date Calculator performs deterministic calendar and local-time calculations over
+dates the Assistant already has. It does not fetch entities, states, history, or
+statistics.
+
+Supported operations:
+
+- `duration_between_dates`
+- `date_by_adding_segments`
+- `weekday_for_date`
+- `next_matching_date`
+- `list_calendar_days`
+- `epoch_to_date`
+- `date_to_epoch`
+
+Use local Home Assistant time in exactly this format:
+
+```text
+YYYY-MM-DD HH:MM:SS
+```
+
+Run `script.llmtool_date_calculator` from Developer Tools -> Actions:
+
+```yaml
+operation: date_by_adding_segments
+date: "2025-01-31 10:00:00"
+segments: months=1,days=2
+```
+
+Expected response shape:
+
+```yaml
+success: true
+answer: "Calculated date."
+data:
+  new_date: "2025-03-02 10:00:00"
+  weekday: Sunday
+  epoch_time_s: 1740906000
+  segments:
+    years: 0
+    months: 1
+    days: 2
+    hours: 0
+    minutes: 0
+    seconds: 0
+meta:
+  tool: llmtool_date_calculator
+  operation: date_by_adding_segments
+  date: "2025-01-31 10:00:00"
+```
+
+For `date_by_adding_segments`, pass `segments` as comma-separated integer
+`key=value` pairs. Supported keys are `years`, `months`, `days`, `hours`,
+`minutes`, and `seconds`. Month/year results clamp to the last valid day of the
+target month when needed.
+
+Use `next_matching_date` for recurring calendar dates such as birthdays,
+anniversaries, the next Friday 13th, or the next Tuesday in December. Pass any
+combination of `month`, `day_of_month`, and `weekday`; month alone is too broad.
+Optional `hour`, `minute`, and `second` set the returned time. Empty `date`
+means now.
+
+For `list_calendar_days`, optional `limit` defaults to 366 and maximum is 3660.
+Capped responses include `meta.truncated: true`.
+
 ## LLM tool response format
 
 Tools return a structured response in Developer Tools -> Actions:
@@ -570,6 +642,36 @@ contains the unrounded result. On validation failure, use error and data to
 retry.
 ```
 
+For Date Calculator, tell your Assistant:
+
+```text
+Use Date Calculator when calendar or local-time calculations must be calculated
+exactly from dates you already have. It does not fetch entities, states,
+history, or statistics.
+
+Choose operation from: duration_between_dates, date_by_adding_segments,
+weekday_for_date, next_matching_date, list_calendar_days, epoch_to_date,
+date_to_epoch.
+
+Pass dates as local Home Assistant times in exactly this format:
+YYYY-MM-DD HH:MM:SS. Resolve relative user requests like "tomorrow" yourself
+before calling the tool. Do not pass relative time text or timezone suffixes.
+
+For date_by_adding_segments, pass segments as comma-separated integer key=value
+pairs. Supported keys: years, months, days, hours, minutes, seconds.
+
+Use next_matching_date for recurring calendar dates like birthdays,
+anniversaries, "next Friday 13th", or "first Tuesday in December". Pass any
+combination of month, day_of_month, and weekday. Do not call duration_between_dates
+until you have first resolved the next matching date. Empty date means now.
+Optional hour, minute, and second set the returned time.
+
+For list_calendar_days, use limit when the range may be large. Empty limit means
+366. Maximum limit is 3660. Use meta.truncated to decide whether to retry with a
+narrower range or higher limit. On success, read data. On validation failure,
+use error and data to retry.
+```
+
 ## Docs
 
 - [Glossary](CONTEXT.md)
@@ -585,6 +687,7 @@ retry.
 - [Long-Term Aggregated Statistics plan](docs/plans/implemented/long-term-aggregated-statistics.md)
 - [Raw Entity History plan](docs/plans/implemented/raw-entity-history.md)
 - [Calculator plan](docs/plans/implemented/calculator.md)
+- [Date Calculator plan](docs/plans/implemented/date-calculator.md)
 - [Demo tool plan](docs/plans/implemented/demo-tool.md)
 - [Entity Index plan](docs/plans/implemented/entity-index.md)
 
@@ -625,6 +728,12 @@ For Calculator helper regression checks:
 
 ```bash
 python3 tests/test_llmtool_calculator.py
+```
+
+For Date Calculator helper regression checks:
+
+```bash
+python3 tests/test_llmtool_date_calculator.py
 ```
 
 For Long-Term Aggregated Statistics helper regression checks:

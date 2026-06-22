@@ -87,3 +87,7 @@ _Avoid_: object selector, duration object, date patch
 **Date Calculator date**:
 A local Home Assistant date-time value supplied to or returned by the Date Calculator.
 _Avoid_: relative time text, timezone-suffixed timestamp, UTC-only timestamp
+
+**Date Calculator matching date**:
+A Date Calculator date selected by matching supplied calendar and optional time parts against an anchor date.
+_Avoid_: next date with segments, recurrence engine, cron expression

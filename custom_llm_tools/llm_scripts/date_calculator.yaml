@@ -1,0 +1,232 @@
+llmtool_date_calculator:
+  alias: LLM Tool Date Calculator
+  description: >
+    Use Date Calculator when calendar or local-time calculations must be
+    calculated exactly from dates the Assistant already has.
+
+    Pass operation as one of: duration_between_dates, date_by_adding_segments,
+    weekday_for_date, next_matching_date, list_calendar_days, epoch_to_date, or
+    date_to_epoch.
+
+    Pass dates as local Home Assistant times in exactly this format:
+    YYYY-MM-DD HH:MM:SS. Relative time text and timezone suffixes are not valid.
+
+    For date_by_adding_segments, pass segments as comma-separated key=value
+    pairs. Supported keys: years, months, days, hours, minutes, seconds. Values
+    are integers and may be negative.
+
+    For next_matching_date, pass month, day_of_month, weekday, and optional
+    hour, minute, or second as needed. Empty date means now.
+
+    list_calendar_days uses optional limit. Empty limit means 366. Maximum is
+    3660. On success, read data. On validation failure, use error and data to retry.
+
+    Example:
+    ```
+      operation: date_by_adding_segments
+      date: "2025-01-31 10:00:00"
+      segments: "months=1,days=2"
+    ```
+  mode: queued
+  max: 2
+  fields:
+    operation:
+      name: Operation
+      description: >
+        Date Calculator operation to apply. Use one of:
+        duration_between_dates, date_by_adding_segments, weekday_for_date,
+        next_matching_date, list_calendar_days, epoch_to_date, date_to_epoch.
+      required: true
+      example: weekday_for_date
+      selector:
+        select:
+          options:
+            - duration_between_dates
+            - date_by_adding_segments
+            - weekday_for_date
+            - next_matching_date
+            - list_calendar_days
+            - epoch_to_date
+            - date_to_epoch
+    date:
+      name: Date
+      description: >
+        Date or anchor date, depending on operation. Use local Home Assistant
+        time in exactly YYYY-MM-DD HH:MM:SS. Empty is allowed only for operations
+        that default the anchor date to now.
+      required: false
+      example: "2026-06-21 09:30:00"
+      selector:
+        text:
+    date2:
+      name: Second date
+      description: >
+        Second date for duration_between_dates and list_calendar_days. Use local
+        Home Assistant time in exactly YYYY-MM-DD HH:MM:SS.
+      required: false
+      example: "2026-06-22 09:30:00"
+      selector:
+        text:
+    segments:
+      name: Segments
+      description: >
+        Comma-separated key=value integer offsets for date_by_adding_segments.
+        Supported keys: years, months, days, hours, minutes, seconds. Example:
+        months=1,days=-2,hours=3.
+      required: false
+      example: months=1,days=-2,hours=3
+      selector:
+        text:
+    month:
+      name: Month
+      description: >
+        Optional month for next_matching_date. Use 1 through 12. Month alone is
+        too broad; combine it with day_of_month or weekday.
+      required: false
+      example: "6"
+      selector:
+        number:
+          min: 1
+          max: 12
+          mode: box
+    weekday:
+      name: Weekday
+      description: >
+        Optional exact English weekday name for next_matching_date.
+      required: false
+      example: Monday
+      selector:
+        select:
+          options:
+            - Monday
+            - Tuesday
+            - Wednesday
+            - Thursday
+            - Friday
+            - Saturday
+            - Sunday
+    day_of_month:
+      name: Day of month
+      description: >
+        Optional day of month for next_matching_date. Use 1 through 31.
+      required: false
+      example: "31"
+      selector:
+        number:
+          min: 1
+          max: 31
+          mode: box
+    hour:
+      name: Hour
+      description: >
+        Optional hour for next_matching_date. Use 0 through 23. Empty means 0.
+      required: false
+      example: "0"
+      selector:
+        number:
+          min: 0
+          max: 23
+          mode: box
+    minute:
+      name: Minute
+      description: >
+        Optional minute for next_matching_date. Use 0 through 59. Empty means 0.
+      required: false
+      example: "0"
+      selector:
+        number:
+          min: 0
+          max: 59
+          mode: box
+    second:
+      name: Second
+      description: >
+        Optional second for next_matching_date. Use 0 through 59. Empty means 0.
+      required: false
+      example: "0"
+      selector:
+        number:
+          min: 0
+          max: 59
+          mode: box
+    epoch_time_s:
+      name: Epoch seconds
+      description: >
+        Unix epoch seconds for epoch_to_date.
+      required: false
+      example: "0"
+      selector:
+        number:
+          mode: box
+    limit:
+      name: Limit
+      description: >
+        Optional maximum returned days for list_calendar_days. Default 366.
+        Maximum 3660.
+      required: false
+      default: 366
+      example: "366"
+      selector:
+        number:
+          min: 1
+          max: 3660
+          mode: box
+  sequence:
+    # Normalize fields enough for predictable helper handoff.
+    - alias: Prepare Date Calculator helper input
+      variables:
+        helper_operation: "{{ operation | default('', true) }}"
+        helper_date: "{{ date | default('', true) }}"
+        helper_date2: "{{ date2 | default('', true) }}"
+        helper_segments: "{{ segments | default('', true) }}"
+        helper_month: "{{ month | default('', true) }}"
+        helper_weekday: "{{ weekday | default('', true) }}"
+        helper_day_of_month: "{{ day_of_month | default('', true) }}"
+        helper_hour: "{{ hour | default('', true) }}"
+        helper_minute: "{{ minute | default('', true) }}"
+        helper_second: "{{ second | default('', true) }}"
+        helper_epoch_time_s: "{{ epoch_time_s | default('', true) }}"
+        helper_limit: "{{ limit | default('', true) }}"
+
+    # Validate, calculate, convert, and shape the helper response in Python.
+    - alias: Call Date Calculator Python Helper
+      action: python_script.llmtool_date_calculator
+      data:
+        operation: "{{ helper_operation }}"
+        date: "{{ helper_date }}"
+        date2: "{{ helper_date2 }}"
+        segments: "{{ helper_segments }}"
+        month: "{{ helper_month }}"
+        weekday: "{{ helper_weekday }}"
+        day_of_month: "{{ helper_day_of_month }}"
+        hour: "{{ helper_hour }}"
+        minute: "{{ helper_minute }}"
+        second: "{{ helper_second }}"
+        epoch_time_s: "{{ helper_epoch_time_s }}"
+        limit: "{{ helper_limit }}"
+      response_variable: date_calculator_helper
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ date_calculator_helper.success }}"
+          sequence:
+            - variables:
+                date_calculator_response:
+                  success: true
+                  answer: "{{ date_calculator_helper.answer }}"
+                  data: "{{ date_calculator_helper.data }}"
+                  meta: "{{ date_calculator_helper.meta }}"
+      default:
+        - variables:
+            date_calculator_response:
+              success: false
+              error: "{{ date_calculator_helper.error }}"
+              data: "{{ date_calculator_helper.data }}"
+              meta: "{{ date_calculator_helper.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Date Calculator complete
+      response_variable: date_calculator_response

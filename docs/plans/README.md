@@ -6,12 +6,13 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 
 ## Current active plans
 
-- [Date Calculator](date-calculator.md)
+None.
 
 ## Implemented plans
 
 - [Demo LLM Tool](implemented/demo-tool.md)
 - [Entity Index](implemented/entity-index.md)
 - [Calculator](implemented/calculator.md)
+- [Date Calculator](implemented/date-calculator.md)
 - [Long-Term Aggregated Statistics](implemented/long-term-aggregated-statistics.md)
 - [Raw Entity History](implemented/raw-entity-history.md)
