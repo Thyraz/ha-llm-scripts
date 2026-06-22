@@ -58,6 +58,55 @@ llmtool_calculator:
       description: Optional decimal places for rounding. Use 0 through 10.
       example: "2"
 
+llmtool_date_calculator:
+  name: LLM Tool Date Calculator
+  description: Validate Date Calculator input and return deterministic calendar calculations.
+  fields:
+    operation:
+      description: >
+        Date Calculator operation: duration_between_dates,
+        date_by_adding_segments, weekday_for_date, next_matching_date,
+        list_calendar_days, epoch_to_date, or date_to_epoch.
+      example: weekday_for_date
+    date:
+      description: >
+        Local Home Assistant date or anchor date in format YYYY-MM-DD HH:MM:SS.
+      example: "2026-06-21 09:30:00"
+    date2:
+      description: >
+        Second local Home Assistant date in format YYYY-MM-DD HH:MM:SS.
+      example: "2026-06-22 09:30:00"
+    segments:
+      description: >
+        Comma-separated integer key=value offsets. Supported keys: years,
+        months, days, hours, minutes, seconds.
+      example: months=1,days=-2,hours=3
+    month:
+      description: Optional month for next_matching_date. Use 1 through 12.
+      example: "6"
+    weekday:
+      description: Exact English weekday name.
+      example: Monday
+    day_of_month:
+      description: Day of month, 1 through 31.
+      example: "31"
+    hour:
+      description: Optional hour for next_matching_date. Use 0 through 23.
+      example: "0"
+    minute:
+      description: Optional minute for next_matching_date. Use 0 through 59.
+      example: "0"
+    second:
+      description: Optional second for next_matching_date. Use 0 through 59.
+      example: "0"
+    epoch_time_s:
+      description: Unix epoch seconds.
+      example: "0"
+    limit:
+      description: >
+        Optional maximum returned calendar days. Default 366, maximum 3660.
+      example: "366"
+
 llmtool_long_term_aggregated_statistics:
   name: LLM Tool Long-Term Aggregated Statistics
   description: >

@@ -71,3 +71,23 @@ _Avoid_: value with unit, localized number
 **Calculator precision**:
 An optional decimal-place limit for the Calculator result.
 _Avoid_: display format, unit conversion
+
+**Date Calculator**:
+An LLM Tool that performs deterministic calendar and local-time calculations over dates supplied by the Assistant.
+_Avoid_: date function, calendar plugin, time backend
+
+**Date Calculator operation**:
+A named calendar or local-time calculation the Date Calculator applies to supplied date values.
+_Avoid_: function, mode, command
+
+**Date Calculator segments**:
+A comma-separated set of integer calendar/time offsets supplied to the Date Calculator, using keys such as `years`, `months`, `days`, `hours`, `minutes`, and `seconds`.
+_Avoid_: object selector, duration object, date patch
+
+**Date Calculator date**:
+A local Home Assistant date-time value supplied to or returned by the Date Calculator.
+_Avoid_: relative time text, timezone-suffixed timestamp, UTC-only timestamp
+
+**Date Calculator matching date**:
+A Date Calculator date selected by matching supplied calendar and optional time parts against an anchor date.
+_Avoid_: next date with segments, recurrence engine, cron expression
