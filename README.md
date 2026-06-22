@@ -14,6 +14,7 @@ Current implementation includes:
 - `script.llmtool_raw_entity_history` for unaggregated raw entity history
 - `script.llmtool_calculator` for deterministic arithmetic
 - `script.llmtool_date_calculator` for deterministic calendar and local-time calculations
+- `script.llmtool_calendar_manager` for reading Home Assistant calendar events
 
 ## Install
 
@@ -367,6 +368,89 @@ Responses are capped by `limit`, default 100 and maximum 1000. Capped responses
 include `meta.truncated: true`; retry with a narrower time range or higher
 limit.
 
+## Calendar Manager tool
+
+After install, Home Assistant should expose:
+
+- `script.llmtool_calendar_manager`
+- `python_script.llmtool_calendar_manager`
+
+Calendar Manager reads Home Assistant calendar events from calendar entities.
+This version does not create, update, or delete events.
+
+Supported operations:
+
+- `search_events`
+- `list_upcoming`
+- `list_range`
+
+Pass `calendar_entity_ids` as comma-separated Home Assistant `calendar.*`
+entity IDs. Empty `calendar_entity_ids` uses all available `calendar.*`
+entities.
+
+Use local Home Assistant time in exactly this format:
+
+```text
+YYYY-MM-DD HH:MM:SS
+```
+
+Run `script.llmtool_calendar_manager` from Developer Tools -> Actions:
+
+```yaml
+operation: list_upcoming
+calendar_entity_ids: calendar.family
+days_ahead: 30
+limit: 10
+event_type: all
+verbosity: compact
+```
+
+Expected response shape:
+
+```yaml
+success: true
+answer: "Found 2 calendar events."
+data:
+  calendars:
+    - calendar_entity_id: calendar.family
+      friendly_name: Family
+      count: 2
+      events:
+        - title: Dentist
+          event_type: timed
+          start: "2026-06-24 14:00:00"
+          end: "2026-06-24 15:00:00"
+          location: Town
+        - title: Paper collection
+          event_type: all_day
+          start: "2026-06-25 00:00:00"
+          end: "2026-06-25 23:59:59"
+          location:
+meta:
+  tool: llmtool_calendar_manager
+  operation: list_upcoming
+  calendar_entity_ids:
+    - calendar.family
+  start_time: "2026-06-22 12:00:00"
+  end_time: "2026-07-22 12:00:00"
+  event_type: all
+  verbosity: compact
+  limit: 10
+  count: 2
+  total: 2
+```
+
+Use `verbosity=detailed` when event descriptions are needed. Detailed
+descriptions are capped for response size and may include
+`description_truncated: true`.
+
+All-day event `end` is returned as the final local day at `23:59:59`, not Home
+Assistant's exclusive all-day end.
+
+Responses are capped by `limit`, default 100 and maximum 1000. Capped responses
+include `meta.truncated: true`; retry with a narrower time range or higher
+limit.
+
 ## Calculator tool
 
 After install, Home Assistant should expose:
@@ -623,6 +707,41 @@ Use meta.truncated to decide whether to retry with a narrower time range or
 higher limit. On validation failure, use error and data to retry.
 ```
 
+For Calendar Manager, tell your Assistant:
+
+```text
+Use Calendar Manager when the user asks about Home Assistant calendar events.
+This version reads events only.
+
+If you do not already know the exact calendar entity IDs, call Entity Index
+first or use calendar entity IDs listed in these instructions. Then pass
+calendar_entity_ids as a comma-separated string of calendar.* entity IDs. Empty
+calendar_entity_ids means all available calendar.* entities.
+
+Choose operation from: search_events, list_upcoming, list_range.
+
+Use list_upcoming for upcoming calendar events. Empty days_ahead means 31.
+
+Use list_range when the user gives a time range. Pass start_time and end_time as
+local Home Assistant times in exactly this format: YYYY-MM-DD HH:MM:SS. Resolve
+relative user requests yourself before calling the tool. Do not pass relative
+time text or timezone suffixes.
+
+Use search_events when the user asks to find an event by text. Pass keyword.
+Keyword matching is case-insensitive exact phrase matching over title,
+description, and location. Empty start_time means now. Empty end_time means now
+plus days_ahead.
+
+Use event_type to filter all, all_day, or timed events. Empty event_type means
+all. Use verbosity=compact by default. Use verbosity=detailed only when event
+descriptions are needed; descriptions are returned only in detailed mode.
+
+On success, read data.calendars[].events. Results are grouped by calendar. For
+all-day events, end is returned as the final local day at 23:59:59. Use
+meta.truncated to decide whether to retry with a narrower time range or higher
+limit. On validation failure, use error and data to retry.
+```
+
 For Calculator, tell your Assistant:
 
 ```text
@@ -684,6 +803,7 @@ use error and data to retry.
 - [Architecture decisions](docs/adr/0001-ha-native-llm-tool-scripts.md)
 - [Raw Entity History REST decision](docs/adr/0002-raw-entity-history-rest-command.md)
 - [Tool plans](docs/plans/README.md)
+- [Calendar Manager plan](docs/plans/implemented/calendar-manager.md)
 - [Long-Term Aggregated Statistics plan](docs/plans/implemented/long-term-aggregated-statistics.md)
 - [Raw Entity History plan](docs/plans/implemented/raw-entity-history.md)
 - [Calculator plan](docs/plans/implemented/calculator.md)
@@ -746,4 +866,10 @@ For Raw Entity History helper regression checks:
 
 ```bash
 python3 tests/test_llmtool_raw_entity_history.py
+```
+
+For Calendar Manager helper regression checks:
+
+```bash
+python3 tests/test_llmtool_calendar_manager.py
 ```

@@ -228,3 +228,53 @@ range is inside the raw history retention period.
 
 If `meta.truncated` is true, retry with a narrower time range or higher
 `limit`.
+
+### Calendar Manager
+
+Useful trace variables:
+
+- `calendar_manager_prepare`
+- `calendar_manager_events`
+- `calendar_manager_events_json`
+- `calendar_manager_helper`
+- `calendar_manager_response`
+
+Useful Python Helper response fields:
+
+- `meta.operation`
+- `meta.calendar_entity_ids`
+- `meta.start_time`
+- `meta.end_time`
+- `meta.event_type`
+- `meta.verbosity`
+- `meta.count`
+- `meta.total`
+- `meta.truncated`
+- `data.calendars`
+
+Expected calendar model:
+
+- The public `calendar_entity_ids` input is passed to `calendar.get_events` as
+  target calendar entity IDs.
+- Empty `calendar_entity_ids` is resolved by the Python Helper to all available
+  `calendar.*` entities before `calendar.get_events` is called.
+- Input and output times are local Home Assistant times in
+  `YYYY-MM-DD HH:MM:SS`.
+- `calendar.get_events` returns a mapping keyed by calendar entity ID, with an
+  `events` list under each key.
+- Home Assistant event `end` values are exclusive. Calendar Manager returns
+  all-day event `end` as the Assistant-facing final local day at `23:59:59`.
+- Event descriptions are returned only when `verbosity=detailed`.
+
+If the helper returns an unknown calendar entity ID error, check whether the
+calendar entity exists and whether Entity Index or the Assistant prompt supplied
+the right `calendar.*` ID.
+
+If `calendar_manager_events` is missing a requested calendar key, inspect
+`calendar.get_events` target handling in the Script trace.
+
+If `calendar_manager_events_json` arrives at the helper as one quoted string,
+the YAML -> Python handoff failed. Check the `from_json` action data conversion.
+
+If `meta.truncated` is true, retry with a narrower time range, a higher limit,
+or more specific calendar IDs.

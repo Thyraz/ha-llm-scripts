@@ -1,6 +1,6 @@
 # Calendar Manager Plan
 
-Status: planned.
+Status: implemented and validated with Home Assistant Developer Tools -> Actions and Assist.
 
 This plan defines the first read-only version of Calendar Manager. The tool is
 intended to grow write operations later, so the canonical name remains Calendar
@@ -65,7 +65,7 @@ events in the same LLM Tool.
 - Empty `search_events.end_time` means local now plus `days_ahead`.
 - `list_upcoming` uses local now through local now plus `days_ahead`.
 - `days_ahead` is optional.
-- Empty `days_ahead` uses 365.
+- Empty `days_ahead` uses 31.
 - Maximum `days_ahead` is 3660.
 - `end_time` before or equal to `start_time` is invalid.
 - If Home Assistant returns an ongoing event for the requested range, Calendar
@@ -267,7 +267,7 @@ meta:
 - Reject `end_time <= start_time`.
 - Default `search_events` range to now through now plus `days_ahead`.
 - Default `list_upcoming` range to now through now plus `days_ahead`.
-- Validate `days_ahead`, default 365, maximum 3660.
+- Validate `days_ahead`, default 31, maximum 3660.
 - Validate `limit`, default 100, maximum 1000.
 - Validate `event_type`.
 - Validate `verbosity`.
