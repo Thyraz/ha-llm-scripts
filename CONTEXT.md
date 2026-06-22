@@ -91,3 +91,23 @@ _Avoid_: relative time text, timezone-suffixed timestamp, UTC-only timestamp
 **Date Calculator matching date**:
 A Date Calculator date selected by matching supplied calendar and optional time parts against an anchor date.
 _Avoid_: next date with segments, recurrence engine, cron expression
+
+**Calendar Manager**:
+An LLM Tool that lets an Assistant work with Home Assistant calendar events.
+_Avoid_: Calendar Query Tool, calendar plugin, calendar backend
+
+**Calendar Manager Calendar Entity ID**:
+A Home Assistant `calendar.*` entity ID supplied to Calendar Manager to choose event sources.
+_Avoid_: calendar name, calendar alias, calendar pseudonym
+
+**Calendar Manager event**:
+A Home Assistant calendar event returned or managed by Calendar Manager.
+_Avoid_: appointment object, reminder item, calendar row
+
+**Calendar Manager operation**:
+A named calendar-event action the Calendar Manager applies, such as reading upcoming events or searching events.
+_Avoid_: function, mode, command
+
+**Calendar Manager event type**:
+A Calendar Manager filter that selects all events, all-day events, or timed events.
+_Avoid_: all_day boolean, calendar state
