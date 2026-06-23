@@ -27,6 +27,12 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   https://www.home-assistant.io/integrations/calendar/
 - Home Assistant Calendar get events action:
   https://www.home-assistant.io/actions/calendar.get_events/
+- Home Assistant Media player integration:
+  https://www.home-assistant.io/integrations/media_player/
+- Home Assistant media player join action:
+  https://www.home-assistant.io/actions/media_player.join/
+- Home Assistant media player unjoin action:
+  https://www.home-assistant.io/actions/media_player.unjoin/
 - Home Assistant sensor long-term statistics developer docs:
   https://developers.home-assistant.io/docs/core/entity/sensor/#long-term-statistics
 - Home Assistant template functions: https://www.home-assistant.io/template-functions/
@@ -177,6 +183,14 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   value contains an `events` list.
 - Calendar event response rows include `summary`, optional `description`,
   `start`, `end`, and optional `location`. Event `end` is exclusive.
+- `media_player.join` groups media players together for synchronous playback on
+  supported multiroom audio systems.
+- `media_player.join` uses the target media player as the player others follow,
+  and accepts required `group_members` in action data.
+- `media_player.unjoin` removes a target media player from a player group.
+- `media_player.unjoin` has no additional YAML options beyond the target.
+- Media player grouping actions only work on integrations that support player
+  groups.
 
 ## Assumptions
 
@@ -193,3 +207,6 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - History access through REST commands needs careful token handling with `secrets.yaml`.
 - The permission behavior of exposed Assist scripts that call administrator-only
   actions needs validation in a real Home Assistant instance.
+- Media Player Group Manager uses `state_attr(leader_entity_id,
+  'group_members')` as the current group snapshot for replace and clear
+  planning; this needs validation across real media player integrations.

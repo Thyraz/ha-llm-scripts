@@ -111,3 +111,19 @@ _Avoid_: function, mode, command
 **Calendar Manager event type**:
 A Calendar Manager filter that selects all events, all-day events, or timed events.
 _Avoid_: all_day boolean, calendar state
+
+**Media Player Group Manager**:
+An LLM Tool that lets an Assistant manage Home Assistant media player groups.
+_Avoid_: speaker group tool, media player grouping backend
+
+**Media Player Group Leader Entity ID**:
+A Home Assistant `media_player.*` entity ID supplied to Media Player Group Manager as the player that receives group membership changes.
+_Avoid_: master, coordinator, playback player
+
+**Media Player Group Member Entity ID**:
+A Home Assistant `media_player.*` entity ID supplied to Media Player Group Manager as a player added to or removed from a media player group.
+_Avoid_: member, speaker alias
+
+**Media Player Group Manager operation**:
+A named media-player-group action the Media Player Group Manager applies, such as joining players, unjoining players, or clearing group members.
+_Avoid_: function, mode, command
