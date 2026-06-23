@@ -15,6 +15,7 @@ Current implementation includes:
 - `script.llmtool_calculator` for deterministic arithmetic
 - `script.llmtool_date_calculator` for deterministic calendar and local-time calculations
 - `script.llmtool_calendar_manager` for reading Home Assistant calendar events
+- `script.llmtool_media_player_group_manager` for managing media player groups
 
 ## Install
 
@@ -451,6 +452,71 @@ Responses are capped by `limit`, default 100 and maximum 1000. Capped responses
 include `meta.truncated: true`; retry with a narrower time range or higher
 limit.
 
+## Media Player Group Manager tool
+
+After install, Home Assistant should expose:
+
+- `script.llmtool_media_player_group_manager`
+- `python_script.llmtool_media_player_group_manager`
+
+Media Player Group Manager joins media players into groups, unjoins media
+players from groups, and clears current members from a group leader. It changes
+Home Assistant media player grouping and only works with integrations that
+support media player groups.
+
+Supported operations:
+
+- `join`
+- `unjoin`
+- `clear_members`
+
+Pass `leader_entity_id` and `member_entity_ids` as Home Assistant
+`media_player.*` entity IDs. If you do not know the IDs, use Entity Index first.
+
+Run `script.llmtool_media_player_group_manager` from Developer Tools -> Actions:
+
+```yaml
+operation: join
+leader_entity_id: media_player.living_room
+member_entity_ids: media_player.kitchen,media_player.bedroom
+ungroup_first: false
+replace_existing: true
+```
+
+Expected response shape:
+
+```yaml
+success: true
+answer: "Joined 2 media player group members."
+data:
+  operation: join
+  leader_entity_id: media_player.living_room
+  joined_member_entity_ids:
+    - media_player.kitchen
+    - media_player.bedroom
+  unjoined_entity_ids:
+    - media_player.office
+  ignored_member_entity_ids: []
+  duplicate_member_entity_ids: []
+  ungroup_first: false
+  replace_existing: true
+meta:
+  tool: llmtool_media_player_group_manager
+  operation: join
+  leader_entity_id: media_player.living_room
+```
+
+Use `join` with `leader_entity_id` and `member_entity_ids`. Set
+`ungroup_first=true` to unjoin the leader and final members before joining. Set
+`replace_existing=true` to remove current non-leader members from the leader
+before joining new members.
+
+Use `unjoin` with `member_entity_ids`. Use `clear_members` with
+`leader_entity_id`.
+
+Validation issues return soft failures with `error`, `data`, and `meta` so the
+Assistant can retry.
+
 ## Calculator tool
 
 After install, Home Assistant should expose:
@@ -742,6 +808,35 @@ meta.truncated to decide whether to retry with a narrower time range or higher
 limit. On validation failure, use error and data to retry.
 ```
 
+For Media Player Group Manager, tell your Assistant:
+
+```text
+Use Media Player Group Manager when the user asks to group, ungroup, join, or
+separate Home Assistant media players. This tool changes media player grouping
+and only works with integrations that support media player groups.
+
+If you do not already know the exact media player entity IDs, call Entity Index
+first. Then pass media_player.* entity IDs.
+
+Choose operation from: join, unjoin, clear_members.
+
+Use join when the user wants media players to play together. Pass
+leader_entity_id as the media player that the others should follow. Pass
+member_entity_ids as a comma-separated string of media_player.* entity IDs to
+join to that leader. Use ungroup_first only when the user wants to detach the
+leader and final members from existing groups first. Use replace_existing only
+when the user wants to replace current members of the leader's group.
+
+Use unjoin when the user wants one or more media players removed from their
+current groups. Pass member_entity_ids only.
+
+Use clear_members when the user wants to remove current members from a group
+leader. Pass leader_entity_id only.
+
+On success, read answer and data. On validation failure, use error and data to
+retry.
+```
+
 For Calculator, tell your Assistant:
 
 ```text
@@ -803,6 +898,7 @@ use error and data to retry.
 - [Architecture decisions](docs/adr/0001-ha-native-llm-tool-scripts.md)
 - [Raw Entity History REST decision](docs/adr/0002-raw-entity-history-rest-command.md)
 - [Tool plans](docs/plans/README.md)
+- [Media Player Group Manager plan](docs/plans/implemented/media-player-group-manager.md)
 - [Calendar Manager plan](docs/plans/implemented/calendar-manager.md)
 - [Long-Term Aggregated Statistics plan](docs/plans/implemented/long-term-aggregated-statistics.md)
 - [Raw Entity History plan](docs/plans/implemented/raw-entity-history.md)
@@ -872,4 +968,10 @@ For Calendar Manager helper regression checks:
 
 ```bash
 python3 tests/test_llmtool_calendar_manager.py
+```
+
+For Media Player Group Manager helper regression checks:
+
+```bash
+python3 tests/test_llmtool_media_player_group_manager.py
 ```

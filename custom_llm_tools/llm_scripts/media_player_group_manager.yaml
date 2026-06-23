@@ -1,0 +1,222 @@
+llmtool_media_player_group_manager:
+  alias: LLM Tool Media Player Group Manager
+  icon: mdi:speaker-multiple
+  description: >
+    Use Media Player Group Manager when you need to join media players into a
+    group, unjoin media players from groups, or clear the current members from a
+    group leader. This changes Home Assistant media player grouping and only
+    works with integrations that support media player groups.
+
+    If you do not already know the exact media player entity IDs, use Entity
+    Index first to find Home Assistant media_player.* entity IDs.
+
+    Pass operation as one of: join, unjoin, clear_members.
+
+    For join, pass leader_entity_id as the media player that the others should
+    follow, and pass member_entity_ids as comma-separated media_player.* entity
+    IDs to join to that leader. Optional ungroup_first and replace_existing are
+    valid only for join.
+
+    For unjoin, pass member_entity_ids as comma-separated media_player.* entity
+    IDs to remove from their current groups.
+
+    For clear_members, pass leader_entity_id. The tool removes current
+    non-leader group members from that leader.
+
+    Example:
+    ```
+      operation: join
+      leader_entity_id: media_player.living_room
+      member_entity_ids: media_player.kitchen,media_player.bedroom
+      ungroup_first: false
+      replace_existing: true
+    ```
+
+    Return value example:
+    ```
+      success: true
+      answer: Joined 2 media player group members.
+      data:
+        operation: join
+        leader_entity_id: media_player.living_room
+        joined_member_entity_ids:
+          - media_player.kitchen
+          - media_player.bedroom
+        unjoined_entity_ids:
+          - media_player.office
+        ignored_member_entity_ids: []
+        duplicate_member_entity_ids: []
+        ungroup_first: false
+        replace_existing: true
+      meta:
+        tool: llmtool_media_player_group_manager
+        operation: join
+        leader_entity_id: media_player.living_room
+    ```
+  mode: queued
+  max: 2
+  fields:
+    operation:
+      name: Operation
+      description: >
+        Media Player Group Manager operation to apply. Use one of: join,
+        unjoin, clear_members.
+      required: true
+      example: join
+      selector:
+        select:
+          options:
+            - join
+            - unjoin
+            - clear_members
+    leader_entity_id:
+      name: Leader entity ID
+      description: >
+        Home Assistant media_player.* entity ID for the group leader. Required
+        for join and clear_members. Not used for unjoin.
+      required: false
+      example: media_player.living_room
+      selector:
+        text:
+    member_entity_ids:
+      name: Member entity IDs
+      description: >
+        Comma-separated Home Assistant media_player.* entity IDs. Required for
+        join and unjoin. Do not use for clear_members.
+      required: false
+      example: media_player.kitchen,media_player.bedroom
+      selector:
+        text:
+    ungroup_first:
+      name: Ungroup first
+      description: >
+        For join only. If true, unjoin the leader and final members before
+        joining the final members to the leader.
+      required: false
+      default: false
+      selector:
+        boolean:
+    replace_existing:
+      name: Replace existing members
+      description: >
+        For join only. If true, unjoin current non-leader members from the
+        leader before joining the final members.
+      required: false
+      default: false
+      selector:
+        boolean:
+  sequence:
+    # Normalize fields enough for predictable helper handoff.
+    - alias: Prepare Media Player Group Manager helper input
+      variables:
+        helper_operation: "{{ operation | default('', true) }}"
+        helper_leader_entity_id: "{{ leader_entity_id | default('', true) }}"
+        helper_member_entity_ids: "{{ member_entity_ids | default('', true) }}"
+        helper_ungroup_first: "{{ ungroup_first | default(false, true) }}"
+        helper_replace_existing: "{{ replace_existing | default(false, true) }}"
+
+    # Read the leader's current group once so replace/clear actions are planned
+    # against a stable snapshot.
+    - alias: Gather current leader group members
+      variables:
+        media_player_group_current_members_json: >
+          {% set raw_members = state_attr(helper_leader_entity_id, 'group_members') if helper_leader_entity_id else [] %}
+          {% set ns = namespace(items=[]) %}
+          {% if raw_members is iterable and raw_members is not string %}
+            {% for entity_id in raw_members %}
+              {% set entity_id_text = entity_id | string | trim %}
+              {% if entity_id_text %}
+                {% set ns.items = ns.items + [entity_id_text] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {{ ns.items | to_json }}
+
+    # Validate input and build the native Home Assistant action plan.
+    - alias: Prepare Media Player Group Manager action plan
+      action: python_script.llmtool_media_player_group_manager
+      data:
+        mode: prepare
+        operation: "{{ helper_operation }}"
+        leader_entity_id: "{{ helper_leader_entity_id }}"
+        member_entity_ids: "{{ helper_member_entity_ids }}"
+        ungroup_first: "{{ helper_ungroup_first }}"
+        replace_existing: "{{ helper_replace_existing }}"
+        current_group_members: >
+          {% if media_player_group_current_members_json is string %}
+            {{ media_player_group_current_members_json | from_json(default=[]) }}
+          {% else %}
+            {{ media_player_group_current_members_json }}
+          {% endif %}
+      response_variable: media_player_group_prepare
+
+    # Execute native media player actions only after validation succeeds.
+    - alias: Execute and shape Media Player Group Manager result
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ media_player_group_prepare.success }}"
+          sequence:
+            - repeat:
+                for_each: "{{ media_player_group_prepare.data.unjoin_entity_ids }}"
+                sequence:
+                  - action: media_player.unjoin
+                    target:
+                      entity_id: "{{ repeat.item }}"
+
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ (media_player_group_prepare.data.join_member_entity_ids | count) > 0 }}"
+                  sequence:
+                    - action: media_player.join
+                      target:
+                        entity_id: "{{ media_player_group_prepare.data.join_leader_entity_id }}"
+                      data:
+                        group_members: "{{ media_player_group_prepare.data.join_member_entity_ids }}"
+
+            - action: python_script.llmtool_media_player_group_manager
+              data:
+                mode: shape
+                operation: "{{ media_player_group_prepare.data.operation }}"
+                leader_entity_id: "{{ media_player_group_prepare.data.leader_entity_id }}"
+                join_member_entity_ids: "{{ media_player_group_prepare.data.join_member_entity_ids | join(',') }}"
+                unjoin_entity_ids: "{{ media_player_group_prepare.data.unjoin_entity_ids | join(',') }}"
+                previous_member_entity_ids: "{{ media_player_group_prepare.data.previous_member_entity_ids | join(',') }}"
+                ignored_member_entity_ids: "{{ media_player_group_prepare.data.ignored_member_entity_ids | join(',') }}"
+                duplicate_member_entity_ids: "{{ media_player_group_prepare.data.duplicate_member_entity_ids | join(',') }}"
+                ungroup_first: "{{ media_player_group_prepare.data.ungroup_first }}"
+                replace_existing: "{{ media_player_group_prepare.data.replace_existing }}"
+              response_variable: media_player_group_helper
+      default:
+        - variables:
+            media_player_group_helper:
+              success: false
+              error: "{{ media_player_group_prepare.error }}"
+              data: "{{ media_player_group_prepare.data }}"
+              meta: "{{ media_player_group_prepare.meta }}"
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ media_player_group_helper.success }}"
+          sequence:
+            - variables:
+                media_player_group_response:
+                  success: true
+                  answer: "{{ media_player_group_helper.answer }}"
+                  data: "{{ media_player_group_helper.data }}"
+                  meta: "{{ media_player_group_helper.meta }}"
+      default:
+        - variables:
+            media_player_group_response:
+              success: false
+              error: "{{ media_player_group_helper.error }}"
+              data: "{{ media_player_group_helper.data }}"
+              meta: "{{ media_player_group_helper.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Media Player Group Manager complete
+      response_variable: media_player_group_response

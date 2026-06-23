@@ -160,6 +160,42 @@ llmtool_calendar_manager:
         Response detail: compact or detailed.
       example: compact
 
+llmtool_media_player_group_manager:
+  name: LLM Tool Media Player Group Manager
+  description: >
+    Validate Media Player Group Manager input, prepare media_player join/unjoin
+    actions, and shape the response.
+  fields:
+    mode:
+      description: >
+        Helper mode: prepare validates input and builds the action plan; shape
+        validates and shapes the executed action plan response.
+      example: prepare
+    operation:
+      description: >
+        Media Player Group Manager operation: join, unjoin, or clear_members.
+      example: join
+    leader_entity_id:
+      description: >
+        Home Assistant media_player.* entity ID for the group leader.
+      example: media_player.living_room
+    member_entity_ids:
+      description: >
+        Comma-separated Home Assistant media_player.* member entity IDs.
+      example: media_player.kitchen,media_player.bedroom
+    ungroup_first:
+      description: >
+        For join only. Unjoin the leader and final members before joining.
+      example: "false"
+    replace_existing:
+      description: >
+        For join only. Unjoin current non-leader members before joining.
+      example: "false"
+    current_group_members:
+      description: >
+        Internal helper input from state_attr(leader_entity_id, 'group_members').
+      example: media_player.living_room,media_player.kitchen
+
 llmtool_long_term_aggregated_statistics:
   name: LLM Tool Long-Term Aggregated Statistics
   description: >

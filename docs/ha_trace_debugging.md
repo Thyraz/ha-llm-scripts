@@ -278,3 +278,44 @@ the YAML -> Python handoff failed. Check the `from_json` action data conversion.
 
 If `meta.truncated` is true, retry with a narrower time range, a higher limit,
 or more specific calendar IDs.
+
+### Media Player Group Manager
+
+Useful trace variables:
+
+- `media_player_group_current_members_json`
+- `media_player_group_prepare`
+- `media_player_group_helper`
+- `media_player_group_response`
+
+Useful Python Helper response fields:
+
+- `meta.operation`
+- `meta.leader_entity_id`
+- `data.join_member_entity_ids`
+- `data.unjoin_entity_ids`
+- `data.previous_member_entity_ids`
+- `data.ignored_member_entity_ids`
+- `data.duplicate_member_entity_ids`
+- `data.joined_member_entity_ids`
+- `data.cleared_member_entity_ids`
+
+Expected media player group model:
+
+- The public `leader_entity_id` input is passed to `media_player.join` as
+  `target.entity_id`.
+- The public `member_entity_ids` input is passed to `media_player.join` as
+  `data.group_members` for `join`.
+- `unjoin` and `clear_members` call `media_player.unjoin` with one target entity
+  at a time.
+- `clear_members` and `join` with `replace_existing=true` read
+  `state_attr(leader_entity_id, 'group_members')` before any actions run.
+- Missing or string `group_members` is treated as an empty current group.
+
+If the script raises a Home Assistant runtime error from `media_player.join` or
+`media_player.unjoin`, check whether the target integration supports media
+player grouping.
+
+If `replace_existing` or `clear_members` does not clear expected members,
+inspect `media_player_group_current_members_json` and verify whether the media
+player integration exposes `group_members` on the leader entity.
