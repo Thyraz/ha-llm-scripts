@@ -110,6 +110,11 @@ After install, Home Assistant should expose:
 Entity Index lets an Assistant discover allowed Home Assistant entities by
 label and location.
 
+For likely cumulative sensors, compact and detailed results include
+`value_hint`. For usage over a time range, follow that hint and use Long-Term
+Aggregated Statistics with `aggregation_type: change` instead of answering from
+the current state.
+
 Supported label names come from:
 
 1. `input_select.llmtool_entity_index_labels` options, when that helper exists.
@@ -818,7 +823,8 @@ Supported Entity Index label names:
 {{ ns.items | sort | join(', ') }}
 
 Entity Index: find entities by labels, location, and state. location is only
-inside, outside, or everywhere. Rooms/floors are label_names.
+inside, outside, or everywhere. Rooms/floors are label_names. If an entity has
+value_hint, follow it.
 
 Long-Term Aggregated Statistics: use for durable historical statistics:
 averages, minimums, maximums, changes, trends, energy, water, and other

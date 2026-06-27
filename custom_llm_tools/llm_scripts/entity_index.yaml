@@ -11,7 +11,12 @@ llmtool_entity_index:
     label_names, not as location. Location only accepts inside, outside, or
     everywhere.
 
-    Use meta.truncated to decide whether to retry with a narrower query or higher limit. 
+    Some sensor states are cumulative totals, for example energy or water
+    counters. If a returned entity has value_hint, follow it. For usage over a
+    time range, call Long-Term Aggregated Statistics with aggregation_type=change
+    instead of answering from the current state.
+
+    Use meta.truncated to decide whether to retry with a narrower query or higher limit.
     On success, read data.entities. On validation failure, use error and data
     to retry.
 

@@ -70,6 +70,9 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - `id_only` returns `data.entities` as a list of entity ID strings.
 - Success responses always return results under `data.entities`.
 - `compact` returns `entity_id`, `friendly_name`, `state`, and `matched_labels`.
+- `compact` and `detailed` add `value_hint` only when the entity state is likely
+  cumulative and period usage should be read through Long-Term Aggregated
+  Statistics with `aggregation_type=change`.
 - `matched_labels` contains only query-relevant labels that caused the entity to match.
 - `matched_labels` excludes `Everywhere`, `Inside`, and `Outside`; location appears in response metadata.
 - `state_filter` is an exact Home Assistant state string.
@@ -78,6 +81,9 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - `detailed` adds safe operational fields only: `domain`, `area_id`, `device_id`,
   `unit_of_measurement`, `device_class`, and `state_class` when available.
 - `detailed` omits unavailable optional fields and never dumps all attributes.
+- Cumulative sensor hints use Home Assistant metadata such as
+  `state_class=total`, `state_class=total_increasing`, and energy/water/gas
+  unit metadata.
 - `limit` caps returned results; default is 50 and maximum is 1000.
 - Response metadata includes `count` for returned results and `total` for total matches before limit.
 - Response metadata echoes normalized public query parameters, including

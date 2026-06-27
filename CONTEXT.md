@@ -60,6 +60,10 @@ _Avoid_: relative time text, UTC-only range
 A grouping choice for Long-Term Aggregated Statistics results, including Home Assistant statistics periods and one total-range aggregate.
 _Avoid_: arbitrary interval, sample rate
 
+**Cumulative Sensor**:
+A sensor whose current state is an accumulated total; usage over a time range is the change in that total, not the current state itself.
+_Avoid_: current usage value, instant consumption, meter reading as period usage
+
 **Raw Entity History**:
 An LLM Tool that returns unaggregated Home Assistant entity state history for a requested time range.
 _Avoid_: Short-Term RAW Entity History, raw recorder dump, history fetcher

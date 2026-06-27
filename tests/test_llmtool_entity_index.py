@@ -27,16 +27,32 @@ def run_helper(overrides):
     return output
 
 
-def candidate(entity_id, labels=None, visible=True, location=True):
-    return {
+def candidate(
+    entity_id,
+    labels=None,
+    visible=True,
+    location=True,
+    state="on",
+    unit_of_measurement="",
+    device_class="",
+    state_class="",
+):
+    result = {
         "entity_id": entity_id,
         "friendly_name": entity_id,
-        "state": "on",
+        "state": state,
         "matched_labels": labels or [],
         "visibility_matched": visible,
         "location_matched": location,
         "domain": entity_id.split(".")[0],
     }
+    if unit_of_measurement:
+        result["unit_of_measurement"] = unit_of_measurement
+    if device_class:
+        result["device_class"] = device_class
+    if state_class:
+        result["state_class"] = state_class
+    return result
 
 
 class EntityIndexHelperTest(unittest.TestCase):
@@ -143,6 +159,43 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertEqual("string", result["data"]["received"])
         self.assertEqual([], result["meta"]["label_names"])
         self.assertIn("Candidate records arrived as a string", result["error"])
+
+    def test_compact_result_hints_for_cumulative_usage_sensors(self):
+        result = run_helper(
+            {
+                "location": "inside",
+                "query_mode": "by_labels",
+                "labels": "Energy",
+                "known_labels": ["Energy"],
+                "verbosity": "compact",
+                "candidates": [
+                    candidate(
+                        "sensor.dishwasher_energy",
+                        ["Energy"],
+                        state="123.4",
+                        unit_of_measurement="kWh",
+                        device_class="energy",
+                        state_class="total_increasing",
+                    ),
+                    candidate(
+                        "sensor.dishwasher_power",
+                        ["Energy"],
+                        state="120",
+                        unit_of_measurement="W",
+                        device_class="power",
+                        state_class="measurement",
+                    ),
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        energy = result["data"]["entities"][0]
+        power = result["data"]["entities"][1]
+
+        self.assertEqual("sensor.dishwasher_energy", energy["entity_id"])
+        self.assertIn("aggregation_type=change", energy["value_hint"])
+        self.assertNotIn("value_hint", power)
 
 
 if __name__ == "__main__":

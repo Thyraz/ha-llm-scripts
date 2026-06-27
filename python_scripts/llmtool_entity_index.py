@@ -25,6 +25,30 @@ def validation_error(message, data_payload=None, meta_payload=None):
     output["meta"] = meta_payload or {}
 
 
+def normalized_unit(value):
+    return as_text(value).lower().replace(" ", "").replace("\u00b3", "3")
+
+
+def cumulative_value_hint(match):
+    if match.get("domain") != "sensor":
+        return ""
+
+    state_class = as_text(match.get("state_class")).lower()
+    device_class = as_text(match.get("device_class")).lower()
+    unit = normalized_unit(match.get("unit_of_measurement"))
+
+    if state_class in ["total", "total_increasing"]:
+        return "cumulative; for usage over time use Long-Term Aggregated Statistics with aggregation_type=change"
+
+    if device_class in ["energy", "gas", "water"] and unit in ["wh", "kwh", "mwh", "l", "ml", "m3"]:
+        return "cumulative; for usage over time use Long-Term Aggregated Statistics with aggregation_type=change"
+
+    if unit in ["wh", "kwh", "mwh"]:
+        return "cumulative; for usage over time use Long-Term Aggregated Statistics with aggregation_type=change"
+
+    return ""
+
+
 # Normalize script input and internal label names.
 known_label_names = data.get("known_labels") or []
 visibility_label_name = as_text(data.get("visibility_label")) or "Everywhere"
@@ -236,6 +260,10 @@ if output.get("success") is not False:
                 ]:
                     if detail_field in match:
                         entity[detail_field] = match[detail_field]
+
+            value_hint = cumulative_value_hint(match)
+            if value_hint:
+                entity["value_hint"] = value_hint
 
             entities.append(entity)
 
