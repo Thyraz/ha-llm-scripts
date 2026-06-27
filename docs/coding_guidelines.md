@@ -25,9 +25,9 @@ Keep the code easy to read. Prefer clear, boring control flow over defensive han
   block template would otherwise become a string. Use `from_json` only when the
   Script trace shows the value is still a JSON string.
 - Return a structured response with `stop` and `response_variable`.
-- Put implementation details in YAML comments or stable docs, not in script
-  descriptions, field descriptions, prompt snippets, or runtime text returned to
-  Assist.
+- Put implementation details in YAML comments or stable docs, not in Tool
+  descriptions, field descriptions, Prompt overviews, or runtime text returned
+  to Assist.
 
 ## Python Helpers
 

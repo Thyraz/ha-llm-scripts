@@ -36,7 +36,19 @@ llmtool_calendar_manager:
     narrower time range.
 
     On success, read data.calendars. Results are grouped by calendar. All-day
-    event end times are returned as the final day at 23:59:59.
+    event end times are returned as the final day at 23:59:59. On validation
+    failure, use error and data to retry.
+
+    Example:
+    ```
+      operation: list_range
+      calendar_entity_ids: calendar.family
+      start_time: "2026-06-22 00:00:00"
+      end_time: "2026-06-23 00:00:00"
+      event_type: all
+      verbosity: compact
+      limit: 100
+    ```
   mode: queued
   max: 2
   fields:

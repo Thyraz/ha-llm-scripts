@@ -49,13 +49,34 @@ llmtool_memory_manager:
     every known topic with labels, but not Memory Entries or Memory IDs. Do not
     use inspect_inventory by itself to answer recall questions.
 
-    Example recall flow: user asks what you remember about Kid One school. Call
-    inspect_inventory, then search with topic school and label kid_one, then
-    read with a returned memory_id before answering.
+    Each Memory Entry text is capped at 4 KiB. If meta.warning is present, tell
+    the user the memory store is near its size limit. On validation failure, use
+    error and data to retry.
 
-    Example write flow: user asks you to remember that school starts at 08:10.
-    Call inspect_inventory, then remember with topic school, labels such as
-    schedule,kid_one, and the text to remember.
+    Example: recall calls:
+    ```
+      operation: inspect_inventory
+    ```
+    Then:
+    ```
+      operation: search
+      topic: school
+      labels: kid_one
+      limit: 5
+    ```
+    Then read a returned memory_id before answering:
+    ```
+      operation: read
+      memory_id: m000001
+    ```
+
+    Example: write call after inspect_inventory:
+    ```
+      operation: remember
+      topic: school
+      labels: schedule,kid_one
+      text: School starts at 08:10 on regular weekdays.
+    ```
   mode: queued
   max: 2
   fields:

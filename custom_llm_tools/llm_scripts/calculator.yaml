@@ -1,8 +1,8 @@
 llmtool_calculator:
   alias: LLM Tool Calculator
   description: >
-    Use Calculator when arithmetic must be calculated exactly from values the
-    Assistant already has.
+    Use Calculator for arithmetic from values the Assistant already has. Do not
+    do mental arithmetic when this tool is available.
 
     Pass operation as one of: sum, difference, product, quotient, minimum,
     maximum, average.

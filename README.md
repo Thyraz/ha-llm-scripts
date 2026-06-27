@@ -783,14 +783,20 @@ data: {}
 meta: {}
 ```
 
-## Prompt guidance
+## Prompt overview
 
-Tell your Assistant that these tools share one response format. It should use `answer` for the short summary, `data` for structured details, and `meta` for counts/query echo.
-
-For Entity Index, tell your Assistant:
+Use this compact overview in the Assistant instructions. Detailed call rules,
+parameters, examples, and retry behavior live in each Tool description.
 
 ```text
-Before calling LLM tools that need Home Assistant entity IDs, call Entity Index.
+Tools starting with "LLM Tool ..." are from a tool collection. 
+They share one structured response. Use answer for a short summary, data
+for structured details, and meta for counts, query echo, truncation, and
+warnings. On validation failure, use error and data to retry.
+
+Use Entity Index to discover allowed Home Assistant entity IDs before calling
+tools that need entity IDs, unless exact IDs are already known.
+
 Supported Entity Index label names:
 {% set configured = state_attr('input_select.llmtool_entity_index_labels', 'options') %}
 {% set hidden = ['Everywhere', 'Inside', 'Outside'] %}
@@ -811,250 +817,38 @@ Supported Entity Index label names:
 {% endif %}
 {{ ns.items | sort | join(', ') }}
 
-Pass label_names as a comma-separated string. Always choose location: inside,
-outside, or everywhere.
-Entity labels representing rooms or floors have to be passed as label_names, not
-as location. Location only accepts inside, outside, or everywhere.
-Use query_mode=by_labels for targeted lookup and all_labeled for inventory.
-Use meta.truncated to decide whether to retry with a narrower query or higher
-limit. On success, read data.entities. On validation failure, use error and data
-to retry.
-```
+Entity Index: find entities by labels, location, and state. location is only
+inside, outside, or everywhere. Rooms/floors are label_names.
 
-For Long-Term Aggregated Statistics, tell your Assistant:
+Long-Term Aggregated Statistics: use for durable historical statistics:
+averages, minimums, maximums, changes, trends, energy, water, and other
+long-term counters. For monotonic increasing counters, use change to get the
+increment over a time range.
 
-```text
-Use Long-Term Aggregated Statistics when the user asks about aggregated
-long-term history, trends, averages, minimums, maximums, or changes for known
-Home Assistant entities. It does not fetch raw state history.
+Raw Entity History: use for exact recent state changes, raw states, and how long
+an entity stayed in a state. Raw history has limited retention, but can access
+entities that do not provide long-term statistics.
 
-If you do not already know the exact entity IDs, call Entity Index first. Then
-pass entity_ids as a comma-separated string of entity IDs from Entity Index. Use
-at most 10 entity IDs.
+Calendar Manager: use for Home Assistant calendar events, upcoming events,
+event ranges, and event text search. This version reads events only.
 
-Pass start_time and optional end_time as local Home Assistant times in exactly
-this format: YYYY-MM-DD HH:MM:SS. Resolve relative user requests like
-"yesterday" or "last week" yourself before calling the tool. Empty end_time
-means now. Do not pass relative time text or timezone suffixes.
+Media Player Group Manager: use for grouping, joining, unjoining, or clearing
+Home Assistant media_player groups. This changes Home Assistant state.
 
-Choose aggregation_type from: mean, min, max, change. Use mean for average
-questions, min for lowest, max for highest, and change for increase/decrease
-over the time range.
+Memory Manager: use for user-provided long-term memory. Save memory only when
+the user asks or clearly confirms. Search memory when the question needs
+internal personal, family, or home-specific knowledge that general/web knowledge
+will not know. For search or remember, inspect memory inventory first unless an
+exact memory_id or exact known topic/labels are already available.
 
-Choose aggregation_period from: 5minute, hour, day, week, month, year, total.
-Use total when the user wants one value for the whole requested time range. Use
-hour/day/week/month/year when the user asks for a timeline or comparison over
-time.
+Calculator: use for every arithmetic calculation from numbers you already have.
+It does not fetch entities, states, units, history, or statistics.
 
-On success, read data.entities[].values. Each value has start and end local
-times plus the requested aggregation_type. If data.missing_entities is not
-empty, tell the user those requested entities had no statistics for the
-requested time range. Use meta.truncated to decide whether to retry with a
-narrower time range or coarser aggregation_period. On validation failure, use
-error and data to retry.
-```
+Date Calculator: use for every calendar or local-time calculation from dates you
+already have. It does not fetch entities, states, history, or statistics.
 
-For Raw Entity History, tell your Assistant:
-
-```text
-Use Raw Entity History when the user asks for exact recent state history,
-state changes, or how long an entity stayed in a raw Home Assistant state. It
-does not fetch long-term aggregated statistics.
-
-If you do not already know the exact entity IDs, call Entity Index first. Then
-pass entity_ids as a comma-separated string of entity IDs from Entity Index. Use
-at most 10 entity IDs.
-
-Pass start_time and optional end_time as local Home Assistant times in exactly
-this format: YYYY-MM-DD HH:MM:SS. Resolve relative user requests like
-"today", "yesterday", or "last night" yourself before calling the tool. Empty
-end_time means now. Do not pass relative time text or timezone suffixes.
-
-Use limit to cap returned history entries when the time range may contain many
-changes. Empty limit means 100. Maximum limit is 1000.
-
-On success, read data.entities[].history. Each entry has changed_at and state,
-and may have duration_until_next_change_seconds when another returned entry
-follows. state_at_start and state_at_end show the state active at the requested
-range boundaries when known. If data.missing_entities is not empty, tell the
-user those requested entities had no raw history for the requested time range.
-Use meta.truncated to decide whether to retry with a narrower time range or
-higher limit. On validation failure, use error and data to retry.
-```
-
-For Calendar Manager, tell your Assistant:
-
-```text
-Use Calendar Manager when the user asks about Home Assistant calendar events.
-This version reads events only.
-
-If you do not already know the exact calendar entity IDs, call Entity Index
-first or use calendar entity IDs listed in these instructions. Then pass
-calendar_entity_ids as a comma-separated string of calendar.* entity IDs. Empty
-calendar_entity_ids means all available calendar.* entities.
-
-Choose operation from: search_events, list_upcoming, list_range.
-
-Use list_upcoming for upcoming calendar events. Empty days_ahead means 31.
-
-Use list_range when the user gives a time range. Pass start_time and end_time as
-local Home Assistant times in exactly this format: YYYY-MM-DD HH:MM:SS. Resolve
-relative user requests yourself before calling the tool. Do not pass relative
-time text or timezone suffixes.
-
-Use search_events when the user asks to find an event by text. Pass keyword.
-Keyword matching is case-insensitive exact phrase matching over title,
-description, and location. Empty start_time means now. Empty end_time means now
-plus days_ahead.
-
-Use event_type to filter all, all_day, or timed events. Empty event_type means
-all. Use verbosity=compact by default. Use verbosity=detailed only when event
-descriptions are needed; descriptions are returned only in detailed mode.
-
-On success, read data.calendars[].events. Results are grouped by calendar. For
-all-day events, end is returned as the final local day at 23:59:59. Use
-meta.truncated to decide whether to retry with a narrower time range or higher
-limit. On validation failure, use error and data to retry.
-```
-
-For Media Player Group Manager, tell your Assistant:
-
-```text
-Use Media Player Group Manager when the user asks to group, ungroup, join, or
-separate Home Assistant media players. This tool changes media player grouping
-and only works with integrations that support media player groups.
-
-If you do not already know the exact media player entity IDs, call Entity Index
-first. Then pass media_player.* entity IDs.
-
-Choose operation from: join, unjoin, clear_members.
-
-Use join when the user wants media players to play together. Pass
-leader_entity_id as the media player that the others should follow. Pass
-member_entity_ids as a comma-separated string of media_player.* entity IDs to
-join to that leader. Use ungroup_first only when the user wants to detach the
-leader and final members from existing groups first. Use replace_existing only
-when the user wants to replace current members of the leader's group.
-
-Use unjoin when the user wants one or more media players removed from their
-current groups. Pass member_entity_ids only.
-
-Use clear_members when the user wants to remove current members from a group
-leader. Pass leader_entity_id only.
-
-On success, read answer and data. On validation failure, use error and data to
-retry.
-```
-
-For Memory Manager, tell your Assistant:
-
-```text
-Use Memory Manager when the user asks you to remember, recall, update, or forget
-user-provided long-term memory. Memory Manager is optional. Search memory when
-prior personal or home-specific knowledge may matter. Store only memory the user
-explicitly asks you to remember or clearly confirms.
-
-FIRST: before search or remember, call inspect_inventory to see existing Memory
-Topics and Memory Labels. Only skip this when the user gives an exact memory_id,
-exact known topic/labels, or you already called inspect_inventory for this user
-request.
-
-Recall workflow: inspect_inventory, choose existing topic/labels, search, then
-read a returned memory_id before answering. Do not invent query terms first
-unless the user gave a distinctive term. If search returns 0 entries and you
-have not already called inspect_inventory for this request, call
-inspect_inventory and retry by topic/labels before saying no memory was found.
-
-Choose operation from: remember, search, read, update, forget,
-inspect_inventory, list_recent, status.
-
-remember requires topic, labels, and text. Use existing topics/labels from
-inspect_inventory; avoid new labels that duplicate existing ones. remember
-always creates a new Memory Entry. If the user asks to change or replace old
-memory, use search, read, and update instead.
-
-search accepts query, topic, labels, or a useful combination. Omit query when
-listing by topic or labels. Query-only search is valid for distinctive terms.
-label_match_mode=all means AND, so every label must match. label_match_mode=any
-means OR, so at least one label must match. Empty means all.
-
-search and list_recent return snippets only. Snippets choose candidates; they
-are not factual answer sources. Call read with a returned memory_id before
-answering from memory. Memory IDs come from remember, search, and list_recent
-results. Do not guess Memory IDs.
-
-inspect_inventory is only index/discovery: topics and labels, not Memory
-Entries or Memory IDs. Do not use inspect_inventory by itself to answer recall
-questions.
-list_recent is only for broad browsing, recent-memory checks, or debugging when
-search scope is unknown.
-
-update and forget require memory_id. After search, read before update or
-ambiguous forget. If multiple plausible entries match update or forget, ask the
-user to choose unless one result is clear. forget is destructive; call it only
-when the user explicitly asks or confirms.
-
-On success, read answer and data. On validation failure, use error and data to
-retry. If meta.warning is present, tell the user the memory store is near its
-size limit.
-
-Examples:
-
-- User says "remember that Kid One starts school at 08:10": call
-  inspect_inventory, then remember with topic=school,
-  labels=schedule,kid_one, and the text to remember.
-- User asks "what do you remember about Kid One school?": call
-  inspect_inventory, then search with topic=school and labels=kid_one, then
-  read a promising memory_id before answering.
-```
-
-For Calculator, tell your Assistant:
-
-```text
-Use Calculator when arithmetic must be calculated exactly from values you
-already have. It does not fetch entities, states, units, or history.
-
-Choose operation from: sum, difference, product, quotient, minimum, maximum,
-average.
-
-Pass values as a comma-separated string of decimal numbers without units. Use
-"." as decimal separator, independent of locale settings. Commas separate
-values. For difference and quotient, value order matters.
-
-Use precision only when the user asks for rounded output, or rounded output is
-more useful. On success, read data.result. If precision was used, data.raw_result
-contains the unrounded result. On validation failure, use error and data to
-retry.
-```
-
-For Date Calculator, tell your Assistant:
-
-```text
-Use Date Calculator when calendar or local-time calculations must be calculated
-exactly from dates you already have. It does not fetch entities, states,
-history, or statistics.
-
-Choose operation from: duration_between_dates, date_by_adding_segments,
-weekday_for_date, next_matching_date, list_calendar_days, epoch_to_date,
-date_to_epoch.
-
-Pass dates as local Home Assistant times in exactly this format:
-YYYY-MM-DD HH:MM:SS. Resolve relative user requests like "tomorrow" yourself
-before calling the tool. Do not pass relative time text or timezone suffixes.
-
-For date_by_adding_segments, pass segments as comma-separated integer key=value
-pairs. Supported keys: years, months, days, hours, minutes, seconds.
-
-Use next_matching_date for recurring calendar dates like birthdays,
-anniversaries, "next Friday 13th", or "first Tuesday in December". Pass any
-combination of month, day_of_month, and weekday. Do not call duration_between_dates
-until you have first resolved the next matching date. Empty date means now.
-Optional hour, minute, and second set the returned time.
-
-For list_calendar_days, use limit when the range may be large. Empty limit means
-366. Maximum limit is 3660. Use meta.truncated to decide whether to retry with a
-narrower range or higher limit. On success, read data. On validation failure,
-use error and data to retry.
+For tools that need local timestamps, resolve relative user text first and pass
+local Home Assistant time as YYYY-MM-DD HH:MM:SS.
 ```
 
 ## Docs

@@ -3,14 +3,17 @@ llmtool_long_term_aggregated_statistics:
   description: >
     Use Long-Term Aggregated Statistics after Entity Index when you need
     aggregated Home Assistant long-term statistics for known entity IDs.
-    This tool is not for raw state history.
+    This tool is not for raw state history. Long-term statistics are the
+    durable historical source.
 
     Pass entity_ids as comma-separated Home Assistant entity IDs.
 
     Pass start_time and optional end_time as local Home Assistant times in
     exactly this format: YYYY-MM-DD HH:MM:SS. Empty end_time means now.
 
-    Pass aggregation_type as one of: mean, min, max, change.
+    Pass aggregation_type as one of: mean, min, max, change. For monotonic
+    increasing counters such as energy or water meters, use change to get the
+    increment over the requested time range.
 
     Pass aggregation_period as one of: 5minute, hour, day, week, month, year,
     total. Use total when one aggregate value for the whole requested time range
@@ -19,7 +22,8 @@ llmtool_long_term_aggregated_statistics:
     On success, read data.entities. Each entity has a values array. On partial
     success, data.missing_entities lists requested entity IDs with no statistics
     for the requested time range. Use meta.truncated to decide whether to retry
-    with a narrower time range or coarser aggregation_period.
+    with a narrower time range or coarser aggregation_period. On validation
+    failure, use error and data to retry.
 
     Example:
     ```

@@ -121,11 +121,9 @@ These examples describe how the Home Assistant LLM Assistant should choose param
 - Broad inventory questions may use `location=everywhere`.
 - Broad inventory should use `query_mode=all_labeled` and no labels.
 
-## Prompt guidance
+## Prompt overview
 
-The plan defines the intended prompt guidance. README should include the
-copyable user-facing snippet after implementation. The snippet should render the
-same runtime query label source as the script, tell the Assistant to call Entity
-Index before tools that need entity IDs, use `label_names`, choose `location`,
-explain that entity labels representing rooms or floors belong in `label_names`,
-and inspect `meta.truncated`.
+README should include the same runtime query label source as the script, tell
+the Assistant to call Entity Index before tools that need entity IDs, mention
+that rooms and floors are `label_names`, and leave detailed call rules to the
+Tool description.

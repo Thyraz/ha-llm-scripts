@@ -23,6 +23,9 @@ llmtool_media_player_group_manager:
     For clear_members, pass leader_entity_id. The tool removes current
     non-leader group members from that leader.
 
+    On success, read answer and data. On validation failure, use error and data
+    to retry.
+
     Example:
     ```
       operation: join

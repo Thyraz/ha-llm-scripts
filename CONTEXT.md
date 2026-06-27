@@ -32,6 +32,14 @@ _Avoid_: auto expose, storage patching
 Text an Assistant may read when choosing, calling, or interpreting an LLM Tool.
 _Avoid_: implementation notes, internal docs
 
+**Tool description**:
+Assistant-facing text attached to one LLM Tool Script that explains how to call that tool.
+_Avoid_: prompt snippet, README overview, implementation notes
+
+**Prompt overview**:
+Short Assistant prompt text that explains which LLM Tools are available and when to use each one.
+_Avoid_: full tool manual, call reference, implementation notes
+
 **Entity Index**:
 An LLM Tool that lets an Assistant discover Home Assistant entities it is allowed to know about before calling other LLM Tools.
 _Avoid_: entity registry dump, entity database, search backend

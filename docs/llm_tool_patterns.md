@@ -19,8 +19,11 @@ Use an LLM Tool Python Helper only when YAML/Jinja would be hard to read or when
 - Prefer comma-separated strings over list selectors until LLM tool parameter behavior is tested.
 - Keep descriptions precise; the Assistant sees them as tool guidance.
 - Do not ask the Assistant to guess Home Assistant IDs. Use explicit parameters, documented examples, or a purpose-built lookup tool.
-- Assistant-facing text should describe only usable parameters, allowed public
-  values, response fields, and retry behavior. Keep implementation details out.
+- Tool descriptions should describe usable parameters, allowed public values,
+  response fields, examples, and retry behavior for one tool. Keep
+  implementation details out.
+- Prompt overviews should help the Assistant choose the right tool. Do not make
+  them full call references.
 - For user-specific allowed values that must survive repo updates, prefer a
   user-owned Home Assistant helper/source that both the prompt template and the
   LLM Tool Script read. Do not hardcode those values in repo-owned scripts.
@@ -114,9 +117,12 @@ Rules:
 Each LLM Tool Script description should say:
 
 - when to use the tool
-- what each parameter means
+- exact workflow once the Assistant chose the tool
+- what each parameter means and when to pass it
 - what response format to expect
+- how to handle validation failures, truncation, or empty results
 - important safety limits
+- one or two concrete call examples for non-trivial tools
 
 Do not mention hidden filters, internal IDs, helper handoff details, or
 implementation labels in Assistant-facing descriptions. Put those details in
@@ -133,26 +139,26 @@ plausible values such as `LivingRoom` rather than placeholders such as
 `RoomLabel`, and explicitly say that example values may need replacement with
 real supported values.
 
-Do not over-compress Assistant-facing text for realtime smart-home models. More
+Do not over-compress tool descriptions for realtime smart-home models. More
 human-like parameter descriptions can be useful when they explain how parameters
 interact, or when to use them.
 
-## Prompt guidance
+## Prompt overviews
 
-README should include a short prompt snippet for each non-demo LLM Tool. Demo
-tools are validation-only and do not need operational prompt snippets. A later
-`examples/assistant_prompt.md` can provide a full copyable version.
+README should include one compact Prompt overview covering the non-demo LLM
+Tools. Demo tools are validation-only and do not need operational prompt text. A
+later `examples/assistant_prompt.md` can provide a full copyable version.
 
-The prompt should tell the Assistant:
+The Prompt overview should tell the Assistant:
 
 - these tools share the same response format
 - use `answer` for a short summary
 - use `data` for structured details
 - use `meta` for counts and query echo
 - when to call each non-demo tool
-- how to choose important parameters
-- how to react to validation errors or truncated results
+- main tool-to-tool flow, such as Entity Index before tools that need entity IDs
+- key safety rules that affect tool choice, such as write/destructive memory operations
 
-Prompt snippets should not teach the Assistant implementation details by telling
-it what not to do. Prefer a positive list of allowed values and actions. Add
-short negative guidance only for repeated observed mistakes.
+The Prompt overview should not duplicate full parameter lists, call examples,
+or detailed retry rules. Those belong in Tool descriptions. Short negative
+guidance is allowed only for repeated observed mistakes.

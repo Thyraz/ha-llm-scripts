@@ -1,8 +1,9 @@
 llmtool_date_calculator:
   alias: LLM Tool Date Calculator
   description: >
-    Use Date Calculator when calendar or local-time calculations must be
-    calculated exactly from dates the Assistant already has.
+    Use Date Calculator for calendar or local-time calculations from dates the
+    Assistant already has. Do not do date arithmetic mentally when this tool is
+    available.
 
     Pass operation as one of: duration_between_dates, date_by_adding_segments,
     weekday_for_date, next_matching_date, list_calendar_days, epoch_to_date, or
@@ -15,8 +16,11 @@ llmtool_date_calculator:
     pairs. Supported keys: years, months, days, hours, minutes, seconds. Values
     are integers and may be negative.
 
-    For next_matching_date, pass month, day_of_month, weekday, and optional
-    hour, minute, or second as needed. Empty date means now.
+    For next_matching_date, use recurring calendar dates such as birthdays,
+    anniversaries, the next Friday 13th, or the next Tuesday in December. Pass
+    month, day_of_month, weekday, and optional hour, minute, or second as
+    needed. Empty date means now. When the user asks for a duration until a
+    recurring date, call next_matching_date first, then duration_between_dates.
 
     list_calendar_days uses optional limit. Empty limit means 366. Maximum is
     3660. On success, read data. On validation failure, use error and data to retry.

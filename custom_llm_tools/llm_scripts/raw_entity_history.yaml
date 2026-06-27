@@ -3,7 +3,8 @@ llmtool_raw_entity_history:
   description: >
     Use Raw Entity History after Entity Index when you need unaggregated Home
     Assistant state history for known entity IDs. This tool is not for
-    long-term aggregated statistics.
+    long-term aggregated statistics. Raw history retention is limited, but it
+    can read raw states for entities that do not provide long-term statistics.
 
     Pass entity_ids as comma-separated Home Assistant entity IDs.
 
@@ -17,7 +18,8 @@ llmtool_raw_entity_history:
     state_at_end, and a history array when available. History entries contain
     changed_at, state, and duration_until_next_change_seconds when another
     returned history entry follows. Use meta.truncated to decide whether to
-    retry with a narrower time range or higher limit.
+    retry with a narrower time range or higher limit. On validation failure, use
+    error and data to retry.
 
     Example:
     ```
