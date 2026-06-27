@@ -16,6 +16,7 @@ Current implementation includes:
 - `script.llmtool_date_calculator` for deterministic calendar and local-time calculations
 - `script.llmtool_calendar_manager` for reading Home Assistant calendar events
 - `script.llmtool_media_player_group_manager` for managing media player groups
+- optional `script.llmtool_memory_manager` for user-provided long-term memory
 
 ## Install
 
@@ -517,6 +518,114 @@ Use `unjoin` with `member_entity_ids`. Use `clear_members` with
 Validation issues return soft failures with `error`, `data`, and `meta` so the
 Assistant can retry.
 
+## Memory Manager tool
+
+Memory Manager is optional. Use it only when you want Assistant memory.
+
+Before exposing it to Assist:
+
+1. Install Variables+History through HACS.
+2. Create a Sensor variable with ID `llm_memory`.
+3. Enable Restore on Restart.
+4. Enable Exclude from Recorder.
+5. Reload scripts or restart Home Assistant.
+6. Run `python_script.reload`.
+
+After setup, Home Assistant should expose:
+
+- `script.llmtool_memory_manager`
+- `python_script.llmtool_memory_manager`
+- `sensor.llm_memory`
+
+Expose only `script.llmtool_memory_manager` to Assist.
+
+Supported operations:
+
+- `remember`
+- `search`
+- `read`
+- `update`
+- `forget`
+- `inspect_inventory`
+- `list_recent`
+- `status`
+
+Run `script.llmtool_memory_manager` from Developer Tools -> Actions:
+
+```yaml
+operation: remember
+topic: school
+labels: schedule,kid_one
+text: School starts at 08:10 on regular weekdays.
+```
+
+Expected response shape:
+
+```yaml
+success: true
+answer: "Remembered 1 memory entry."
+data:
+  memory_id: m000001
+  topic: school
+  labels:
+    - schedule
+    - kid_one
+meta:
+  tool: llmtool_memory_manager
+  operation: remember
+  store_size_bytes: 424
+  soft_limit_bytes: 98304
+  hard_limit_bytes: 122880
+```
+
+Use `inspect_inventory` to see the Memory Inventory: existing Memory Topics and
+Memory Labels. It is only an index/discovery operation; do not use it by itself
+to answer memory recall questions.
+
+```yaml
+operation: inspect_inventory
+```
+
+Before search or remember, call `inspect_inventory` first unless the user gives
+an exact `memory_id`, exact known topic/labels, or you already called
+`inspect_inventory` for this user request. For recall, choose existing topic and
+labels from the Memory Inventory, then `search`, then `read`.
+
+Use `search` for snippets, then `read` for full text. Snippets are for choosing
+candidates, not factual answers. Do not guess Memory IDs. Search results include
+`memory_id`; pass that ID to `read`, `update`, or `forget`.
+
+```yaml
+operation: search
+topic: school
+labels: schedule,kid_one
+label_match_mode: all
+limit: 5
+```
+
+Omit `query` when listing by `topic` or `labels`. Query-only search is also
+valid for distinctive names or terms when no Memory Topic or Memory Label is
+known, but topic and labels keep results smaller when available. Empty `query`
+plus empty `topic` plus empty `labels` is invalid; use `list_recent` only for
+broad browsing, recent-memory checks, or debugging when search scope is unknown.
+For example, `search` with `topic: school` and no `query` lists school Memory
+Entry snippets. `search` with `labels: kid_one` and no `query` lists `kid_one`
+Memory Entry snippets across topics.
+
+`remember` always creates a new Memory Entry. `update` replaces full text by
+Memory ID and keeps omitted topic or labels unchanged. `forget` hard-deletes a
+Memory Entry by Memory ID. After finding a candidate by `search`, use `read`
+before `update` or ambiguous `forget` so you can confirm the full Memory Entry.
+If search returns multiple plausible entries for `update` or `forget`, ask the
+user to choose before changing memory unless the user's wording clearly
+identifies one result. If the user gives an exact `memory_id`, you can use it
+directly. `forget` is destructive; call it only when the user explicitly asks
+or confirms.
+
+Each Memory Entry text is capped at 4 KiB. The store warns above 96 KiB and
+rejects writes above 120 KiB. Search is deterministic lexical token search, not
+semantic or fuzzy search.
+
 ## Calculator tool
 
 After install, Home Assistant should expose:
@@ -837,6 +946,68 @@ On success, read answer and data. On validation failure, use error and data to
 retry.
 ```
 
+For Memory Manager, tell your Assistant:
+
+```text
+Use Memory Manager when the user asks you to remember, recall, update, or forget
+user-provided long-term memory. Memory Manager is optional. Search memory when
+prior personal or home-specific knowledge may matter. Store only memory the user
+explicitly asks you to remember or clearly confirms.
+
+FIRST: before search or remember, call inspect_inventory to see existing Memory
+Topics and Memory Labels. Only skip this when the user gives an exact memory_id,
+exact known topic/labels, or you already called inspect_inventory for this user
+request.
+
+Recall workflow: inspect_inventory, choose existing topic/labels, search, then
+read a returned memory_id before answering. Do not invent query terms first
+unless the user gave a distinctive term. If search returns 0 entries and you
+have not already called inspect_inventory for this request, call
+inspect_inventory and retry by topic/labels before saying no memory was found.
+
+Choose operation from: remember, search, read, update, forget,
+inspect_inventory, list_recent, status.
+
+remember requires topic, labels, and text. Use existing topics/labels from
+inspect_inventory; avoid new labels that duplicate existing ones. remember
+always creates a new Memory Entry. If the user asks to change or replace old
+memory, use search, read, and update instead.
+
+search accepts query, topic, labels, or a useful combination. Omit query when
+listing by topic or labels. Query-only search is valid for distinctive terms.
+label_match_mode=all means AND, so every label must match. label_match_mode=any
+means OR, so at least one label must match. Empty means all.
+
+search and list_recent return snippets only. Snippets choose candidates; they
+are not factual answer sources. Call read with a returned memory_id before
+answering from memory. Memory IDs come from remember, search, and list_recent
+results. Do not guess Memory IDs.
+
+inspect_inventory is only index/discovery: topics and labels, not Memory
+Entries or Memory IDs. Do not use inspect_inventory by itself to answer recall
+questions.
+list_recent is only for broad browsing, recent-memory checks, or debugging when
+search scope is unknown.
+
+update and forget require memory_id. After search, read before update or
+ambiguous forget. If multiple plausible entries match update or forget, ask the
+user to choose unless one result is clear. forget is destructive; call it only
+when the user explicitly asks or confirms.
+
+On success, read answer and data. On validation failure, use error and data to
+retry. If meta.warning is present, tell the user the memory store is near its
+size limit.
+
+Examples:
+
+- User says "remember that Kid One starts school at 08:10": call
+  inspect_inventory, then remember with topic=school,
+  labels=schedule,kid_one, and the text to remember.
+- User asks "what do you remember about Kid One school?": call
+  inspect_inventory, then search with topic=school and labels=kid_one, then
+  read a promising memory_id before answering.
+```
+
 For Calculator, tell your Assistant:
 
 ```text
@@ -897,7 +1068,9 @@ use error and data to retry.
 - [HA trace debugging](docs/ha_trace_debugging.md)
 - [Architecture decisions](docs/adr/0001-ha-native-llm-tool-scripts.md)
 - [Raw Entity History REST decision](docs/adr/0002-raw-entity-history-rest-command.md)
+- [Memory Manager storage decision](docs/adr/0003-optional-memory-manager-uses-variables-history.md)
 - [Tool plans](docs/plans/README.md)
+- [Memory Manager plan](docs/plans/implemented/memory-manager.md)
 - [Media Player Group Manager plan](docs/plans/implemented/media-player-group-manager.md)
 - [Calendar Manager plan](docs/plans/implemented/calendar-manager.md)
 - [Long-Term Aggregated Statistics plan](docs/plans/implemented/long-term-aggregated-statistics.md)
@@ -974,4 +1147,10 @@ For Media Player Group Manager helper regression checks:
 
 ```bash
 python3 tests/test_llmtool_media_player_group_manager.py
+```
+
+For Memory Manager helper regression checks:
+
+```bash
+python3 tests/test_llmtool_memory_manager.py
 ```

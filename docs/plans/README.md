@@ -6,10 +6,11 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 
 ## Current active plans
 
-- [Memory Manager](memory-manager.md)
+None.
 
 ## Implemented plans
 
+- [Memory Manager](implemented/memory-manager.md)
 - [Calendar Manager](implemented/calendar-manager.md)
 - [Demo LLM Tool](implemented/demo-tool.md)
 - [Entity Index](implemented/entity-index.md)

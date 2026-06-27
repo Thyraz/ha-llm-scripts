@@ -196,6 +196,50 @@ llmtool_media_player_group_manager:
         Internal helper input from state_attr(leader_entity_id, 'group_members').
       example: media_player.living_room,media_player.kitchen
 
+llmtool_memory_manager:
+  name: LLM Tool Memory Manager
+  description: >
+    Validate Memory Manager input, read the Memory Store Entity, prepare writes,
+    and shape the response.
+  fields:
+    operation:
+      description: >
+        Memory Manager operation: remember, search, read, update, forget,
+        inspect_inventory, list_recent, or status.
+      example: remember
+    memory_id:
+      description: >
+        Memory ID for read, update, and forget.
+      example: m000001
+    topic:
+      description: >
+        Broad Memory Topic. Required for remember, optional for search and
+        update.
+      example: school
+    labels:
+      description: >
+        Comma-separated Memory Labels. Required for remember, optional for
+        search and update.
+      example: schedule,kid_one
+    label_match_mode:
+      description: >
+        Search label matching: all or any. Empty means all.
+      example: all
+    query:
+      description: >
+        Lexical search text matched against Memory Entry text, topic, and
+        labels.
+      example: school starts today
+    text:
+      description: >
+        Memory Entry text for remember and full replacement text for update.
+      example: School starts at 08:10 on regular weekdays.
+    limit:
+      description: >
+        Optional maximum returned entries for search and list_recent. Default
+        10, maximum 100.
+      example: "10"
+
 llmtool_long_term_aggregated_statistics:
   name: LLM Tool Long-Term Aggregated Statistics
   description: >

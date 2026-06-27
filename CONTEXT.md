@@ -148,6 +148,10 @@ _Avoid_: chapter, folder, namespace
 A short tag attached to a Memory Entry inside a Memory Topic to make retrieval more precise.
 _Avoid_: category, Home Assistant label, entity label
 
+**Memory Inventory**:
+The available Memory Topics and Memory Labels an Assistant inspects before choosing how to search or store Memory Entries.
+_Avoid_: topic list, memory dump, full memory listing
+
 **Memory Manager operation**:
-A named memory action the Memory Manager applies, such as remembering, searching, reading, updating, forgetting, listing topics, listing recent entries, or reporting status.
+A named memory action the Memory Manager applies, such as remembering, searching, reading, updating, forgetting, inspecting inventory, listing recent entries, or reporting status.
 _Avoid_: function, mode, command
