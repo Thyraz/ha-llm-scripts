@@ -10,6 +10,7 @@ None.
 
 ## Implemented plans
 
+- [Memory Manager](implemented/memory-manager.md)
 - [Calendar Manager](implemented/calendar-manager.md)
 - [Demo LLM Tool](implemented/demo-tool.md)
 - [Entity Index](implemented/entity-index.md)

@@ -1,0 +1,206 @@
+llmtool_memory_manager:
+  alias: LLM Tool Memory Manager
+  icon: mdi:brain
+  description: >
+    Use Memory Manager when the user wants the Assistant to remember,
+    search, read, update, or forget user-provided long-term memory.
+    Memory Manager is optional; use it only when memory is relevant. Store only
+    memory the user explicitly asks to remember or clearly confirms.
+
+    FIRST: before search or remember, call inspect_inventory to see existing
+    Memory Topics and Memory Labels. Only skip this when the user gives an exact
+    memory_id, exact known topic/labels, or you already called inspect_inventory
+    for this user request.
+
+    Recall workflow: inspect_inventory, choose existing topic/labels, search,
+    then read a returned memory_id before answering. Do not invent query terms
+    first unless the user gave a distinctive term. If search returns 0 entries
+    and you have not already called inspect_inventory for this request, call
+    inspect_inventory and retry by topic/labels before saying no memory was
+    found.
+
+    Choose operation from: remember, search, read, update, forget,
+    inspect_inventory, list_recent, status.
+
+    remember requires topic, labels, and text. Use existing topics/labels from
+    inspect_inventory; avoid new labels that duplicate existing ones. remember
+    always creates a new Memory Entry. If the user asks to change or replace old
+    memory, use search, read, and update instead.
+
+    search accepts query, topic, labels, or a useful combination. Omit query to
+    list snippets by topic and/or labels. Query-only search is valid only for
+    distinctive terms. Empty query plus empty topic plus empty labels is
+    invalid; use list_recent only for broad browsing, recent-memory checks, or
+    debugging when search scope is unknown. label_match_mode=all means AND;
+    every label must match. label_match_mode=any means OR; at least one label
+    must match.
+
+    search and list_recent return snippets only. Snippets choose candidates;
+    they are not factual answer sources. Call read with a returned memory_id
+    before answering from memory.
+
+    read, update, and forget require memory_id. Do not guess Memory IDs. Get
+    them from remember, search, or list_recent results. After search, read
+    before update or ambiguous forget. If multiple plausible entries match
+    update or forget, ask the user to choose unless one result is clear. forget
+    is destructive; call it only when the user explicitly asks or confirms.
+
+    inspect_inventory is only a memory-structure/index operation. It returns
+    every known topic with labels, but not Memory Entries or Memory IDs. Do not
+    use inspect_inventory by itself to answer recall questions.
+
+    Example recall flow: user asks what you remember about Kid One school. Call
+    inspect_inventory, then search with topic school and label kid_one, then
+    read with a returned memory_id before answering.
+
+    Example write flow: user asks you to remember that school starts at 08:10.
+    Call inspect_inventory, then remember with topic school, labels such as
+    schedule,kid_one, and the text to remember.
+  mode: queued
+  max: 2
+  fields:
+    operation:
+      name: Operation
+      description: >
+        Memory Manager operation to apply. Use one of: remember, search, read,
+        update, forget, inspect_inventory, list_recent, status.
+      required: true
+      example: search
+      selector:
+        select:
+          options:
+            - remember
+            - search
+            - read
+            - update
+            - forget
+            - inspect_inventory
+            - list_recent
+            - status
+    memory_id:
+      name: Memory ID
+      description: >
+        Memory ID for read, update, and forget, such as m000001.
+      required: false
+      example: m000001
+      selector:
+        text:
+    topic:
+      name: Topic
+      description: >
+        Broad user-meaningful Memory Topic. Required for remember, optional for
+        search and update.
+      required: false
+      example: school
+      selector:
+        text:
+    labels:
+      name: Labels
+      description: >
+        Comma-separated Memory Labels. Required for remember, optional for
+        search and update.
+      required: false
+      example: schedule,kid_one
+      selector:
+        text:
+    label_match_mode:
+      name: Label match mode
+      description: >
+        For search with multiple labels, all means AND: every label must match.
+        any means OR: at least one label must match. Empty means all.
+      required: false
+      default: all
+      example: all
+      selector:
+        select:
+          options:
+            - all
+            - any
+    query:
+      name: Query
+      description: >
+        Optional lexical search text for search. Search matches query words
+        against Memory Entry text, topic, and labels. Query-only search is valid
+        for distinctive names or terms when no topic or label is known. Omit
+        query when listing by topic or labels.
+      required: false
+      example: school starts today
+      selector:
+        text:
+    text:
+      name: Text
+      description: >
+        Memory Entry text for remember and full replacement text for update.
+        Maximum is 4 KiB.
+      required: false
+      example: School starts at 08:10 on regular weekdays.
+      selector:
+        text:
+          multiline: true
+    limit:
+      name: Limit
+      description: >
+        Optional maximum returned entries for search and list_recent. Default
+        10. Maximum 100.
+      required: false
+      default: 10
+      example: "10"
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+  sequence:
+    # Validate input, read the Memory Store Entity, and shape the public response.
+    - alias: Call Memory Manager Python Helper
+      action: python_script.llmtool_memory_manager
+      data:
+        operation: "{{ operation | default('', true) }}"
+        memory_id: "{{ memory_id | default('', true) }}"
+        topic: "{{ topic | default('', true) }}"
+        labels: "{{ labels | default('', true) }}"
+        label_match_mode: "{{ label_match_mode | default('', true) }}"
+        query: "{{ query | default('', true) }}"
+        text: "{{ text | default('', true) }}"
+        limit: "{{ limit | default('', true) }}"
+      response_variable: memory_manager_helper
+
+    # Persist writes only after helper validation succeeds or initialization is needed.
+    - alias: Write Memory Store Entity
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ memory_manager_helper.write_required }}"
+          sequence:
+            - action: variable.update_sensor
+              data:
+                entity_id: "{{ memory_manager_helper.memory_store_entity_id }}"
+                value: "{{ memory_manager_helper.write_memory.entries | count }}"
+                replace_attributes: true
+                attributes:
+                  memory: "{{ memory_manager_helper.write_memory }}"
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ memory_manager_helper.response.success }}"
+          sequence:
+            - variables:
+                memory_manager_response:
+                  success: true
+                  answer: "{{ memory_manager_helper.response.answer }}"
+                  data: "{{ memory_manager_helper.response.data }}"
+                  meta: "{{ memory_manager_helper.response.meta }}"
+      default:
+        - variables:
+            memory_manager_response:
+              success: false
+              error: "{{ memory_manager_helper.response.error }}"
+              data: "{{ memory_manager_helper.response.data }}"
+              meta: "{{ memory_manager_helper.response.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Memory Manager complete
+      response_variable: memory_manager_response

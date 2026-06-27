@@ -58,6 +58,10 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   `homeassistant/components/history/__init__.py`
 - Home Assistant `from_json` template function:
   https://www.home-assistant.io/template-functions/from_json/
+- Variables+History custom integration:
+  https://github.com/Wibias/hass-variables
+- Home Assistant RestoreEntity source:
+  `homeassistant/helpers/restore_state.py`
 
 ## Verified
 
@@ -191,6 +195,26 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - `media_player.unjoin` has no additional YAML options beyond the target.
 - Media player grouping actions only work on integrations that support player
   groups.
+- Variables+History v3.5.7 creates variable entities as `sensor.*`,
+  `binary_sensor.*`, or `device_tracker.*`.
+- Variables+History supports UI-created sensor variables and YAML-created
+  sensor variables. YAML-created variables cannot be edited through the
+  integration UI.
+- Variables+History sensor variables support initial attributes, Restore on
+  Restart, Force Update, and Exclude from Recorder.
+- Variables+History documentation recommends Exclude from Recorder for variable
+  attributes larger than 16 KiB to prevent Recorder errors.
+- Variables+History exposes `variable.update_sensor` for sensor variables. It
+  can update the state value, update attributes, and replace or merge existing
+  attributes.
+- Variables+History defaults `replace_attributes` to false. Memory Manager
+  should use `replace_attributes: true` when writing the full memory attribute
+  so deleted entries do not remain as stale top-level attributes.
+- Variables+History sensor variables extend Home Assistant `RestoreSensor`, and
+  Home Assistant restore state is stored separately from Recorder. This supports
+  the Memory Manager plan to use Restore on Restart while excluding the Memory
+  Store Entity from Recorder, but it still needs manual validation in a real
+  Home Assistant instance.
 
 ## Assumptions
 

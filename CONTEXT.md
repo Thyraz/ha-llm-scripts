@@ -127,3 +127,31 @@ _Avoid_: member, speaker alias
 **Media Player Group Manager operation**:
 A named media-player-group action the Media Player Group Manager applies, such as joining players, unjoining players, or clearing group members.
 _Avoid_: function, mode, command
+
+**Memory Manager**:
+An optional LLM Tool that lets an Assistant store, find, update, and forget user-provided long-term memory.
+_Avoid_: memory database, cabinet, drawer, hyperindex
+
+**Memory Store Entity**:
+A Home Assistant entity that owns the durable memory state used by Memory Manager.
+_Avoid_: storage backend, database table, variable helper
+
+**Memory Entry**:
+One remembered item in Memory Manager, with text plus organization metadata.
+_Avoid_: drawer, note blob, raw text chunk
+
+**Memory Topic**:
+A broad user-meaningful area that groups Memory Entries, such as school or heating.
+_Avoid_: chapter, folder, namespace
+
+**Memory Label**:
+A short tag attached to a Memory Entry inside a Memory Topic to make retrieval more precise.
+_Avoid_: category, Home Assistant label, entity label
+
+**Memory Inventory**:
+The available Memory Topics and Memory Labels an Assistant inspects before choosing how to search or store Memory Entries.
+_Avoid_: topic list, memory dump, full memory listing
+
+**Memory Manager operation**:
+A named memory action the Memory Manager applies, such as remembering, searching, reading, updating, forgetting, inspecting inventory, listing recent entries, or reporting status.
+_Avoid_: function, mode, command

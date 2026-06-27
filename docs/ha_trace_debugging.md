@@ -319,3 +319,48 @@ player grouping.
 If `replace_existing` or `clear_members` does not clear expected members,
 inspect `media_player_group_current_members_json` and verify whether the media
 player integration exposes `group_members` on the leader entity.
+
+### Memory Manager
+
+Useful trace variables:
+
+- `memory_manager_helper`
+- `memory_manager_response`
+
+Useful Python Helper response fields:
+
+- `write_required`
+- `memory_store_entity_id`
+- `response.success`
+- `response.data`
+- `response.meta`
+- `write_memory.schema_version`
+- `write_memory.next_id`
+- `write_memory.entries`
+
+Expected memory model:
+
+- The Memory Store Entity is `sensor.llm_memory`.
+- The durable store lives in the Memory Store Entity's `memory` attribute.
+- Missing `memory` attribute initializes an empty v1 store.
+- Write operations call `variable.update_sensor` with `replace_attributes:
+  true` and a full `memory` attribute.
+- The sensor state is set to the current Memory Entry count on writes.
+- `remember`, `update`, and `forget` write the store.
+- `search` and `list_recent` return snippets only.
+- `read` returns full text for one Memory Entry.
+- Search is deterministic lexical token search, not semantic or fuzzy search.
+
+If the helper returns a setup failure, confirm `sensor.llm_memory` exists and is
+a Variables+History Sensor variable.
+
+If the helper returns a malformed store failure, inspect
+`sensor.llm_memory.attributes.memory`; manual edits may have broken
+`schema_version`, `next_id`, `entries`, or entry fields.
+
+If `variable.update_sensor` raises a Home Assistant runtime error, confirm the
+Variables+History integration is installed and exposes that action.
+
+If `write_memory` is shown as one quoted string under action data, the YAML ->
+Python handoff or `variable.update_sensor` attribute templating needs runtime
+inspection in the Script trace.
