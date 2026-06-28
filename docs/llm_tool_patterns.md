@@ -159,6 +159,10 @@ The Prompt overview should tell the Assistant:
 - main tool-to-tool flow, such as Entity Index before tools that need entity IDs
 - key safety rules that affect tool choice, such as write/destructive memory operations
 
+Prompt overview entries should normally describe what a tool is good for, not
+how to call it. Add extra tool-selection hints only for observed small-model
+failure modes where the Assistant repeatedly chooses the wrong tool or workflow.
+
 The Prompt overview should not duplicate full parameter lists, call examples,
 or detailed retry rules. Those belong in Tool descriptions. Short negative
 guidance is allowed only for repeated observed mistakes.

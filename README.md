@@ -831,6 +831,13 @@ averages, minimums, maximums, changes, trends, energy, water, and other
 long-term counters. For monotonic increasing counters, use change to get the
 increment over a time range.
 
+For questions like energy used, energy loaded, water used, or gas used in a
+time range, prefer a cumulative energy/water/gas counter and Long-Term
+Aggregated Statistics with aggregation_type=change. Do not estimate from current
+power/flow multiplied by duration unless no cumulative counter/statistics exist.
+Check upfront if you can to use specific labels for the entity index tool
+to find cumulative energy sensors.
+
 Raw Entity History: use for exact recent state changes, raw states, and how long
 an entity stayed in a state. Raw history has limited retention, but can access
 entities that do not provide long-term statistics.

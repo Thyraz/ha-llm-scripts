@@ -15,6 +15,11 @@ llmtool_long_term_aggregated_statistics:
     increasing counters such as energy or water meters, use change to get the
     increment over the requested time range.
 
+    For questions like energy used, energy loaded, water used, or gas used in a
+    time range, prefer a cumulative counter sensor with aggregation_type=change.
+    Do not estimate from current power or flow multiplied by duration unless no
+    cumulative counter/statistics exist.
+
     Pass aggregation_period as one of: 5minute, hour, day, week, month, year,
     total. Use total when one aggregate value for the whole requested time range
     is enough.

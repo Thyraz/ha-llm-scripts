@@ -56,6 +56,11 @@ for raw state history.
   - `min`
   - `max`
   - `change`
+- For cumulative counters such as energy, water, and gas meters,
+  `aggregation_type=change` returns usage over the requested time range.
+- Assistant-facing text should tell the Assistant not to estimate energy or
+  fluid usage from current power/flow multiplied by duration when a cumulative
+  counter/statistics source exists.
 - `sum`, `state`, and `last_reset` are out of scope for v1.
 - `aggregation_period` accepts:
   - `5minute`
