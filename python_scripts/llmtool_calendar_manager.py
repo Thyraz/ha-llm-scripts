@@ -1,6 +1,7 @@
 TOOL_NAME = "llmtool_calendar_manager"
 DEFAULT_DAYS_AHEAD = 31
-MAX_DAYS_AHEAD = 3660
+MAX_TIME_RANGE_DAYS = 365
+SECONDS_PER_DAY = 86400
 DEFAULT_LIMIT = 100
 MAX_LIMIT = 1000
 MAX_DESCRIPTION_LENGTH = 1000
@@ -360,6 +361,60 @@ def parse_int_field(value, field_name, default_value, min_value, max_value):
     return parsed, ""
 
 
+def parse_min_int_field(value, field_name, default_value, min_value):
+    text = as_text(value)
+    if not text:
+        return default_value, ""
+
+    parsed_text = text
+    if "." in parsed_text:
+        parts = parsed_text.split(".")
+        if len(parts) == 2 and parts[1] == "0":
+            parsed_text = parts[0]
+        else:
+            return None, "Invalid {}. Use an integer of {} or more.".format(field_name, min_value)
+
+    if not parsed_text:
+        return None, "Invalid {}. Use an integer of {} or more.".format(field_name, min_value)
+
+    for char in parsed_text:
+        if char < "0" or char > "9":
+            return None, "Invalid {}. Use an integer of {} or more.".format(field_name, min_value)
+
+    parsed = int(parsed_text)
+    if parsed < min_value:
+        return None, "Invalid {}. Use an integer of {} or more.".format(field_name, min_value)
+
+    return parsed, ""
+
+
+def time_range_days(start_value, end_value):
+    seconds = local_seconds(end_value) - local_seconds(start_value)
+    if seconds <= 0:
+        return 0
+
+    days = seconds // SECONDS_PER_DAY
+    if seconds % SECONDS_PER_DAY:
+        days = days + 1
+
+    return days
+
+
+def validate_time_range(start_value, end_value, meta):
+    requested_days = time_range_days(start_value, end_value)
+    if requested_days > MAX_TIME_RANGE_DAYS:
+        validation_error(
+            "Calendar Manager Time Range too long. Use 365 days or less.",
+            {
+                "max_time_range_days": MAX_TIME_RANGE_DAYS,
+                "requested_time_range_days": requested_days,
+                "start_time": local_time_text(start_value),
+                "end_time": local_time_text(end_value),
+            },
+            meta,
+        )
+
+
 def parse_calendar_event_time(value):
     text = as_text(value)
     date_value = parse_local_date(text)
@@ -537,17 +592,16 @@ def prepare_mode():
             )
 
     if output.get("success") is not False:
-        days_ahead, days_ahead_error = parse_int_field(
+        days_ahead, days_ahead_error = parse_min_int_field(
             raw_days_ahead,
             "days_ahead",
             DEFAULT_DAYS_AHEAD,
             1,
-            MAX_DAYS_AHEAD,
         )
         if days_ahead_error:
             validation_error(
                 days_ahead_error,
-                {"default_days_ahead": DEFAULT_DAYS_AHEAD, "max_days_ahead": MAX_DAYS_AHEAD},
+                {"default_days_ahead": DEFAULT_DAYS_AHEAD, "max_time_range_days": MAX_TIME_RANGE_DAYS},
                 meta,
             )
 
@@ -654,6 +708,21 @@ def prepare_mode():
                 meta,
             )
 
+    if output.get("success") is not False and days_ahead > MAX_TIME_RANGE_DAYS:
+        validation_error(
+            "Calendar Manager Time Range too long. Use 365 days or less.",
+            {
+                "max_time_range_days": MAX_TIME_RANGE_DAYS,
+                "requested_time_range_days": days_ahead,
+                "start_time": local_time_text(start_local),
+                "end_time": local_time_text(end_local),
+            },
+            meta,
+        )
+
+    if output.get("success") is not False:
+        validate_time_range(start_local, end_local, meta)
+
     if output.get("success") is not False:
         start_text = local_time_text(start_local)
         end_text = local_time_text(end_local)
@@ -685,7 +754,7 @@ def shape_mode():
         "days_ahead",
         DEFAULT_DAYS_AHEAD,
         1,
-        MAX_DAYS_AHEAD,
+        MAX_TIME_RANGE_DAYS,
     )
     limit, limit_error = parse_int_field(data.get("limit"), "limit", DEFAULT_LIMIT, 1, MAX_LIMIT)
 

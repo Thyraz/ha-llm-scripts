@@ -144,7 +144,7 @@ llmtool_calendar_manager:
     days_ahead:
       description: >
         Future search window for list_upcoming and defaulted search_events.
-        Default 31, maximum 3660.
+        Default 31, maximum 365.
       example: "31"
     limit:
       description: >

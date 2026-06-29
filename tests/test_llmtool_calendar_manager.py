@@ -190,7 +190,11 @@ class CalendarManagerHelperTest(unittest.TestCase):
             {"operation": "list_range", "start_time": "2026-06-23 00:00:00", "end_time": "2026-06-22 00:00:00"},
             states=states,
         )
-        invalid_days = run_helper({"days_ahead": "3661"}, states=states)
+        too_long_range = run_helper(
+            {"operation": "list_range", "start_time": "2026-01-01 00:00:00", "end_time": "2027-01-02 00:00:00"},
+            states=states,
+        )
+        invalid_days = run_helper({"days_ahead": "366"}, states=states)
         invalid_limit = run_helper({"limit": "1001"}, states=states)
         invalid_event_type = run_helper({"event_type": "holiday"}, states=states)
         invalid_verbosity = run_helper({"verbosity": "full"}, states=states)
@@ -208,7 +212,12 @@ class CalendarManagerHelperTest(unittest.TestCase):
         self.assertEqual("YYYY-MM-DD HH:MM:SS", invalid_start["data"]["expected_format"])
         self.assertFalse(reversed_range["success"])
         self.assertIn("after start_time", reversed_range["error"])
+        self.assertFalse(too_long_range["success"])
+        self.assertEqual(365, too_long_range["data"]["max_time_range_days"])
+        self.assertEqual(366, too_long_range["data"]["requested_time_range_days"])
         self.assertFalse(invalid_days["success"])
+        self.assertEqual("Calendar Manager Time Range too long. Use 365 days or less.", invalid_days["error"])
+        self.assertEqual(366, invalid_days["data"]["requested_time_range_days"])
         self.assertFalse(invalid_limit["success"])
         self.assertFalse(invalid_event_type["success"])
         self.assertFalse(invalid_verbosity["success"])
@@ -235,6 +244,20 @@ class CalendarManagerHelperTest(unittest.TestCase):
         self.assertTrue(explicit["success"])
         self.assertEqual("2026-06-23 00:00:00", explicit["data"]["start_time"])
         self.assertEqual("2026-06-24 00:00:00", explicit["data"]["end_time"])
+
+    def test_prepare_accepts_exact_365_day_range(self):
+        states = {"calendar.family": FakeState()}
+
+        result = run_helper(
+            {
+                "operation": "list_range",
+                "start_time": "2026-01-01 00:00:00",
+                "end_time": "2027-01-01 00:00:00",
+            },
+            states=states,
+        )
+
+        self.assertTrue(result["success"])
 
     def test_shape_groups_timed_and_all_day_events(self):
         states = {

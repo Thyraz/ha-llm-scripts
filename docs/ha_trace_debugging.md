@@ -260,6 +260,8 @@ Expected calendar model:
   `calendar.*` entities before `calendar.get_events` is called.
 - Input and output times are local Home Assistant times in
   `YYYY-MM-DD HH:MM:SS`.
+- Calendar Manager Time Range is capped at 365 days. Longer ranges return a
+  soft failure before `calendar.get_events`.
 - `calendar.get_events` returns a mapping keyed by calendar entity ID, with an
   `events` list under each key.
 - Home Assistant event `end` values are exclusive. Calendar Manager returns

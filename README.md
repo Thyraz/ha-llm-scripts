@@ -401,6 +401,9 @@ Use local Home Assistant time in exactly this format:
 YYYY-MM-DD HH:MM:SS
 ```
 
+Calendar Manager Time Range must be 365 days or less. Longer ranges return a
+soft failure before Home Assistant calendar data is queried.
+
 Run `script.llmtool_calendar_manager` from Developer Tools -> Actions:
 
 ```yaml
@@ -847,7 +850,8 @@ an entity stayed in a state. Raw history has limited retention, but can access
 entities that do not provide long-term statistics.
 
 Calendar Manager: use for Home Assistant calendar events, upcoming events,
-event ranges, and event text search. This version reads events only.
+event ranges, and event text search. Calendar Manager Time Range must be 365
+days or less. This version reads events only.
 
 Media Player Group Manager: use for grouping, joining, unjoining, or clearing
 Home Assistant media_player groups. This changes Home Assistant state.

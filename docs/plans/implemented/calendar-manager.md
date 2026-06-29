@@ -66,8 +66,12 @@ events in the same LLM Tool.
 - `list_upcoming` uses local now through local now plus `days_ahead`.
 - `days_ahead` is optional.
 - Empty `days_ahead` uses 31.
-- Maximum `days_ahead` is 3660.
+- Maximum `days_ahead` is 365.
 - `end_time` before or equal to `start_time` is invalid.
+- Calendar Manager Time Range is capped at 365 days for all read operations.
+- Ranges over 365 days return a soft failure before `calendar.get_events`, with
+  `max_time_range_days`, `requested_time_range_days`, `start_time`, and
+  `end_time`.
 - If Home Assistant returns an ongoing event for the requested range, Calendar
   Manager may include it. The tool does not add a lookback window to force
   ongoing event discovery.
@@ -226,6 +230,7 @@ meta:
 - Invalid `end_time` format.
 - `end_time` before or equal to `start_time`.
 - Invalid `days_ahead`.
+- Calendar Manager Time Range over 365 days.
 - Invalid `limit`.
 - Invalid `event_type`.
 - Invalid `verbosity`.
@@ -267,7 +272,8 @@ meta:
 - Reject `end_time <= start_time`.
 - Default `search_events` range to now through now plus `days_ahead`.
 - Default `list_upcoming` range to now through now plus `days_ahead`.
-- Validate `days_ahead`, default 31, maximum 3660.
+- Validate `days_ahead`, default 31, maximum 365.
+- Reject Calendar Manager Time Range over 365 days.
 - Validate `limit`, default 100, maximum 1000.
 - Validate `event_type`.
 - Validate `verbosity`.

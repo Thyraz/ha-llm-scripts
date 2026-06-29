@@ -112,6 +112,10 @@ _Avoid_: Calendar Query Tool, calendar plugin, calendar backend
 A Home Assistant `calendar.*` entity ID supplied to Calendar Manager to choose event sources.
 _Avoid_: calendar name, calendar alias, calendar pseudonym
 
+**Calendar Manager Time Range**:
+A local Home Assistant time span used by Calendar Manager to query calendar events.
+_Avoid_: search timeout, response timeout, calendar retention
+
 **Calendar Manager event**:
 A Home Assistant calendar event returned or managed by Calendar Manager.
 _Avoid_: appointment object, reminder item, calendar row
