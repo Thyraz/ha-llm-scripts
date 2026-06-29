@@ -54,6 +54,9 @@ Memory Manager lets an Assistant remember user-provided information across conve
 - `inspect_inventory` is the Memory Inventory getter: it returns every known topic with its labels, so there is no separate `list_labels` operation in v1.
 - For broad or ambiguous recall, the Assistant should call
   `inspect_inventory` first, choose existing topic and labels, then `search`.
+- If a question might need personal, family, or home-specific knowledge, the
+  Assistant should call `inspect_inventory` before saying it does not know or
+  before trying tools for current/external data.
 - Assistant-facing guidance should put the inspect-inventory-first workflow
   before the operation list because small Assist models overweight early text.
 - The Assistant should not invent query terms first unless the user gave a

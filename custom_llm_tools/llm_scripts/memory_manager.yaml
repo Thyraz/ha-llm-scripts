@@ -6,6 +6,9 @@ llmtool_memory_manager:
     search, read, update, or forget user-provided long-term memory.
     Memory Manager is optional; use it only when memory is relevant. Store only
     memory the user explicitly asks to remember or clearly confirms.
+    If a question might need personal, family, or home-specific knowledge, call
+    inspect_inventory before saying you do not know or before trying tools for
+    current/external data.
 
     FIRST: before search or remember, call inspect_inventory to see existing
     Memory Topics and Memory Labels. Only skip this when the user gives an exact

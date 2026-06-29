@@ -849,10 +849,12 @@ Media Player Group Manager: use for grouping, joining, unjoining, or clearing
 Home Assistant media_player groups. This changes Home Assistant state.
 
 Memory Manager: use for user-provided long-term memory. Save memory only when
-the user asks or clearly confirms. Search memory when the question needs
-internal personal, family, or home-specific knowledge that general/web knowledge
-will not know. For search or remember, inspect memory inventory first unless an
-exact memory_id or exact known topic/labels are already available.
+the user asks or clearly confirms. If a question might need personal, family, or
+home-specific knowledge, call inspect_inventory before saying you do not know or
+before trying tools for current/external data. This includes preferences,
+relationships, ownership, routines, important dates, and past decisions/events.
+For search or remember, inspect memory inventory first unless an exact memory_id
+or exact known topic/labels are already available.
 
 Calculator: use for every arithmetic calculation from numbers you already have.
 It does not fetch entities, states, units, history, or statistics.
