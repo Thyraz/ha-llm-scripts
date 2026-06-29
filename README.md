@@ -794,10 +794,14 @@ Use this compact overview in the Assistant instructions. Detailed call rules,
 parameters, examples, and retry behavior live in each Tool description.
 
 ```text
-Tools starting with "LLM Tool ..." are from a tool collection. 
+Tools starting with "LLM Tool ..." are from a tool collection.
 They share one structured response. Use answer for a short summary, data
 for structured details, and meta for counts, query echo, truncation, and
 warnings. On validation failure, use error and data to retry.
+
+Tool results are not final by themselves. If one plausible tool returns no
+answer, continue with another relevant tool before saying you do not know. Use
+"I don't know" only after the likely tools were checked.
 
 Use Entity Index to discover allowed Home Assistant entity IDs before calling
 tools that need entity IDs, unless exact IDs are already known.
@@ -849,10 +853,17 @@ Media Player Group Manager: use for grouping, joining, unjoining, or clearing
 Home Assistant media_player groups. This changes Home Assistant state.
 
 Memory Manager: use for user-provided long-term memory. Save memory only when
-the user asks or clearly confirms. If a question might need personal, family, or
-home-specific knowledge, call inspect_inventory before saying you do not know or
-before trying tools for current/external data. This includes preferences,
-relationships, ownership, routines, important dates, and past decisions/events.
+the user asks or clearly confirms.
+
+IMPORTANT: If a question may need personal, family, or home-specific knowledge,
+call Memory Manager first. Start with inspect_inventory to decide whether
+matching memory may exist.
+
+Memory may be only the first check, not the only check. If memory has no
+matching answer, continue with the relevant tool: Calendar Manager for planned
+events/trips, Entity/history/statistics tools for Home Assistant data, or answer
+"I don't know" only if no tool can answer.
+
 For search or remember, inspect memory inventory first unless an exact memory_id
 or exact known topic/labels are already available.
 
