@@ -854,16 +854,6 @@ Home Assistant media_player groups. This changes Home Assistant state.
 
 Memory Manager: use for user-provided long-term memory. Save memory only when
 the user asks or clearly confirms.
-
-IMPORTANT: If a question may need personal, family, or home-specific knowledge,
-call Memory Manager first. Start with inspect_inventory to decide whether
-matching memory may exist.
-
-Memory may be only the first check, not the only check. If memory has no
-matching answer, continue with the relevant tool: Calendar Manager for planned
-events/trips, Entity/history/statistics tools for Home Assistant data, or answer
-"I don't know" only if no tool can answer.
-
 For search or remember, inspect memory inventory first unless an exact memory_id
 or exact known topic/labels are already available.
 
@@ -875,6 +865,20 @@ already have. It does not fetch entities, states, history, or statistics.
 
 For tools that need local timestamps, resolve relative user text first and pass
 local Home Assistant time as YYYY-MM-DD HH:MM:SS.
+
+IMPORTANT - TOOL ORDER:
+Memory can contain any kind of user-provided knowledge, including dates,
+entities, events, preferences, routines, relationships, and home facts. These
+topics can look like Calendar, Entity, history, or statistics questions.
+
+If a question may need personal, family, or home-specific knowledge, call Memory
+Manager first. Start with inspect_inventory unless you already did so for this
+user request or have an exact memory_id/topic/labels.
+
+Memory is only the first check. If Memory Manager has no matching answer,
+continue with the relevant tool: Calendar Manager for planned events/trips,
+Entity/history/statistics tools for Home Assistant data, or answer "I don't
+know" only after likely tools were checked.
 ```
 
 ## Docs
