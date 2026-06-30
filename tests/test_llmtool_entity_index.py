@@ -13,8 +13,8 @@ def run_helper(overrides):
         "outside_label": "Outside",
         "labels": "",
         "location": "everywhere",
-        "query_mode": "all_labeled",
-        "match_mode": "all",
+        "entity_scope": "all",
+        "label_operator": "",
         "verbosity": "compact",
         "state_filter": "",
         "limit": "50",
@@ -56,7 +56,7 @@ def candidate(
 
 
 class EntityIndexHelperTest(unittest.TestCase):
-    def test_all_labeled_inside_returns_visible_inside_entity_without_query_label(self):
+    def test_all_scope_inside_returns_visible_inside_entity_without_query_label(self):
         result = run_helper(
             {
                 "location": "inside",
@@ -73,7 +73,7 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertEqual(["light.inside_visible"], result["data"]["entities"])
         self.assertNotIn("effective_labels", result["meta"])
 
-    def test_all_labeled_everywhere_only_requires_visibility(self):
+    def test_all_scope_everywhere_only_requires_visibility(self):
         result = run_helper(
             {
                 "location": "everywhere",
@@ -89,13 +89,13 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertEqual(["light.visible"], result["data"]["entities"])
         self.assertNotIn("effective_labels", result["meta"])
 
-    def test_by_labels_requires_visibility_location_and_query_label(self):
+    def test_filtered_by_labels_requires_visibility_location_and_query_label(self):
         result = run_helper(
             {
                 "labels": "Light",
                 "location": "inside",
-                "query_mode": "by_labels",
-                "match_mode": "all",
+                "entity_scope": "filtered_by_labels",
+                "label_operator": "AND",
                 "verbosity": "id_only",
                 "candidates": [
                     candidate("light.good", ["Light"], visible=True, location=True),
@@ -112,13 +112,13 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertNotIn("labels", result["meta"])
         self.assertNotIn("effective_labels", result["meta"])
 
-    def test_by_labels_any_matches_any_requested_query_label(self):
+    def test_filtered_by_labels_or_matches_any_requested_query_label(self):
         result = run_helper(
             {
                 "labels": "Light,Wohnzimmer",
                 "location": "inside",
-                "query_mode": "by_labels",
-                "match_mode": "any",
+                "entity_scope": "filtered_by_labels",
+                "label_operator": "OR",
                 "verbosity": "id_only",
                 "candidates": [
                     candidate("light.living_room", ["Light", "Wohnzimmer"], visible=True, location=True),
@@ -135,11 +135,53 @@ class EntityIndexHelperTest(unittest.TestCase):
             result["data"]["entities"],
         )
 
+    def test_filtered_by_labels_defaults_to_and(self):
+        result = run_helper(
+            {
+                "labels": "Light,Wohnzimmer",
+                "location": "inside",
+                "entity_scope": "filtered_by_labels",
+                "verbosity": "id_only",
+                "candidates": [
+                    candidate("light.living_room", ["Light", "Wohnzimmer"], visible=True, location=True),
+                    candidate("light.other_room", ["Light"], visible=True, location=True),
+                    candidate("sensor.living_room", ["Wohnzimmer"], visible=True, location=True),
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(["light.living_room"], result["data"]["entities"])
+        self.assertEqual("AND", result["meta"]["label_operator"])
+
+    def test_label_operator_is_case_insensitive(self):
+        result = run_helper(
+            {
+                "labels": "Light,Wohnzimmer",
+                "location": "inside",
+                "entity_scope": "filtered_by_labels",
+                "label_operator": "or",
+                "verbosity": "id_only",
+                "candidates": [
+                    candidate("light.living_room", ["Light", "Wohnzimmer"], visible=True, location=True),
+                    candidate("light.other_room", ["Light"], visible=True, location=True),
+                    candidate("sensor.living_room", ["Wohnzimmer"], visible=True, location=True),
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(
+            ["light.living_room", "light.other_room", "sensor.living_room"],
+            result["data"]["entities"],
+        )
+        self.assertEqual("OR", result["meta"]["label_operator"])
+
     def test_internal_labels_are_rejected_as_public_query_labels(self):
         result = run_helper(
             {
                 "labels": "Everywhere,Inside,Outside,Light",
-                "query_mode": "by_labels",
+                "entity_scope": "filtered_by_labels",
             }
         )
 
@@ -160,11 +202,30 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertEqual([], result["meta"]["label_names"])
         self.assertIn("Candidate records arrived as a string", result["error"])
 
+    def test_all_scope_rejects_labels_and_label_operator(self):
+        labels = run_helper(
+            {
+                "entity_scope": "all",
+                "labels": "Light",
+            }
+        )
+        operator = run_helper(
+            {
+                "entity_scope": "all",
+                "label_operator": "AND",
+            }
+        )
+
+        self.assertFalse(labels["success"])
+        self.assertIn("does not accept label_names", labels["error"])
+        self.assertFalse(operator["success"])
+        self.assertIn("does not accept label_operator", operator["error"])
+
     def test_compact_result_hints_for_cumulative_usage_sensors(self):
         result = run_helper(
             {
                 "location": "inside",
-                "query_mode": "by_labels",
+                "entity_scope": "filtered_by_labels",
                 "labels": "Energy",
                 "known_labels": ["Energy"],
                 "verbosity": "compact",

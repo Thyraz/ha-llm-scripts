@@ -57,15 +57,15 @@ outside_label_name = as_text(data.get("outside_label")) or "Outside"
 
 requested_labels = parse_labels(data.get("labels", ""))
 location = as_text(data.get("location"))
-query_mode = as_text(data.get("query_mode")) or "by_labels"
-match_mode = as_text(data.get("match_mode")) or "all"
+entity_scope = as_text(data.get("entity_scope")) or "filtered_by_labels"
+label_operator = as_text(data.get("label_operator")).upper()
 verbosity = as_text(data.get("verbosity")) or "compact"
 state_filter = as_text(data.get("state_filter"))
 raw_limit = as_text(data.get("limit"))
 
 valid_locations = ["inside", "outside", "everywhere"]
-valid_query_modes = ["by_labels", "all_labeled"]
-valid_match_modes = ["all", "any"]
+valid_entity_scopes = ["filtered_by_labels", "all"]
+valid_label_operators = ["AND", "OR"]
 valid_verbosity = ["id_only", "compact", "detailed"]
 
 # Validate caller parameters before touching candidate records.
@@ -74,15 +74,15 @@ if location not in valid_locations:
         "Invalid location. Use inside, outside, or everywhere.",
         {"known_locations": valid_locations},
     )
-elif query_mode not in valid_query_modes:
+elif entity_scope not in valid_entity_scopes:
     validation_error(
-        "Invalid query_mode. Use by_labels or all_labeled.",
-        {"known_query_modes": valid_query_modes},
+        "Invalid entity_scope. Use filtered_by_labels or all.",
+        {"known_entity_scopes": valid_entity_scopes},
     )
-elif match_mode not in valid_match_modes:
+elif label_operator and label_operator not in valid_label_operators:
     validation_error(
-        "Invalid match_mode. Use all or any.",
-        {"known_match_modes": valid_match_modes},
+        "Invalid label_operator. Use AND or OR.",
+        {"known_label_operators": valid_label_operators},
     )
 elif verbosity not in valid_verbosity:
     validation_error(
@@ -107,6 +107,18 @@ else:
                 {"default_limit": DEFAULT_LIMIT, "max_limit": MAX_LIMIT},
             )
 
+    if output.get("success") is not False and entity_scope == "all" and requested_labels:
+        validation_error(
+            "entity_scope=all does not accept label_names. Use filtered_by_labels to filter by labels.",
+            {"known_entity_scopes": valid_entity_scopes},
+        )
+
+    if output.get("success") is not False and entity_scope == "all" and label_operator:
+        validation_error(
+            "entity_scope=all does not accept label_operator. Omit label_operator for inventory lookup.",
+            {"known_entity_scopes": valid_entity_scopes},
+        )
+
     if output.get("success") is not False:
         unknown_labels = []
         internal_labels = [visibility_label_name, inside_label_name, outside_label_name]
@@ -123,14 +135,17 @@ else:
                 },
             )
 
-    if output.get("success") is not False and query_mode == "by_labels" and not requested_labels:
+    if output.get("success") is not False and entity_scope == "filtered_by_labels" and not requested_labels:
         validation_error(
-            "query_mode=by_labels requires at least one label name.",
+            "entity_scope=filtered_by_labels requires at least one label name.",
             {"known_labels": known_label_names},
         )
 
+    if output.get("success") is not False and entity_scope == "filtered_by_labels" and not label_operator:
+        label_operator = "AND"
+
 if output.get("success") is not False:
-    # Convert public query choices into the matching rules used below.
+    # Convert public Entity Index choices into the matching rules used below.
     if location == "inside":
         location_label = inside_label_name
     elif location == "outside":
@@ -138,7 +153,7 @@ if output.get("success") is not False:
     else:
         location_label = ""
 
-    if query_mode == "all_labeled":
+    if entity_scope == "all":
         required_match_labels = []
         reported_match_labels = []
         for label in known_label_names:
@@ -156,7 +171,7 @@ if output.get("success") is not False:
             "Invalid candidate handoff. Candidate records arrived as a string; inspect candidate_records_json and the from_json action handoff in the Script trace.",
             {"expected": "list", "received": "string"},
             {
-                "query_mode": query_mode,
+                "entity_scope": entity_scope,
                 "label_names": requested_labels,
                 "location": location,
             },
@@ -196,10 +211,10 @@ if output.get("success") is not False:
             if label in candidate_matched_labels and label not in required_labels_found:
                 required_labels_found.append(label)
 
-        if query_mode == "by_labels" and match_mode == "all":
+        if entity_scope == "filtered_by_labels" and label_operator == "AND":
             if len(required_labels_found) != len(required_match_labels):
                 continue
-        elif query_mode == "by_labels" and not required_labels_found:
+        elif entity_scope == "filtered_by_labels" and not required_labels_found:
             continue
 
         matched_labels = []
@@ -271,10 +286,10 @@ if output.get("success") is not False:
         "tool": "llmtool_entity_index",
         "count": len(entities),
         "total": total,
-        "query_mode": query_mode,
+        "entity_scope": entity_scope,
         "label_names": requested_labels,
         "location": location,
-        "match_mode": match_mode,
+        "label_operator": label_operator,
         "state_filter": state_filter,
         "verbosity": verbosity,
         "limit": limit,

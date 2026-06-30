@@ -27,7 +27,7 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
   labels.
 - If `input_select.llmtool_entity_index_labels` exists but has no options,
   Entity Index uses no query labels and returns validation errors for
-  `query_mode=by_labels`.
+  `entity_scope=filtered_by_labels`.
 - Friendly label name matching is case-sensitive because `label_id(label_name)` is case-sensitive.
 - The LLM Tool Script resolves friendly label names to internal label IDs with
   `label_id()` before calling `label_entities()`.
@@ -53,19 +53,23 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - `location=everywhere` requires `Everywhere` and does not add either location label.
 - If the requested location label does not exist in Home Assistant, return a successful empty result.
 - The Assistant sees `inside` / `outside` / `everywhere` as location choices, not as labels.
-- `match_mode=any` applies only to user-provided labels; `location=inside` and
+- `label_operator=OR` applies only to user-provided labels; `location=inside` and
   `location=outside` are always required filters.
+- `label_operator=OR` is for broad alternative searches and is a shortcut for
+  multiple Entity Index calls with one label each.
+- For room or floor plus device type, the Assistant should use `label_operator=AND`.
 - Unknown labels should return `success: false` with an actionable error, `data.unknown_labels`,
   and `data.known_labels` so the Assistant can retry.
-- Invalid `location`, `query_mode`, `match_mode`, `verbosity`, non-integer
+- Invalid `location`, `entity_scope`, `label_operator`, `verbosity`, non-integer
   `limit`, `limit < 1`, or `limit > 1000` return `success: false` with an
   actionable error.
 - Missing or empty `limit` uses the default.
-- `query_mode` controls scope, such as `by_labels` or `all_labeled`.
-- `query_mode=by_labels` requires at least one non-empty label name.
-- `query_mode=all_labeled` returns visible entities even if they have no query label.
-- `query_mode=all_labeled` ignores `match_mode`.
-- `match_mode` controls multi-label matching: `any` or `all`; default is `all`.
+- `entity_scope` controls scope: `filtered_by_labels` or `all`.
+- `entity_scope=filtered_by_labels` requires at least one non-empty label name.
+- `entity_scope=all` returns visible entities even if they have no query label.
+- `entity_scope=all` rejects `label_names` and `label_operator`.
+- `label_operator` controls multi-label matching: `AND` or `OR`; default is `AND`.
+- `label_operator` comparison is case-insensitive.
 - `verbosity` controls result size: `id_only`, `compact`, or `detailed`; default is `compact`.
 - `id_only` returns `data.entities` as a list of entity ID strings.
 - Success responses always return results under `data.entities`.
@@ -87,7 +91,7 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - `limit` caps returned results; default is 50 and maximum is 1000.
 - Response metadata includes `count` for returned results and `total` for total matches before limit.
 - Response metadata echoes normalized public query parameters, including
-  `query_mode`, `label_names`, `location`, `match_mode`, `state_filter`,
+  `entity_scope`, `label_names`, `location`, `label_operator`, `state_filter`,
   `verbosity`, and `limit`.
 - Runtime responses must not expose hidden visibility/location labels through
   `answer`, `error`, `data`, or `meta`.
@@ -103,9 +107,9 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
   the helper decides which fields to return.
 - The LLM Tool Script gathers candidates from the `Everywhere` visibility label,
   then marks query and location matches for the helper.
-- For `query_mode=by_labels`, the helper filters visible candidates by the
+- For `entity_scope=filtered_by_labels`, the helper filters visible candidates by the
   requested query labels plus any location label.
-- For `query_mode=all_labeled`, the helper returns visible candidates matching
+- For `entity_scope=all`, the helper returns visible candidates matching
   the location filter.
 - The LLM Tool Python Helper handles validation, set matching, sorting, limiting,
   and result shaping.
@@ -125,7 +129,7 @@ These examples describe how the Home Assistant LLM Assistant should choose param
 - "Lowest room temperature" should use `location=inside` so outside temperature sensors are excluded.
 - "Outside temperature" should use `location=outside`.
 - Broad inventory questions may use `location=everywhere`.
-- Broad inventory should use `query_mode=all_labeled` and no labels.
+- Broad inventory should use `entity_scope=all` and no labels.
 
 ## Prompt overview
 

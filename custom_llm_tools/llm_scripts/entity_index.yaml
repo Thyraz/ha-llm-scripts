@@ -22,13 +22,13 @@ llmtool_entity_index:
 
     Example:
     ```
-      query_mode: by_labels
+      entity_scope: filtered_by_labels
       verbosity: compact
       limit: 50
       location: inside
       label_names: LivingRoom,Light
       state_filter: "on"
-      match_mode: all
+      label_operator: AND
     ```
 
     Return value example:
@@ -53,12 +53,12 @@ llmtool_entity_index:
         tool: llmtool_entity_index
         count: 2
         total: 2
-        query_mode: by_labels
+        entity_scope: filtered_by_labels
         label_names:
           - LivingRoom
           - Light
         location: inside
-        match_mode: all
+        label_operator: AND
         state_filter: "on"
         verbosity: compact
         limit: 50
@@ -69,8 +69,8 @@ llmtool_entity_index:
     label_names:
       name: Label names
       description: >
-        Comma-separated supported label names. Required when query_mode is
-        'by_labels'. Supported labels are configured in Home Assistant and shown
+        Comma-separated supported label names. Required when entity_scope is
+        filtered_by_labels. Supported labels are configured in Home Assistant and shown
         in the Assistant instructions. (Warning: the values in the example string are just placeholders and might not be available in your system, check the instructions for the actual supported labels.)
       required: false
       example: TemperatureSensor,Light
@@ -90,32 +90,33 @@ llmtool_entity_index:
             - inside
             - outside
             - everywhere
-    query_mode:
-      name: Query mode
+    entity_scope:
+      name: Entity scope
       description: >
-        by_labels requires parameter 'label_names'. all_labeled returns all available
-        entities for the chosen location (inventory lookup).
+        filtered_by_labels requires parameter label_names. all returns all available
+        Entity Index entities for the chosen location. Use all only for inventory lookup.
       required: false
-      default: by_labels
-      example: by_labels
+      default: filtered_by_labels
+      example: filtered_by_labels
       selector:
         select:
           options:
-            - by_labels
-            - all_labeled
-    match_mode:
-      name: Match mode
-      description: >
-        For by_labels with multiple label names, 'all' requires that an entity has EVERY label name provided
-        and 'any' requires that at least one label name matches the entity's labels.
-      required: false
-      default: all
-      example: all
-      selector:
-        select:
-          options:
+            - filtered_by_labels
             - all
-            - any
+    label_operator:
+      name: Label operator
+      description: >
+        Only for entity_scope filtered_by_labels. AND requires every label name
+        to match; use AND for room or floor plus device type, such as
+        LivingRoom,Light. OR is a broad-search shortcut for multiple tool calls
+        with one label each; use OR only for broader alternative searches.
+      required: false
+      example: AND
+      selector:
+        select:
+          options:
+            - AND
+            - OR
     verbosity:
       name: Verbosity
       description: >
@@ -191,7 +192,7 @@ llmtool_entity_index:
     - alias: Prepare candidate labels
       variables:
         raw_label_names: "{{ label_names if label_names is string else '' }}"
-        query_mode_raw: "{{ query_mode | default('by_labels', true) }}"
+        entity_scope_raw: "{{ entity_scope | default('filtered_by_labels', true) }}"
         location_raw: "{{ location | default('', true) }}"
         user_label_names: >
           {% set parts = raw_label_names.split(',') %}
@@ -210,7 +211,7 @@ llmtool_entity_index:
         visibility_label_id: "{{ label_id(visibility_label_name) | default('', true) }}"
         match_label_names: >
           {% set ns = namespace(items=[]) %}
-          {% if query_mode_raw == 'all_labeled' %}
+          {% if entity_scope_raw == 'all' %}
             {% for label_name_text in known_label_names %}
               {% set ns.items = ns.items + [label_name_text] %}
             {% endfor %}
@@ -292,8 +293,8 @@ llmtool_entity_index:
       data:
         labels: "{{ raw_label_names }}"
         location: "{{ location | default('', true) }}"
-        query_mode: "{{ query_mode | default('by_labels', true) }}"
-        match_mode: "{{ match_mode | default('all', true) }}"
+        entity_scope: "{{ entity_scope | default('filtered_by_labels', true) }}"
+        label_operator: "{{ label_operator | default('', true) }}"
         verbosity: "{{ verbosity | default('compact', true) }}"
         state_filter: "{{ state_filter | default('', true) }}"
         limit: "{{ limit | default('', true) }}"

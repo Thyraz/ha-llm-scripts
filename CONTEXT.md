@@ -44,6 +44,14 @@ _Avoid_: full tool manual, call reference, implementation notes
 An LLM Tool that lets an Assistant discover Home Assistant entities it is allowed to know about before calling other LLM Tools.
 _Avoid_: entity registry dump, entity database, search backend
 
+**Entity Index entity scope**:
+The Entity Index choice between filtering by supplied `label_names` or returning all Entity Index-visible entities.
+_Avoid_: query mode, search mode
+
+**Entity Index label operator**:
+The `AND` or `OR` operator that controls whether Entity Index requires all supplied `label_names` or at least one supplied `label_names` value to match.
+_Avoid_: match mode, label matching mode
+
 **Long-Term Aggregated Statistics**:
 An LLM Tool that returns aggregated Home Assistant long-term statistics for a requested time range.
 _Avoid_: Aggregated Longterm History Access, raw state history, history fetcher

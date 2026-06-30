@@ -128,6 +128,7 @@ input_select:
   llmtool_entity_index_labels:
     name: LLM Tool Entity Index Labels
     options:
+      - LivingRoom
       - TemperatureSensor
       - Thermostat
       - Light
@@ -136,10 +137,10 @@ input_select:
 Run `script.llmtool_entity_index` from Developer Tools -> Actions:
 
 ```yaml
-label_names: TemperatureSensor,Thermostat
+label_names: LivingRoom,Light
 location: inside
-query_mode: by_labels
-match_mode: any
+entity_scope: filtered_by_labels
+label_operator: AND
 verbosity: compact
 limit: 50
 ```
@@ -148,28 +149,33 @@ Expected response shape:
 
 ```yaml
 success: true
-answer: "Found 3 matching entities."
+answer: "Found 1 matching entities."
 data:
   entities:
-    - entity_id: sensor.living_room_temperature
-      friendly_name: Living room temperature
-      state: "21.5"
+    - entity_id: light.living_room
+      friendly_name: Living room light
+      state: "on"
       matched_labels:
-        - TemperatureSensor
+        - LivingRoom
+        - Light
 meta:
   tool: llmtool_entity_index
-  count: 3
-  total: 3
-  query_mode: by_labels
+  count: 1
+  total: 1
+  entity_scope: filtered_by_labels
   label_names:
-    - TemperatureSensor
-    - Thermostat
+    - LivingRoom
+    - Light
   location: inside
-  match_mode: any
+  label_operator: AND
   state_filter: ""
   verbosity: compact
   limit: 50
 ```
+
+For room/floor plus device-type searches, use `label_operator: AND`. Use
+`label_operator: OR` only for broad alternatives; it is a shortcut for multiple
+Entity Index calls with one label each.
 
 Invalid label names return a soft failure:
 
@@ -832,6 +838,8 @@ Supported Entity Index label names:
 Entity Index: find entities by labels, location, and state. location is only
 inside, outside, or everywhere. Rooms/floors are label_names. If an entity has
 value_hint, follow it.
+For room/floor plus device-type searches, use label_operator AND. OR is only
+for broad alternatives and is a shortcut for multiple calls with one label each.
 
 Long-Term Aggregated Statistics: use for durable historical statistics:
 averages, minimums, maximums, changes, trends, energy, water, and other

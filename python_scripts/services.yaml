@@ -19,15 +19,15 @@ llmtool_entity_index:
       description: >
         Required location filter: inside, outside, or everywhere.
       example: inside
-    query_mode:
+    entity_scope:
       description: >
-        Query scope: by_labels or all_labeled. all_labeled returns all
-        available entities for the chosen location.
-      example: by_labels
-    match_mode:
+        Entity scope: filtered_by_labels or all. all returns all available
+        Entity Index entities for the chosen location.
+      example: filtered_by_labels
+    label_operator:
       description: >
-        Multi-label matching for by_labels: all or any.
-      example: all
+        Label operator for filtered_by_labels: AND or OR. Empty means AND.
+      example: AND
     verbosity:
       description: >
         Response size: id_only, compact, or detailed.
