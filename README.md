@@ -569,7 +569,7 @@ Run `script.llmtool_memory_manager` from Developer Tools -> Actions:
 ```yaml
 operation: remember
 topic: school
-labels: schedule,kid_one
+tags: schedule,kid_one
 text: School starts at 08:10 on regular weekdays.
 ```
 
@@ -581,7 +581,7 @@ answer: "Remembered 1 memory entry."
 data:
   memory_id: m000001
   topic: school
-  labels:
+  tags:
     - schedule
     - kid_one
 meta:
@@ -593,7 +593,7 @@ meta:
 ```
 
 Use `inspect_inventory` to see the Memory Inventory: existing Memory Topics and
-Memory Labels. It is only an index/discovery operation; do not use it by itself
+Memory Tags. It is only an index/discovery operation; do not use it by itself
 to answer memory recall questions.
 
 ```yaml
@@ -601,9 +601,9 @@ operation: inspect_inventory
 ```
 
 Before search or remember, call `inspect_inventory` first unless the user gives
-an exact `memory_id`, exact known topic/labels, or you already called
+an exact `memory_id`, exact known topic/tags, or you already called
 `inspect_inventory` for this user request. For recall, choose existing topic and
-labels from the Memory Inventory, then `search`, then `read`.
+tags from the Memory Inventory, then `search`, then `read`.
 
 Use `search` for snippets, then `read` for full text. Snippets are for choosing
 candidates, not factual answers. Do not guess Memory IDs. Search results include
@@ -612,22 +612,22 @@ candidates, not factual answers. Do not guess Memory IDs. Search results include
 ```yaml
 operation: search
 topic: school
-labels: schedule,kid_one
-label_match_mode: all
+tags: schedule,kid_one
+tag_match_mode: all
 limit: 5
 ```
 
-Omit `query` when listing by `topic` or `labels`. Query-only search is also
-valid for distinctive names or terms when no Memory Topic or Memory Label is
-known, but topic and labels keep results smaller when available. Empty `query`
-plus empty `topic` plus empty `labels` is invalid; use `list_recent` only for
+Omit `query` when listing by `topic` or `tags`. Query-only search is also
+valid for distinctive names or terms when no Memory Topic or Memory Tag is
+known, but topic and tags keep results smaller when available. Empty `query`
+plus empty `topic` plus empty `tags` is invalid; use `list_recent` only for
 broad browsing, recent-memory checks, or debugging when search scope is unknown.
 For example, `search` with `topic: school` and no `query` lists school Memory
-Entry snippets. `search` with `labels: kid_one` and no `query` lists `kid_one`
+Entry snippets. `search` with `tags: kid_one` and no `query` lists `kid_one`
 Memory Entry snippets across topics.
 
 `remember` always creates a new Memory Entry. `update` replaces full text by
-Memory ID and keeps omitted topic or labels unchanged. `forget` hard-deletes a
+Memory ID and keeps omitted topic or tags unchanged. `forget` hard-deletes a
 Memory Entry by Memory ID. After finding a candidate by `search`, use `read`
 before `update` or ambiguous `forget` so you can confirm the full Memory Entry.
 If search returns multiple plausible entries for `update` or `forget`, ask the
@@ -835,6 +835,65 @@ Supported Entity Index label names:
 {% endif %}
 {{ ns.items | sort | join(', ') }}
 
+{% set memory_state = states('sensor.llm_memory') %}
+{% set memory = state_attr('sensor.llm_memory', 'memory') %}
+{% if memory_state not in ['unknown', 'unavailable', 'none', ''] %}
+Memory Topic and Tag Listing:
+  {% if memory is none %}
+Known Memory Topics: none
+Known Memory Tags: none
+  {% elif memory is not mapping %}
+Known Memory Topics: unavailable
+Known Memory Tags: unavailable
+  {% else %}
+    {% set schema_version = memory.get('schema_version') %}
+    {% set entries = memory.get('entries') %}
+    {% if schema_version is not none and schema_version != 2 %}
+Known Memory Topics: unavailable
+Known Memory Tags: unavailable
+    {% elif entries is none %}
+Known Memory Topics: none
+Known Memory Tags: none
+    {% elif entries is not mapping %}
+Known Memory Topics: unavailable
+Known Memory Tags: unavailable
+    {% else %}
+      {% set ns = namespace(topics=[], tags=[], malformed=false) %}
+      {% for memory_id, entry in entries.items() %}
+        {% if entry is not mapping %}
+          {% set ns.malformed = true %}
+        {% else %}
+          {% set topic = entry.get('topic') %}
+          {% set entry_tags = entry.get('tags') %}
+          {% if topic is not string or not topic %}
+            {% set ns.malformed = true %}
+          {% elif topic not in ns.topics %}
+            {% set ns.topics = ns.topics + [topic] %}
+          {% endif %}
+          {% if entry_tags is string or entry_tags is not iterable %}
+            {% set ns.malformed = true %}
+          {% else %}
+            {% for tag in entry_tags %}
+              {% if tag is not string or not tag %}
+                {% set ns.malformed = true %}
+              {% elif tag not in ns.tags %}
+                {% set ns.tags = ns.tags + [tag] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+      {% if ns.malformed %}
+Known Memory Topics: unavailable
+Known Memory Tags: unavailable
+      {% else %}
+Known Memory Topics: {{ (ns.topics | sort | join(', ')) if ns.topics else 'none' }}
+Known Memory Tags: {{ (ns.tags | sort | join(', ')) if ns.tags else 'none' }}
+      {% endif %}
+    {% endif %}
+  {% endif %}
+{% endif %}
+
 Entity Index: find entities by labels, location, and state. location is only
 inside, outside, or everywhere. Rooms/floors are label_names. If an entity has
 value_hint, follow it.
@@ -866,8 +925,10 @@ Home Assistant media_player groups. This changes Home Assistant state.
 
 Memory Manager: use for user-provided long-term memory. Save memory only when
 the user asks or clearly confirms.
-For search or remember, inspect memory inventory first unless an exact memory_id
-or exact known topic/labels are already available.
+Use the Memory Topic and Tag Listing only to decide if memory may be relevant.
+If a Known Memory Topic or Known Memory Tag plausibly matches, call Memory
+Manager before other tools. For search or remember, inspect memory inventory
+first unless an exact memory_id or exact known topic/tags are already available.
 
 Calculator: use for every arithmetic calculation from numbers you already have.
 It does not fetch entities, states, units, history, or statistics.
@@ -883,9 +944,10 @@ Memory can contain any kind of user-provided knowledge, including dates,
 entities, events, preferences, routines, relationships, and home facts. These
 topics can look like Calendar, Entity, history, or statistics questions.
 
-If a question may need personal, family, or home-specific knowledge, call Memory
-Manager first. Start with inspect_inventory unless you already did so for this
-user request or have an exact memory_id/topic/labels.
+If a question may need personal, family, or home-specific knowledge, compare it
+with Known Memory Topics and Known Memory Tags. If one plausibly matches, call
+Memory Manager first. Start with inspect_inventory unless you already did so
+for this user request or have an exact memory_id/topic/tags.
 
 Memory is only the first check. If Memory Manager has no matching answer,
 continue with the relevant tool: Calendar Manager for planned events/trips,

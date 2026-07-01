@@ -23,11 +23,11 @@ Memory Manager lets an Assistant remember user-provided information across conve
 - Memory Manager uses the Memory Store Entity's `memory` attribute as its store.
 - Memory Manager sets the Memory Store Entity state to the current Memory Entry
   count on writes; durable memory still lives in the `memory` attribute.
-- Memory Manager does not use files, SQLite, shell commands, REST commands, add-ons, or custom integrations in v1.
+- Memory Manager does not use files, SQLite, shell commands, REST commands, add-ons, or custom integrations in this version.
 - Memory Manager is not a semantic memory system and does not use embeddings.
 - Search is deterministic lexical token search.
-- Search does not do fuzzy typo matching in v1.
-- Memory Manager has one capped store in v1.
+- Search does not do fuzzy typo matching in this version.
+- Memory Manager has one capped store in this version.
 - The soft store warning threshold is 96 KiB.
 - The hard store write limit is 120 KiB.
 - Store size is measured from normalized memory JSON before a write.
@@ -40,20 +40,20 @@ Memory Manager lets an Assistant remember user-provided information across conve
   `search`, `read`, and `update` instead of `remember`.
 - `forget` hard-deletes a Memory Entry by ID.
 - `update` replaces full entry text by ID.
-- `update` may also replace topic and labels.
-- If `update` omits topic or labels, keep the existing values.
+- `update` may also replace topic and tags.
+- If `update` omits topic or tags, keep the existing values.
 - Memory IDs are stable strings generated from `next_id`, such as `m000001`.
-- Topics and labels normalize to `lower_snake`.
-- `remember` requires topic, at least one label, and text.
+- Topics and tags normalize to `lower_snake`.
+- `remember` requires topic, at least one tag, and text.
 - The Assistant should call `inspect_inventory` before `search` or `remember`.
 - The Assistant may skip `inspect_inventory` only when the user gives an exact
-  Memory ID, exact known topic/labels, or the Assistant already called
+  Memory ID, exact known topic/tags, or the Assistant already called
   `inspect_inventory` for the current user request.
-- `remember` should reuse existing topics/labels from `inspect_inventory` to
+- `remember` should reuse existing topics/tags from `inspect_inventory` to
   reduce near-duplicate organization terms.
-- `inspect_inventory` is the Memory Inventory getter: it returns every known topic with its labels, so there is no separate `list_labels` operation in v1.
+- `inspect_inventory` is the Memory Inventory getter: it returns every known topic with its tags, so there is no separate `list_tags` operation in this version.
 - For broad or ambiguous recall, the Assistant should call
-  `inspect_inventory` first, choose existing topic and labels, then `search`.
+  `inspect_inventory` first, choose existing topic and tags, then `search`.
 - The Prompt overview should say when Memory Manager should be called before
   other tools.
 - The Memory Manager Tool description should focus on Memory Manager's own
@@ -65,27 +65,27 @@ Memory Manager lets an Assistant remember user-provided information across conve
 - The Assistant should not invent query terms first unless the user gave a
   distinctive term.
 - If `search` returns no result, the helper should return a hint to call
-  `inspect_inventory` and retry by topic and labels before answering that no
+  `inspect_inventory` and retry by topic and tags before answering that no
   memory was found.
 - The Assistant should not skip `inspect_inventory` just because it can invent
   likely query terms.
-- `search` can filter by topic and labels.
-- `search` can run with only query text when no topic or label is known.
-- `search` can run with topic and/or labels and an empty query to list matching
+- `search` can filter by topic and tags.
+- `search` can run with only query text when no topic or tag is known.
+- `search` can run with topic and/or tags and an empty query to list matching
   Memory Entries as snippets.
-- The Assistant should omit `query` when listing by topic and/or labels.
+- The Assistant should omit `query` when listing by topic and/or tags.
 - `search` with topic and no query lists that topic's Memory Entries as
   snippets.
-- `search` with labels and no query lists matching Memory Entries across topics
+- `search` with tags and no query lists matching Memory Entries across topics
   as snippets.
-- `search` with empty query, topic, and labels is invalid.
+- `search` with empty query, topic, and tags is invalid.
 - `list_recent` is for broad browsing, recent-memory checks, or debugging when
   search scope is unknown. It is not the default recall strategy.
-- The Assistant should prefer topic and labels when available to keep results
+- The Assistant should prefer topic and tags when available to keep results
   small.
-- `search` accepts `label_match_mode=all` or `any`; default is `all`.
-- `label_match_mode=all` means AND: every requested label must match.
-- `label_match_mode=any` means OR: at least one requested label must match.
+- `search` accepts `tag_match_mode=all` or `any`; default is `all`.
+- `tag_match_mode=all` means AND: every requested tag must match.
+- `tag_match_mode=any` means OR: at least one requested tag must match.
 - `search` and `list_recent` return snippets only.
 - Snippets are for candidate selection, not the source for factual answers.
 - The Assistant should `read` before answering from a Memory Entry.
@@ -100,7 +100,7 @@ Memory Manager lets an Assistant remember user-provided information across conve
 - `forget` is destructive; the Assistant should call it only when the user
   explicitly asks or confirms.
 - If the user gives an exact Memory ID, the Assistant may use it directly.
-- `inspect_inventory` returns topics and labels, but not Memory IDs.
+- `inspect_inventory` returns topics and tags, but not Memory IDs.
 - `inspect_inventory` is an index/discovery operation, not a recall answer by itself.
 - Empty `limit` uses 10 for `search` and `list_recent`.
 - Maximum `limit` is 100 for `search` and `list_recent`.
@@ -112,12 +112,12 @@ Memory Manager lets an Assistant remember user-provided information across conve
 The `memory` attribute on `sensor.llm_memory` is a mapping:
 
 ```yaml
-schema_version: 1
+schema_version: 2
 next_id: 2
 entries:
   m000001:
     topic: school
-    labels:
+    tags:
       - schedule
       - kid_one
     text: "School starts at 08:10 on regular weekdays."
@@ -127,12 +127,12 @@ entries:
 
 Rules:
 
-- `schema_version` must be `1`.
+- `schema_version` must be `2`.
 - `next_id` is the next integer used for Memory ID generation.
 - `entries` is keyed by Memory ID.
-- Entry fields are `topic`, `labels`, `text`, `created_at`, and `updated_at`.
-- The store has no separate label index in v1; labels and topics are derived by scanning entries.
-- Malformed stores return an actionable soft failure unless the attribute is missing, in which case the helper initializes an empty v1 store.
+- Entry fields are `topic`, `tags`, `text`, `created_at`, and `updated_at`.
+- The store has no separate tag index in this version; tags and topics are derived by scanning entries.
+- Malformed stores return an actionable soft failure unless the attribute is missing, in which case the helper initializes an empty v2 store.
 
 ## Tool contract
 
@@ -141,8 +141,8 @@ Common fields:
 - `operation`: `remember`, `search`, `read`, `update`, `forget`, `inspect_inventory`, `list_recent`, or `status`.
 - `memory_id`: Memory ID for `read`, `update`, and `forget`.
 - `topic`: required for `remember`, optional for `search` and `update`.
-- `labels`: comma-separated Memory Labels. Required for `remember`, optional for `search` and `update`.
-- `label_match_mode`: `all` or `any` for multi-label search. Empty means `all`.
+- `tags`: comma-separated Memory Tags. Required for `remember`, optional for `search` and `update`.
+- `tag_match_mode`: `all` or `any` for multi-tag search. Empty means `all`.
 - `query`: lexical search text for `search`.
 - `text`: Memory Entry text for `remember` and `update`.
 - `limit`: optional maximum result count for `search` and `list_recent`.
@@ -155,7 +155,7 @@ answer: "Remembered 1 memory entry."
 data:
   memory_id: m000001
   topic: school
-  labels:
+  tags:
     - schedule
     - kid_one
 meta:
@@ -175,12 +175,12 @@ data:
   topics:
     - topic: school
       count: 3
-      labels:
+      tags:
         - schedule
         - kid_one
     - topic: heating
       count: 2
-      labels:
+      tags:
         - bedroom
         - preference
 meta:
@@ -190,7 +190,7 @@ meta:
   entry_count: 5
 ```
 
-Use `inspect_inventory` when the Assistant needs to see available Memory Labels before searching or writing.
+Use `inspect_inventory` when the Assistant needs to see available Memory Tags before searching or writing.
 
 Successful `search`:
 
@@ -201,7 +201,7 @@ data:
   entries:
     - memory_id: m000001
       topic: school
-      labels:
+      tags:
         - schedule
         - kid_one
       snippet: "School starts at 08:10 on regular weekdays."
@@ -213,7 +213,7 @@ meta:
   total: 1
   query: school starts today
   topic: school
-  label_match_mode: all
+  tag_match_mode: all
 ```
 
 Successful `read`:
@@ -224,7 +224,7 @@ answer: "Read memory entry m000001."
 data:
   memory_id: m000001
   topic: school
-  labels:
+  tags:
     - schedule
     - kid_one
   text: "School starts at 08:10 on regular weekdays."
@@ -272,15 +272,15 @@ meta:
 ## Assistant call scenarios
 
 - User says "remember that Kid One starts school at 08:10": call
-  `inspect_inventory` if practical, then `remember` with topic `school`, labels such as
+  `inspect_inventory` if practical, then `remember` with topic `school`, tags such as
   `schedule,kid_one`, and the remembered text.
 - User asks "what do you remember about school?": call `inspect_inventory`,
   then `search` with topic `school`.
 - User asks "what do you remember about Kid One school?": call
-  `inspect_inventory`, then `search` with topic `school` and labels such as
+  `inspect_inventory`, then `search` with topic `school` and tags such as
   `kid_one`, then use `read` for a promising result before answering.
 - User asks "when does school start today for Kid One?": call
-  `inspect_inventory`, then `search` with topic `school`, labels
+  `inspect_inventory`, then `search` with topic `school`, tags
   `schedule,kid_one`, and query terms from the question. Use `read` for a
   promising result before answering.
 - User says "forget that school time": search if no Memory ID is known, confirm the likely entry in the answer, and call `forget` only when the user intent is explicit.
@@ -289,28 +289,28 @@ meta:
 ## Test cases
 
 - Missing Memory Store Entity returns setup soft failure.
-- Missing `memory` attribute initializes empty v1 store.
-- Valid existing v1 store is accepted.
+- Missing `memory` attribute initializes empty v2 store.
+- Valid existing v2 store is accepted.
 - Malformed `memory` attribute returns actionable soft failure.
 - Invalid operation returns known operations.
-- `remember` requires topic, label, and text.
-- Topic and labels normalize to `lower_snake`.
+- `remember` requires topic, tag, and text.
+- Topic and tags normalize to `lower_snake`.
 - `remember` creates stable IDs and increments `next_id`.
 - `remember` rejects text over 4 KiB.
 - `remember` rejects writes over 120 KiB normalized store size.
 - `remember` succeeds with warning metadata above 96 KiB.
-- `inspect_inventory` returns topics, counts, and sorted labels.
-- `inspect_inventory` is sufficient for label discovery; no separate label index or label operation exists in v1.
+- `inspect_inventory` returns topics, counts, and sorted tags.
+- `inspect_inventory` is sufficient for tag discovery; no separate tag index or tag operation exists in this version.
 - `list_recent` returns snippets only.
-- `search` matches lexical query tokens against text, topic, and labels.
-- `search` supports `label_match_mode=all`.
-- `search` supports `label_match_mode=any`.
+- `search` matches lexical query tokens against text, topic, and tags.
+- `search` supports `tag_match_mode=all`.
+- `search` supports `tag_match_mode=any`.
 - `search` honors `limit` and reports truncation.
 - Empty `search` returns an inspect-inventory retry hint.
 - `read` returns full text by Memory ID.
 - `read` returns soft failure for unknown Memory ID.
-- `update` replaces text and preserves omitted topic and labels.
-- `update` can replace topic and labels.
+- `update` replaces text and preserves omitted topic and tags.
+- `update` can replace topic and tags.
 - `update` enforces entry and store size limits.
 - `forget` removes the entry and frees store bytes.
 - `status` returns entry count, topic count, store size, soft limit, hard limit, and warning state.

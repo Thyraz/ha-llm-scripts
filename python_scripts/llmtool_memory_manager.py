@@ -1,6 +1,6 @@
 TOOL_NAME = "llmtool_memory_manager"
 MEMORY_STORE_ENTITY_ID = "sensor.llm_memory"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 TEXT_LIMIT_BYTES = 4096
 SOFT_LIMIT_BYTES = 96 * 1024
 HARD_LIMIT_BYTES = 120 * 1024
@@ -18,7 +18,7 @@ OPERATIONS = [
     "list_recent",
     "status",
 ]
-LABEL_MATCH_MODES = ["all", "any"]
+TAG_MATCH_MODES = ["all", "any"]
 
 
 # Small helpers keep the top-level python_script flow readable.
@@ -171,22 +171,22 @@ def normalize_key(value):
     return result
 
 
-def parse_labels(raw_labels):
-    labels = []
-    invalid_labels = []
+def parse_tags(raw_tags):
+    tags = []
+    invalid_tags = []
 
-    for part in str(raw_labels or "").split(","):
-        raw_label = part.strip()
-        if not raw_label:
+    for part in str(raw_tags or "").split(","):
+        raw_tag = part.strip()
+        if not raw_tag:
             continue
 
-        label = normalize_key(raw_label)
-        if not label:
-            invalid_labels.append(raw_label)
-        elif label not in labels:
-            labels.append(label)
+        tag = normalize_key(raw_tag)
+        if not tag:
+            invalid_tags.append(raw_tag)
+        elif tag not in tags:
+            tags.append(tag)
 
-    return labels, invalid_labels
+    return tags, invalid_tags
 
 
 def parse_limit(raw_limit):
@@ -314,7 +314,7 @@ def validate_store(memory):
             )
 
         topic = mapping_value(entry, "topic")
-        labels = mapping_value(entry, "labels")
+        tags = mapping_value(entry, "tags")
         text = mapping_value(entry, "text")
         created_at = mapping_value(entry, "created_at")
         updated_at = mapping_value(entry, "updated_at")
@@ -326,28 +326,28 @@ def validate_store(memory):
                 {"memory_id": memory_id_text},
                 {"tool": TOOL_NAME},
             )
-        if not is_sequence(labels):
+        if not is_sequence(tags):
             return None, validation_response(
-                "Malformed memory store. Entry labels must be a list.",
+                "Malformed memory store. Entry tags must be a list.",
                 {"memory_id": memory_id_text},
                 {"tool": TOOL_NAME},
             )
 
-        normalized_labels = []
-        for label in labels:
-            label_text = as_text(label)
-            if not label_text or label_text != normalize_key(label_text):
+        normalized_tags = []
+        for tag in tags:
+            tag_text = as_text(tag)
+            if not tag_text or tag_text != normalize_key(tag_text):
                 return None, validation_response(
-                    "Malformed memory store. Entry labels must be lower_snake text.",
+                    "Malformed memory store. Entry tags must be lower_snake text.",
                     {"memory_id": memory_id_text},
                     {"tool": TOOL_NAME},
                 )
-            if label_text not in normalized_labels:
-                normalized_labels.append(label_text)
+            if tag_text not in normalized_tags:
+                normalized_tags.append(tag_text)
 
-        if not normalized_labels:
+        if not normalized_tags:
             return None, validation_response(
-                "Malformed memory store. Entry labels cannot be empty.",
+                "Malformed memory store. Entry tags cannot be empty.",
                 {"memory_id": memory_id_text},
                 {"tool": TOOL_NAME},
             )
@@ -369,7 +369,7 @@ def validate_store(memory):
 
         normalized_entries[memory_id_text] = {
             "topic": topic_text,
-            "labels": normalized_labels,
+            "tags": normalized_tags,
             "text": text,
             "created_at": created_at_text,
             "updated_at": updated_at_text,
@@ -450,12 +450,12 @@ def clone_store(store):
     entries = store["entries"]
     for memory_id in entries:
         entry = entries[memory_id]
-        labels = []
-        for label in entry["labels"]:
-            labels.append(label)
+        tags = []
+        for tag in entry["tags"]:
+            tags.append(tag)
         cloned_entries[memory_id] = {
             "topic": entry["topic"],
-            "labels": labels,
+            "tags": tags,
             "text": entry["text"],
             "created_at": entry["created_at"],
             "updated_at": entry["updated_at"],
@@ -493,22 +493,22 @@ def tokenize(value):
 
 
 def entry_tokens(entry):
-    haystack = entry["topic"] + " " + " ".join(entry["labels"]) + " " + entry["text"]
+    haystack = entry["topic"] + " " + " ".join(entry["tags"]) + " " + entry["text"]
     return tokenize(haystack)
 
 
-def labels_match(entry_labels, requested_labels, mode):
-    if not requested_labels:
+def tags_match(entry_tags, requested_tags, mode):
+    if not requested_tags:
         return True
 
     matched_count = 0
-    for label in requested_labels:
-        if label in entry_labels:
+    for tag in requested_tags:
+        if tag in entry_tags:
             matched_count = matched_count + 1
 
     if mode == "any":
         return matched_count > 0
-    return matched_count == len(requested_labels)
+    return matched_count == len(requested_tags)
 
 
 def query_tokens_match(entry, query_tokens):
@@ -534,7 +534,7 @@ def entry_summary(memory_id, entry):
     return {
         "memory_id": memory_id,
         "topic": entry["topic"],
-        "labels": entry["labels"],
+        "tags": entry["tags"],
         "snippet": snippet(entry["text"]),
         "updated_at": entry["updated_at"],
     }
@@ -595,16 +595,16 @@ def ensure_store_limit(operation, current_store, attempted_store):
 
 def remember(store):
     topic = normalize_key(data.get("topic"))
-    labels, invalid_labels = parse_labels(data.get("labels"))
+    tags, invalid_tags = parse_tags(data.get("tags"))
     text = as_text(data.get("text"))
     meta = base_meta("remember")
 
     if not topic:
         return validation_response("remember requires topic.", {"required": "topic"}, meta), None
-    if invalid_labels:
-        return validation_response("Invalid Memory Label. Use short text labels.", {"invalid_labels": invalid_labels}, meta), None
-    if not labels:
-        return validation_response("remember requires at least one label.", {"required": "labels"}, meta), None
+    if invalid_tags:
+        return validation_response("Invalid Memory Tag. Use short text tags.", {"invalid_tags": invalid_tags}, meta), None
+    if not tags:
+        return validation_response("remember requires at least one tag.", {"required": "tags"}, meta), None
     if not text:
         return validation_response("remember requires text.", {"required": "text"}, meta), None
 
@@ -617,7 +617,7 @@ def remember(store):
     timestamp = now_text()
     new_store["entries"][memory_id] = {
         "topic": topic,
-        "labels": labels,
+        "tags": tags,
         "text": text,
         "created_at": timestamp,
         "updated_at": timestamp,
@@ -630,7 +630,7 @@ def remember(store):
 
     return success_response(
         "Remembered 1 memory entry.",
-        {"memory_id": memory_id, "topic": topic, "labels": labels},
+        {"memory_id": memory_id, "topic": topic, "tags": tags},
         write_meta("remember", new_store),
     ), new_store
 
@@ -641,15 +641,15 @@ def inspect_inventory(store):
         entry = store["entries"][memory_id]
         topic = entry["topic"]
         if topic not in topics:
-            topics[topic] = {"topic": topic, "count": 0, "labels": []}
+            topics[topic] = {"topic": topic, "count": 0, "tags": []}
         topics[topic]["count"] = topics[topic]["count"] + 1
-        for label in entry["labels"]:
-            if label not in topics[topic]["labels"]:
-                topics[topic]["labels"].append(label)
+        for tag in entry["tags"]:
+            if tag not in topics[topic]["tags"]:
+                topics[topic]["tags"].append(tag)
 
     result = []
     for topic in topics:
-        topics[topic]["labels"].sort()
+        topics[topic]["tags"].sort()
         result.append(topics[topic])
     result.sort(key=lambda item: item["topic"])
 
@@ -669,8 +669,8 @@ def inspect_inventory(store):
 def search(store):
     raw_topic = as_text(data.get("topic"))
     topic = normalize_key(raw_topic) if raw_topic else ""
-    labels, invalid_labels = parse_labels(data.get("labels"))
-    label_match_mode = as_text(data.get("label_match_mode")).lower() or "all"
+    tags, invalid_tags = parse_tags(data.get("tags"))
+    tag_match_mode = as_text(data.get("tag_match_mode")).lower() or "all"
     query = as_text(data.get("query"))
     query_tokens = tokenize(query)
     limit, limit_error = parse_limit(data.get("limit"))
@@ -678,20 +678,20 @@ def search(store):
 
     if raw_topic and not topic:
         return validation_response("Invalid Memory Topic. Use short topic text.", {"invalid_topic": raw_topic}, meta), None
-    if invalid_labels:
-        return validation_response("Invalid Memory Label. Use short text labels.", {"invalid_labels": invalid_labels}, meta), None
-    if label_match_mode not in LABEL_MATCH_MODES:
+    if invalid_tags:
+        return validation_response("Invalid Memory Tag. Use short text tags.", {"invalid_tags": invalid_tags}, meta), None
+    if tag_match_mode not in TAG_MATCH_MODES:
         return validation_response(
-            "Invalid label_match_mode. Use all or any.",
-            {"known_label_match_modes": LABEL_MATCH_MODES},
+            "Invalid tag_match_mode. Use all or any.",
+            {"known_tag_match_modes": TAG_MATCH_MODES},
             meta,
         ), None
     if limit_error:
         return validation_response(limit_error, {"default_limit": DEFAULT_LIMIT, "max_limit": MAX_LIMIT}, meta), None
-    if not topic and not labels and not query_tokens:
+    if not topic and not tags and not query_tokens:
         return validation_response(
-            "search requires query, topic, or labels.",
-            {"required": "query, topic, or labels"},
+            "search requires query, topic, or tags.",
+            {"required": "query, topic, or tags"},
             meta,
         ), None
 
@@ -700,7 +700,7 @@ def search(store):
         entry = store["entries"][memory_id]
         if topic and entry["topic"] != topic:
             continue
-        if not labels_match(entry["labels"], labels, label_match_mode):
+        if not tags_match(entry["tags"], tags, tag_match_mode):
             continue
         if not query_tokens_match(entry, query_tokens):
             continue
@@ -715,10 +715,10 @@ def search(store):
         "total": total,
         "query": query,
         "topic": topic,
-        "label_match_mode": label_match_mode,
+        "tag_match_mode": tag_match_mode,
     }
-    if labels:
-        meta["labels"] = labels
+    if tags:
+        meta["tags"] = tags
     if total > limit:
         meta["truncated"] = True
 
@@ -727,7 +727,7 @@ def search(store):
     if total == 0:
         hint = (
             "If you have not already inspected memory inventory for this user request, "
-            "call inspect_inventory, choose existing topic/labels, and retry search before saying no memory was found."
+            "call inspect_inventory, choose existing topic/tags, and retry search before saying no memory was found."
         )
         answer = answer + " " + hint
         data_payload["hint"] = hint
@@ -755,7 +755,7 @@ def read(store):
         {
             "memory_id": memory_id,
             "topic": entry["topic"],
-            "labels": entry["labels"],
+            "tags": entry["tags"],
             "text": entry["text"],
             "created_at": entry["created_at"],
             "updated_at": entry["updated_at"],
@@ -768,8 +768,8 @@ def update(store):
     memory_id = as_text(data.get("memory_id"))
     raw_topic = as_text(data.get("topic"))
     topic = normalize_key(raw_topic) if raw_topic else ""
-    raw_labels = as_text(data.get("labels"))
-    labels, invalid_labels = parse_labels(raw_labels)
+    raw_tags = as_text(data.get("tags"))
+    tags, invalid_tags = parse_tags(raw_tags)
     text = as_text(data.get("text"))
     meta = base_meta("update")
 
@@ -779,10 +779,10 @@ def update(store):
         return validation_response("Unknown Memory ID.", {"memory_id": memory_id}, meta), None
     if raw_topic and not topic:
         return validation_response("Invalid Memory Topic. Use short topic text.", {"invalid_topic": raw_topic}, meta), None
-    if invalid_labels:
-        return validation_response("Invalid Memory Label. Use short text labels.", {"invalid_labels": invalid_labels}, meta), None
-    if raw_labels and not labels:
-        return validation_response("update labels cannot be empty when provided.", {"required": "labels"}, meta), None
+    if invalid_tags:
+        return validation_response("Invalid Memory Tag. Use short text tags.", {"invalid_tags": invalid_tags}, meta), None
+    if raw_tags and not tags:
+        return validation_response("update tags cannot be empty when provided.", {"required": "tags"}, meta), None
     if not text:
         return validation_response("update requires replacement text.", {"required": "text"}, meta), None
 
@@ -794,8 +794,8 @@ def update(store):
     entry = new_store["entries"][memory_id]
     if topic:
         entry["topic"] = topic
-    if raw_labels:
-        entry["labels"] = labels
+    if raw_tags:
+        entry["tags"] = tags
     entry["text"] = text
     entry["updated_at"] = now_text()
 
@@ -808,7 +808,7 @@ def update(store):
         {
             "memory_id": memory_id,
             "topic": entry["topic"],
-            "labels": entry["labels"],
+            "tags": entry["tags"],
         },
         write_meta("update", new_store),
     ), new_store

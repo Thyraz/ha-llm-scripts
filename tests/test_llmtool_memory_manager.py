@@ -37,10 +37,10 @@ class FakeHass:
         self.states = FakeStates(states=states)
 
 
-def entry(topic="school", labels=None, text="School starts at 08:10.", created=None, updated=None):
+def entry(topic="school", tags=None, text="School starts at 08:10.", created=None, updated=None):
     return {
         "topic": topic,
-        "labels": labels or ["schedule", "kid_one"],
+        "tags": tags or ["schedule", "kid_one"],
         "text": text,
         "created_at": created or "2026-06-20 08:00:00",
         "updated_at": updated or "2026-06-20 08:00:00",
@@ -52,7 +52,7 @@ def store(entries=None, next_id=None):
     if next_id is None:
         next_id = len(entries) + 1
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "next_id": next_id,
         "entries": entries,
     }
@@ -63,8 +63,8 @@ def run_helper(overrides, memory=store(), states=None, now=None, restricted_buil
         "operation": "status",
         "memory_id": "",
         "topic": "",
-        "labels": "",
-        "label_match_mode": "",
+        "tags": "",
+        "tag_match_mode": "",
         "query": "",
         "text": "",
         "limit": "",
@@ -101,7 +101,7 @@ class MemoryManagerHelperTest(unittest.TestCase):
 
         self.assertTrue(result["response"]["success"])
         self.assertTrue(result["write_required"])
-        self.assertEqual(1, result["write_memory"]["schema_version"])
+        self.assertEqual(2, result["write_memory"]["schema_version"])
         self.assertEqual({}, result["write_memory"]["entries"])
 
     def test_malformed_memory_attribute_returns_soft_failure(self):
@@ -117,12 +117,12 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertFalse(result["response"]["success"])
         self.assertIn("remember", result["response"]["data"]["known_operations"])
 
-    def test_remember_creates_stable_id_and_normalizes_topic_labels(self):
+    def test_remember_creates_stable_id_and_normalizes_topic_tags(self):
         result = run_helper(
             {
                 "operation": "remember",
                 "topic": "Kid School",
-                "labels": "Schedule, Kid One, schedule",
+                "tags": "Schedule, Kid One, schedule",
                 "text": "School starts at 08:10 on regular weekdays.",
             },
             memory=store(),
@@ -134,17 +134,17 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertTrue(result["write_required"])
         self.assertEqual("m000001", response["data"]["memory_id"])
         self.assertEqual("kid_school", response["data"]["topic"])
-        self.assertEqual(["schedule", "kid_one"], response["data"]["labels"])
+        self.assertEqual(["schedule", "kid_one"], response["data"]["tags"])
         self.assertEqual(2, result["write_memory"]["next_id"])
         self.assertEqual("2026-06-26 10:15:00", result["write_memory"]["entries"]["m000001"]["created_at"])
 
     def test_remember_validation_and_limits(self):
-        missing = run_helper({"operation": "remember", "topic": "", "labels": "", "text": ""})
+        missing = run_helper({"operation": "remember", "topic": "", "tags": "", "text": ""})
         large_text = run_helper(
             {
                 "operation": "remember",
                 "topic": "school",
-                "labels": "schedule",
+                "tags": "schedule",
                 "text": "x" * 4097,
             }
         )
@@ -162,7 +162,7 @@ class MemoryManagerHelperTest(unittest.TestCase):
             {
                 "operation": "remember",
                 "topic": "school",
-                "labels": "schedule",
+                "tags": "schedule",
                 "text": "near soft limit",
             },
             memory=store(near_soft_entries, next_id=26),
@@ -175,7 +175,7 @@ class MemoryManagerHelperTest(unittest.TestCase):
             {
                 "operation": "remember",
                 "topic": "school",
-                "labels": "schedule",
+                "tags": "schedule",
                 "text": "too large",
             },
             memory=store(too_large_entries, next_id=32),
@@ -187,12 +187,12 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertIn("attempted_size_bytes", too_large["response"]["data"])
         self.assertFalse(too_large["write_required"])
 
-    def test_inspect_inventory_returns_counts_and_labels(self):
+    def test_inspect_inventory_returns_counts_and_tags(self):
         memory = store(
             {
-                "m000001": entry(topic="school", labels=["schedule", "kid_one"]),
-                "m000002": entry(topic="school", labels=["teacher"]),
-                "m000003": entry(topic="heating", labels=["bedroom", "preference"]),
+                "m000001": entry(topic="school", tags=["schedule", "kid_one"]),
+                "m000002": entry(topic="school", tags=["teacher"]),
+                "m000003": entry(topic="heating", tags=["bedroom", "preference"]),
             },
             next_id=4,
         )
@@ -203,26 +203,26 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertEqual("inspect_inventory", result["response"]["meta"]["operation"])
         self.assertEqual("heating", result["response"]["data"]["topics"][0]["topic"])
         self.assertEqual(2, result["response"]["meta"]["topic_count"])
-        self.assertEqual(["kid_one", "schedule", "teacher"], result["response"]["data"]["topics"][1]["labels"])
+        self.assertEqual(["kid_one", "schedule", "teacher"], result["response"]["data"]["topics"][1]["tags"])
 
-    def test_search_matches_query_topic_labels_and_limit(self):
+    def test_search_matches_query_topic_tags_and_limit(self):
         memory = store(
             {
-                "m000001": entry(topic="school", labels=["schedule", "kid_one"], text="School starts at 08:10."),
+                "m000001": entry(topic="school", tags=["schedule", "kid_one"], text="School starts at 08:10."),
                 "m000002": entry(
                     topic="school",
-                    labels=["teacher", "kid_two"],
+                    tags=["teacher", "kid_two"],
                     text="Teacher conference is next week.",
                     updated="2026-06-24 08:00:00",
                 ),
-                "m000003": entry(topic="heating", labels=["bedroom"], text="Bedroom prefers 19 degrees."),
+                "m000003": entry(topic="heating", tags=["bedroom"], text="Bedroom prefers 19 degrees."),
             },
             next_id=4,
         )
 
         topic_search = run_helper({"operation": "search", "topic": "School", "limit": "1"}, memory=memory)
-        label_any = run_helper(
-            {"operation": "search", "labels": "kid_one,kid_two", "label_match_mode": "any"},
+        tag_any = run_helper(
+            {"operation": "search", "tags": "kid_one,kid_two", "tag_match_mode": "any"},
             memory=memory,
         )
         query_search = run_helper({"operation": "search", "query": "school 08:10"}, memory=memory)
@@ -231,11 +231,11 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertEqual(1, topic_search["response"]["meta"]["count"])
         self.assertEqual(2, topic_search["response"]["meta"]["total"])
         self.assertTrue(topic_search["response"]["meta"]["truncated"])
-        self.assertEqual(2, label_any["response"]["meta"]["count"])
+        self.assertEqual(2, tag_any["response"]["meta"]["count"])
         self.assertEqual(["m000001"], [item["memory_id"] for item in query_search["response"]["data"]["entries"]])
 
     def test_empty_search_returns_inventory_retry_hint(self):
-        memory = store({"m000001": entry(topic="car", labels=["model"], text="The car is a Volvo XC60.")}, next_id=2)
+        memory = store({"m000001": entry(topic="car", tags=["model"], text="The car is a Volvo XC60.")}, next_id=2)
 
         result = run_helper({"operation": "search", "query": "auto"}, memory=memory)
 
@@ -245,13 +245,13 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertIn("hint", result["response"]["data"])
         self.assertIn("hint", result["response"]["meta"])
 
-    def test_search_requires_scope_and_valid_label_match_mode(self):
+    def test_search_requires_scope_and_valid_tag_match_mode(self):
         broad = run_helper({"operation": "search"})
-        invalid_mode = run_helper({"operation": "search", "query": "school", "label_match_mode": "some"})
+        invalid_mode = run_helper({"operation": "search", "query": "school", "tag_match_mode": "some"})
 
         self.assertFalse(broad["response"]["success"])
         self.assertFalse(invalid_mode["response"]["success"])
-        self.assertIn("all", invalid_mode["response"]["data"]["known_label_match_modes"])
+        self.assertIn("all", invalid_mode["response"]["data"]["known_tag_match_modes"])
 
     def test_read_returns_full_text_and_unknown_id_fails(self):
         memory = store({"m000001": entry(text="Full memory text.")}, next_id=2)
@@ -279,7 +279,7 @@ class MemoryManagerHelperTest(unittest.TestCase):
                 "operation": "update",
                 "memory_id": "m000001",
                 "topic": "After School",
-                "labels": "Schedule, Pickup",
+                "tags": "Schedule, Pickup",
                 "text": "Pickup is at 16:00.",
             },
             memory=memory,
@@ -287,12 +287,12 @@ class MemoryManagerHelperTest(unittest.TestCase):
 
         self.assertTrue(preserved["response"]["success"])
         self.assertEqual("school", preserved["write_memory"]["entries"]["m000001"]["topic"])
-        self.assertEqual(["schedule", "kid_one"], preserved["write_memory"]["entries"]["m000001"]["labels"])
+        self.assertEqual(["schedule", "kid_one"], preserved["write_memory"]["entries"]["m000001"]["tags"])
         self.assertEqual("after_school", replaced["write_memory"]["entries"]["m000001"]["topic"])
-        self.assertEqual(["schedule", "pickup"], replaced["write_memory"]["entries"]["m000001"]["labels"])
+        self.assertEqual(["schedule", "pickup"], replaced["write_memory"]["entries"]["m000001"]["tags"])
 
     def test_forget_removes_entry(self):
-        memory = store({"m000001": entry(), "m000002": entry(topic="heating", labels=["bedroom"])}, next_id=3)
+        memory = store({"m000001": entry(), "m000002": entry(topic="heating", tags=["bedroom"])}, next_id=3)
 
         result = run_helper({"operation": "forget", "memory_id": "m000001"}, memory=memory)
 
@@ -319,7 +319,7 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertTrue(result["response"]["meta"]["truncated"])
 
     def test_status_reports_counts_and_warning_state(self):
-        memory = store({"m000001": entry(), "m000002": entry(topic="heating", labels=["bedroom"])}, next_id=3)
+        memory = store({"m000001": entry(), "m000002": entry(topic="heating", tags=["bedroom"])}, next_id=3)
 
         result = run_helper({"operation": "status"}, memory=memory)
 
@@ -337,7 +337,7 @@ class MemoryManagerHelperTest(unittest.TestCase):
             {
                 "operation": "remember",
                 "topic": "school",
-                "labels": "schedule",
+                "tags": "schedule",
                 "text": "School starts at 08:10.",
             },
             memory=store(),

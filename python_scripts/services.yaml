@@ -216,19 +216,18 @@ llmtool_memory_manager:
         Broad Memory Topic. Required for remember, optional for search and
         update.
       example: school
-    labels:
+    tags:
       description: >
-        Comma-separated Memory Labels. Required for remember, optional for
+        Comma-separated Memory Tags. Required for remember, optional for
         search and update.
       example: schedule,kid_one
-    label_match_mode:
+    tag_match_mode:
       description: >
-        Search label matching: all or any. Empty means all.
+        Search tag matching: all or any. Empty means all.
       example: all
     query:
       description: >
-        Lexical search text matched against Memory Entry text, topic, and
-        labels.
+        Lexical search text matched against Memory Entry text, topic, and tags.
       example: school starts today
     text:
       description: >

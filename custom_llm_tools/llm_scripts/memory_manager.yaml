@@ -11,31 +11,31 @@ llmtool_memory_manager:
     decide whether matching memory may exist.
 
     FIRST: before search or remember, call inspect_inventory to see existing
-    Memory Topics and Memory Labels. Only skip this when the user gives an exact
-    memory_id, exact known topic/labels, or you already called inspect_inventory
+    Memory Topics and Memory Tags. Only skip this when the user gives an exact
+    memory_id, exact known topic/tags, or you already called inspect_inventory
     for this user request.
 
-    Recall workflow: inspect_inventory, choose existing topic/labels, search,
+    Recall workflow: inspect_inventory, choose existing topic/tags, search,
     then read a returned memory_id before answering. Do not invent query terms
     first unless the user gave a distinctive term. If search returns 0 entries
     and you have not already called inspect_inventory for this request, call
-    inspect_inventory and retry by topic/labels before saying no memory was
+    inspect_inventory and retry by topic/tags before saying no memory was
     found.
 
     Choose operation from: remember, search, read, update, forget,
     inspect_inventory, list_recent, status.
 
-    remember requires topic, labels, and text. Use existing topics/labels from
-    inspect_inventory; avoid new labels that duplicate existing ones. remember
+    remember requires topic, tags, and text. Use existing topics/tags from
+    inspect_inventory; avoid new tags that duplicate existing ones. remember
     always creates a new Memory Entry. If the user asks to change or replace old
     memory, use search, read, and update instead.
 
-    search accepts query, topic, labels, or a useful combination. Omit query to
-    list snippets by topic and/or labels. Query-only search is valid only for
-    distinctive terms. Empty query plus empty topic plus empty labels is
+    search accepts query, topic, tags, or a useful combination. Omit query to
+    list snippets by topic and/or tags. Query-only search is valid only for
+    distinctive terms. Empty query plus empty topic plus empty tags is
     invalid; use list_recent only for broad browsing, recent-memory checks, or
-    debugging when search scope is unknown. label_match_mode=all means AND;
-    every label must match. label_match_mode=any means OR; at least one label
+    debugging when search scope is unknown. tag_match_mode=all means AND;
+    every tag must match. tag_match_mode=any means OR; at least one tag
     must match.
 
     search and list_recent return snippets only. Snippets choose candidates;
@@ -49,7 +49,7 @@ llmtool_memory_manager:
     is destructive; call it only when the user explicitly asks or confirms.
 
     inspect_inventory is only a memory-structure/index operation. It returns
-    every known topic with labels, but not Memory Entries or Memory IDs. Do not
+    every known topic with tags, but not Memory Entries or Memory IDs. Do not
     use inspect_inventory by itself to answer recall questions.
 
     Each Memory Entry text is capped at 4 KiB. If meta.warning is present, tell
@@ -64,7 +64,7 @@ llmtool_memory_manager:
     ```
       operation: search
       topic: school
-      labels: kid_one
+      tags: kid_one
       limit: 5
     ```
     Then read a returned memory_id before answering:
@@ -77,7 +77,7 @@ llmtool_memory_manager:
     ```
       operation: remember
       topic: school
-      labels: schedule,kid_one
+      tags: schedule,kid_one
       text: School starts at 08:10 on regular weekdays.
     ```
   mode: queued
@@ -118,20 +118,20 @@ llmtool_memory_manager:
       example: school
       selector:
         text:
-    labels:
-      name: Labels
+    tags:
+      name: Tags
       description: >
-        Comma-separated Memory Labels. Required for remember, optional for
+        Comma-separated Memory Tags. Required for remember, optional for
         search and update.
       required: false
       example: schedule,kid_one
       selector:
         text:
-    label_match_mode:
-      name: Label match mode
+    tag_match_mode:
+      name: Tag match mode
       description: >
-        For search with multiple labels, all means AND: every label must match.
-        any means OR: at least one label must match. Empty means all.
+        For search with multiple tags, all means AND: every tag must match.
+        any means OR: at least one tag must match. Empty means all.
       required: false
       default: all
       example: all
@@ -144,9 +144,9 @@ llmtool_memory_manager:
       name: Query
       description: >
         Optional lexical search text for search. Search matches query words
-        against Memory Entry text, topic, and labels. Query-only search is valid
-        for distinctive names or terms when no topic or label is known. Omit
-        query when listing by topic or labels.
+        against Memory Entry text, topic, and tags. Query-only search is valid
+        for distinctive names or terms when no topic or tag is known. Omit
+        query when listing by topic or tags.
       required: false
       example: school starts today
       selector:
@@ -182,8 +182,8 @@ llmtool_memory_manager:
         operation: "{{ operation | default('', true) }}"
         memory_id: "{{ memory_id | default('', true) }}"
         topic: "{{ topic | default('', true) }}"
-        labels: "{{ labels | default('', true) }}"
-        label_match_mode: "{{ label_match_mode | default('', true) }}"
+        tags: "{{ tags | default('', true) }}"
+        tag_match_mode: "{{ tag_match_mode | default('', true) }}"
         query: "{{ query | default('', true) }}"
         text: "{{ text | default('', true) }}"
         limit: "{{ limit | default('', true) }}"

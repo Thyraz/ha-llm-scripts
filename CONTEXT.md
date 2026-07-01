@@ -168,12 +168,12 @@ _Avoid_: drawer, note blob, raw text chunk
 A broad user-meaningful area that groups Memory Entries, such as school or heating.
 _Avoid_: chapter, folder, namespace
 
-**Memory Label**:
+**Memory Tag**:
 A short tag attached to a Memory Entry inside a Memory Topic to make retrieval more precise.
-_Avoid_: category, Home Assistant label, entity label
+_Avoid_: Memory Label, category, Home Assistant label, entity label
 
 **Memory Inventory**:
-The available Memory Topics and Memory Labels an Assistant inspects before choosing how to search or store Memory Entries.
+The available Memory Topics and Memory Tags an Assistant inspects before choosing how to search or store Memory Entries.
 _Avoid_: topic list, memory dump, full memory listing
 
 **Memory Manager operation**:
