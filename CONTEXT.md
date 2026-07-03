@@ -136,20 +136,40 @@ _Avoid_: function, mode, command
 A Calendar Manager filter that selects all events, all-day events, or timed events.
 _Avoid_: all_day boolean, calendar state
 
-**Media Player Group Manager**:
-An LLM Tool that lets an Assistant manage Home Assistant media player groups.
-_Avoid_: speaker group tool, media player grouping backend
+**Media Manager**:
+An LLM Tool that lets an Assistant control music playback, queues, and media player groups.
+_Avoid_: Media Player Group Manager, Music Library Search, speaker group tool
 
-**Media Player Group Leader Entity ID**:
-A Home Assistant `media_player.*` entity ID supplied to Media Player Group Manager as the player that receives group membership changes.
-_Avoid_: master, coordinator, playback player
+**Music Assistant Instance**:
+The Music Assistant server whose library and connected providers the Media Manager searches or browses.
+_Avoid_: hardcoded beta ID, stable integration ID
 
-**Media Player Group Member Entity ID**:
-A Home Assistant `media_player.*` entity ID supplied to Media Player Group Manager as a player added to or removed from a media player group.
-_Avoid_: member, speaker alias
+**Music Assistant media URI**:
+A Music Assistant result identifier selected from search or library results and later supplied to Media Manager playback operations.
+_Avoid_: plain text play query, guessed media ID, URL
 
-**Media Player Group Manager operation**:
-A named media-player-group action the Media Player Group Manager applies, such as joining players, unjoining players, or clearing group members.
+**Music Assistant Player Entity ID**:
+A Home Assistant `media_player.*` entity ID belonging to Music Assistant and supplied to Media Manager playback or queue operations.
+_Avoid_: speaker name, room name, raw player name
+
+**Music Assistant queue**:
+The ordered playback queue owned by a Music Assistant player.
+_Avoid_: media player attributes, now-playing state blob
+
+**Music Assistant library**:
+The user's saved, liked, or added Music Assistant media collection.
+_Avoid_: streaming catalog, provider search results
+
+**Music Assistant provider search**:
+A Music Assistant search across connected music providers outside the user's saved library.
+_Avoid_: library search, global Home Assistant search
+
+**Music Assistant grouped search**:
+A Music Assistant search response organized by requested media types, used when the Assistant should inspect several media categories before choosing what to play.
+_Avoid_: paginated library browse, single-type list
+
+**Media Manager operation**:
+A named media action the Media Manager applies, such as searching, browsing the library, playing media, reading a queue, transferring a queue, or changing media player groups.
 _Avoid_: function, mode, command
 
 **Memory Manager**:

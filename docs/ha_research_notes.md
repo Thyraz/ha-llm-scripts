@@ -1,7 +1,7 @@
 # Home Assistant Research Notes
 
-Checked: 2026-06-22
-Docs version shown by Home Assistant pages: 2026.6.4
+Checked: 2026-07-04
+Docs version shown by Home Assistant pages: 2026.7.0
 
 Use this file as the source ledger for Home Assistant behavior we rely on. Before substantial changes, re-check official docs, release notes, and source for anything touched here.
 
@@ -33,6 +33,20 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   https://www.home-assistant.io/actions/media_player.join/
 - Home Assistant media player unjoin action:
   https://www.home-assistant.io/actions/media_player.unjoin/
+- Home Assistant Music Assistant integration:
+  https://www.home-assistant.io/integrations/music_assistant/
+- Home Assistant Music Assistant actions:
+  - https://www.home-assistant.io/actions/music_assistant.get_library/
+  - https://www.home-assistant.io/actions/music_assistant.search/
+  - https://www.home-assistant.io/actions/music_assistant.play_media/
+  - https://www.home-assistant.io/actions/music_assistant.get_queue/
+  - https://www.home-assistant.io/actions/music_assistant.transfer_queue/
+- Home Assistant Core Music Assistant services source:
+  `homeassistant/components/music_assistant/services.yaml`
+- Deprecated Music Assistant custom integration:
+  https://github.com/music-assistant/hass-music-assistant
+- Home Assistant Core template helper source:
+  `homeassistant/helpers/template.py`
 - Home Assistant sensor long-term statistics developer docs:
   https://developers.home-assistant.io/docs/core/entity/sensor/#long-term-statistics
 - Home Assistant template functions: https://www.home-assistant.io/template-functions/
@@ -96,6 +110,15 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   in the UI or YAML.
 - `area_id(entity_id)` returns the area ID for an entity or `None`.
 - `device_id(entity_id)` returns the device ID for an entity or `None`.
+- `integration_entities(entry_name)` returns entity IDs for an integration
+  domain, or for a config entry when `entry_name` matches that config entry's
+  title.
+- `config_entry_id(entity_id)` returns the config entry ID for an entity.
+- `config_entry_attr(config_entry_id, attr_name)` returns selected config entry
+  fields including `domain`, `title`, `state`, `source`, and `disabled_by`.
+- Home Assistant config entry IDs are generated when not explicitly supplied;
+  Music Assistant config flow sets a stable server unique ID, but this is not
+  the same as the action-facing config entry ID.
 - Native `python_script` can read state machine data through `hass.states.entity_ids`,
   `hass.states.all`, `hass.states.get`, `hass.states.is_state`, and
   `hass.states.is_state_attr`.
@@ -195,6 +218,42 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - `media_player.unjoin` has no additional YAML options beyond the target.
 - Media player grouping actions only work on integrations that support player
   groups.
+- The official Home Assistant Music Assistant integration provides
+  `music_assistant.get_library`, `music_assistant.search`,
+  `music_assistant.play_media`, `music_assistant.get_queue`, and
+  `music_assistant.transfer_queue`.
+- The deprecated Music Assistant custom integration should not be targeted for
+  new LLM Tools.
+- Music Assistant search and library actions require `config_entry_id`.
+- Music Assistant search and library actions use `config_entry_id` to retrieve
+  the loaded Music Assistant client.
+- Music Assistant `play_media`, `get_queue`, and `transfer_queue` are platform
+  entity actions targeting Music Assistant media player entities, so the target
+  entity supplies the Music Assistant instance context.
+- `music_assistant.search` searches the Music Assistant library and connected
+  providers, returns result lists grouped by media type, and supports `name`,
+  optional `media_type`, optional `artist`, optional `album`, `limit`, and
+  `library_only`. The `artist` and `album` fields are combined into the search
+  query before calling Music Assistant search; they are helper fields for a
+  more precise query, not separate result filters.
+- `music_assistant.get_library` returns an `items` list plus pagination/query
+  echo fields. It supports `media_type`, `favorite`, `search`, `limit`,
+  `offset`, `order_by`, `album_type`, and `album_artists_only`.
+- `music_assistant.get_library` `album_type` applies only when `media_type` is
+  `album`; supported values are `album`, `single`, `compilation`, `ep`, and
+  `unknown`.
+- `music_assistant.get_library` `album_artists_only` applies only when
+  `media_type` is `artist`.
+- Music Assistant search and library item results include URIs that can be
+  passed to `music_assistant.play_media`.
+- `music_assistant.play_media` targets Music Assistant `media_player.*`
+  entities, accepts one or more `media_id` values, optional `media_type`,
+  optional `artist`, optional `album`, `enqueue`, `radio_mode`, and `username`.
+- `music_assistant.get_queue` targets Music Assistant `media_player.*`
+  entities and returns queue details keyed by entity ID.
+- `music_assistant.transfer_queue` targets the destination Music Assistant
+  player and accepts optional `source_player` plus `auto_play`. If
+  `source_player` is omitted, Music Assistant uses the first playing player.
 - Variables+History v3.5.7 creates variable entities as `sensor.*`,
   `binary_sensor.*`, or `device_tracker.*`.
 - Variables+History supports UI-created sensor variables and YAML-created
