@@ -290,6 +290,8 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - History access through REST commands needs careful token handling with `secrets.yaml`.
 - The permission behavior of exposed Assist scripts that call administrator-only
   actions needs validation in a real Home Assistant instance.
-- Media Player Group Manager uses `state_attr(leader_entity_id,
+- Media Manager group operations use `state_attr(leader_entity_id,
   'group_members')` as the current group snapshot for replace and clear
   planning; this needs validation across real media player integrations.
+- Music Assistant `get_library` exposes `album_type` as a multi-select/list
+  action field; Media Manager accepts one value and sends it as a one-item list.

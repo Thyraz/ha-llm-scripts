@@ -1,11 +1,12 @@
 # Media Manager Plan
 
-Status: planning.
+Status: implemented in repo; pending Home Assistant Developer Tools -> Actions
+validation.
 
 ## Purpose
 
 Media Manager lets an Assistant search Music Assistant, browse the user's Music
-Assistant library, play selected Music Assistant media URIs, inspect and
+Assistant library, play by Music Assistant media URI or by name, inspect and
 transfer Music Assistant queues, and change Home Assistant media player groups.
 
 ## Current decisions
@@ -15,9 +16,8 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
 - Entity after reload: `script.llmtool_media_manager`.
 - Python action: `python_script.llmtool_media_manager`.
 - Media Manager replaces Media Player Group Manager as a breaking change.
-- Remove the old Media Player Group Manager script, Python Helper, services
-  entry, tests, README section, plan doc, and Prompt overview text when Media
-  Manager is implemented.
+- Old Media Player Group Manager script, Python Helper, services entry, tests,
+  README section, plan doc, and Prompt overview text are removed.
 - No compatibility shim and no legacy operation aliases.
 - Media Manager remains one LLM Tool so search, library browsing, playback,
   queue, queue transfer, and grouping share player and Music Assistant Instance
@@ -50,17 +50,19 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
 - Music Assistant Instance setup soft failures include the helper entity ID and
   a user-actionable setup message, but do not include config entry IDs in the
   Assistant-facing response.
-- `play`, `get_queue`, and `transfer_queue` use Music Assistant media player
-  entities as targets and do not need a separate config entry ID.
-- `play`, `get_queue`, and `transfer_queue` validate that supplied
-  `media_player.*` entity IDs belong to Music Assistant when Home Assistant
-  template config-entry functions can determine that.
+- `play_by_uri`, `play_by_name`, `get_queue`, and `transfer_queue` use Music
+  Assistant media player entities as targets and do not need a separate config
+  entry ID.
+- `play_by_uri`, `play_by_name`, `get_queue`, and `transfer_queue` validate
+  that supplied `media_player.*` entity IDs belong to Music Assistant when Home
+  Assistant template config-entry functions can determine that.
 - Grouping operations accept generic Home Assistant `media_player.*` entity IDs
   and are not limited to Music Assistant players.
 - Supported operations:
   - `search`
   - `browse_library`
-  - `play`
+  - `play_by_uri`
+  - `play_by_name`
   - `get_queue`
   - `transfer_queue`
   - `group_join`
@@ -100,6 +102,8 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
 - Empty `browse_library.offset` means 0.
 - `album_type` is valid only when `operation=browse_library` and
   `media_type=album`.
+- Media Manager accepts one `album_type` value and sends it to Home Assistant as
+  the one-item list expected by `music_assistant.get_library`.
 - `album_type` values:
   - `album`
   - `single`
@@ -155,18 +159,32 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   - `count`
   - `truncated` when returned count equals `limit`
 - Do not add `truncation_possible`; existing tools use `meta.truncated`.
-- For normal music playback, the Assistant should search or browse first, then
-  pass selected Music Assistant media URIs to `play`.
-- Do not document a direct plain-text playback path.
-- `play` uses `music_assistant.play_media`.
-- `play` requires `player_entity_id`.
-- `play` requires newline-separated `media_ids` containing Music Assistant media
-  URIs from prior search or library results.
-- `play` supports multiple `media_ids` and preserves order.
-- `play` accepts at most 100 media IDs.
-- `play` uses selected Music Assistant media URIs and does not expose a
+- Use `play_by_name` for ordinary voice requests to play one or more well-known
+  tracks by artist/title.
+- Use `search` or `browse_library` then `play_by_uri` when the user asks for
+  library items, exact versions, obscure tracks, or corrects a wrong song.
+- If the user says the played song is wrong after `play_by_name`, search for
+  the intended item and retry with `play_by_uri`.
+- `play_by_uri` and `play_by_name` use `music_assistant.play_media`.
+- `play_by_uri` requires `player_entity_id`.
+- `play_by_uri` requires newline-separated `media_uris` containing Music
+  Assistant media URIs from prior search or library results.
+- `play_by_uri` supports multiple `media_uris` and preserves order.
+- `play_by_uri` accepts at most 100 media URIs.
+- `play_by_uri` uses selected Music Assistant media URIs and does not expose a
   separate `media_type` field for playback.
-- `play` supports `enqueue`.
+- `play_by_name` requires `player_entity_id`.
+- `play_by_name` requires newline-separated `play_queries`.
+- `play_by_name` queries should usually be written as `artist - title` for
+  track playback.
+- `play_by_name` supports multiple `play_queries` and sends them in one
+  `music_assistant.play_media` action.
+- `play_by_name` accepts at most 100 play queries.
+- `play_by_name.media_type` supports `track`, `album`, `artist`, `playlist`,
+  and `radio`; empty means `track`.
+- `play_by_name` does not support `library_only`; use search/library then
+  `play_by_uri` for library-only playback.
+- `play_by_uri` and `play_by_name` support `enqueue`.
 - `enqueue` values:
   - `play`
   - `replace`
@@ -174,9 +192,9 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   - `add`
 - Empty `enqueue` means `play`.
 - Do not expose `replace_next`.
-- `play` supports `radio_mode`.
+- `play_by_uri` and `play_by_name` support `radio_mode`.
 - Empty `radio_mode` means `false`.
-- `radio_mode=true` requires exactly one media ID.
+- `radio_mode=true` requires exactly one media URI or play query.
 - Do not expose Music Assistant `username` in v1.
 - `get_queue` uses `music_assistant.get_queue`.
 - `get_queue` requires `player_entity_id`.
@@ -200,7 +218,7 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   `media_player.unjoin` actions.
 - Grouping operations keep the existing Media Player Group Manager semantics.
 - Media Manager does not combine grouping and playback in one operation. The
-  Assistant should call a grouping operation first, then search/play.
+  Assistant should call a grouping operation first, then search/playback.
 - `group_join` requires `leader_entity_id`.
 - `group_join` requires at least one final member entity ID different from
   `leader_entity_id`.
@@ -222,7 +240,8 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   - `offset`
   - `album_type`
   - `player_entity_id`
-  - `media_ids`
+  - `media_uris`
+  - `play_queries`
   - `enqueue`
   - `radio_mode`
   - `source_player_entity_id`
@@ -248,8 +267,10 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
     `library_only`, `limit`
   - `browse_library`: `operation`, `query`, `media_type`, `favorite`, `limit`,
     `offset`, `album_type`
-  - `play`: `operation`, `player_entity_id`, `media_ids`, `enqueue`,
+  - `play_by_uri`: `operation`, `player_entity_id`, `media_uris`, `enqueue`,
     `radio_mode`
+  - `play_by_name`: `operation`, `player_entity_id`, `play_queries`,
+    `media_type`, `enqueue`, `radio_mode`
   - `get_queue`: `operation`, `player_entity_id`, `limit`
   - `transfer_queue`: `operation`, `source_player_entity_id`,
     `target_player_entity_id`, `auto_play`
@@ -293,11 +314,23 @@ offset: 0
 - Play selected Music Assistant media URIs:
 
 ```yaml
-operation: play
+operation: play_by_uri
 player_entity_id: media_player.kitchen
-media_ids: |-
+media_uris: |-
   spotify://track/abc
   spotify://track/def
+enqueue: play
+```
+
+- Fast name-based playback:
+
+```yaml
+operation: play_by_name
+player_entity_id: media_player.kitchen
+play_queries: |-
+  Lady Gaga - Aura
+  Queen - Don't Stop Me Now
+media_type: track
 enqueue: play
 ```
 
@@ -426,25 +459,49 @@ meta:
   count: 2
 ```
 
-Successful play:
+Successful URI playback:
 
 ```yaml
 success: true
-answer: "Sent 2 media items to media_player.kitchen."
+answer: "Sent 2 media URIs to media_player.kitchen."
 data:
   player_entity_id: media_player.kitchen
-  media_ids:
+  media_uris:
     - spotify://track/abc
     - spotify://track/def
-  media_count: 2
+  uri_count: 2
   enqueue: play
   radio_mode: false
 meta:
   tool: llmtool_media_manager
-  operation: play
+  operation: play_by_uri
   player_entity_id: media_player.kitchen
-  media_count: 2
+  uri_count: 2
   enqueue: play
+```
+
+Successful name-based playback:
+
+```yaml
+success: true
+answer: "Sent 2 play queries to media_player.kitchen."
+data:
+  player_entity_id: media_player.kitchen
+  play_queries:
+    - Lady Gaga - Aura
+    - Queen - Don't Stop Me Now
+  query_count: 2
+  media_type: track
+  enqueue: play
+  radio_mode: false
+meta:
+  tool: llmtool_media_manager
+  operation: play_by_name
+  player_entity_id: media_player.kitchen
+  query_count: 2
+  media_type: track
+  enqueue: play
+  match_precision: name_based
 ```
 
 Successful queue read:
@@ -530,18 +587,18 @@ Validation failure:
 success: false
 error: "Invalid parameters for operation."
 data:
-  operation: play
+  operation: play_by_uri
   invalid_parameters:
     - query
   allowed_parameters:
     - operation
     - player_entity_id
-    - media_ids
+    - media_uris
     - enqueue
     - radio_mode
 meta:
   tool: llmtool_media_manager
-  operation: play
+  operation: play_by_uri
 ```
 
 Music Assistant Instance setup failure:
@@ -574,14 +631,17 @@ meta:
 - Invalid `media_type`.
 - `album_type` supplied for non-`album` `browse_library`.
 - Invalid `album_type`.
-- Missing `player_entity_id` for `play` or `get_queue`.
+- Missing `player_entity_id` for playback or `get_queue`.
 - Invalid `player_entity_id`.
 - Non-Music-Assistant `player_entity_id` for Music Assistant playback or queue
   operations.
-- Missing `media_ids` for `play`.
-- More than 100 `media_ids`.
+- Missing `media_uris` for `play_by_uri`.
+- More than 100 `media_uris`.
+- Missing `play_queries` for `play_by_name`.
+- More than 100 `play_queries`.
+- Invalid `play_by_name.media_type`.
 - Invalid `enqueue`.
-- `radio_mode=true` with zero or multiple `media_ids`.
+- `radio_mode=true` with zero or multiple media URIs or play queries.
 - Missing `source_player_entity_id` for `transfer_queue`.
 - Missing `target_player_entity_id` for `transfer_queue`.
 - Invalid source or target player for `transfer_queue`.
@@ -593,15 +653,15 @@ meta:
 
 ## Implementation notes
 
-- Add `custom_llm_tools/llm_scripts/media_manager.yaml`.
-- Add `python_scripts/llmtool_media_manager.py`.
-- Add `llmtool_media_manager` to `python_scripts/services.yaml`.
-- Add `tests/test_llmtool_media_manager.py`.
-- Remove `custom_llm_tools/llm_scripts/media_player_group_manager.yaml`.
-- Remove `python_scripts/llmtool_media_player_group_manager.py`.
-- Remove `tests/test_llmtool_media_player_group_manager.py`.
-- Remove `llmtool_media_player_group_manager` from `python_scripts/services.yaml`.
-- Remove `docs/plans/implemented/media-player-group-manager.md`.
+- Added `custom_llm_tools/llm_scripts/media_manager.yaml`.
+- Added `python_scripts/llmtool_media_manager.py`.
+- Added `llmtool_media_manager` to `python_scripts/services.yaml`.
+- Added `tests/test_llmtool_media_manager.py`.
+- Removed `custom_llm_tools/llm_scripts/media_player_group_manager.yaml`.
+- Removed `python_scripts/llmtool_media_player_group_manager.py`.
+- Removed `tests/test_llmtool_media_player_group_manager.py`.
+- Removed `llmtool_media_player_group_manager` from `python_scripts/services.yaml`.
+- Removed `docs/plans/implemented/media-player-group-manager.md`.
 - Update README status, install/usage docs, Prompt overview, validation
   commands, and docs links.
 - Keep the LLM Tool Script `mode: queued` and `max: 2`.
@@ -640,11 +700,17 @@ meta:
 - Browse library validates album type only for albums.
 - Browse library treats `favorite=false` as no favorite filter.
 - Empty search and browse results return success with count 0.
-- Play validates Music Assistant player entity ID.
-- Play parses newline-separated media IDs and preserves order.
-- Play rejects more than 100 media IDs.
-- Play rejects `radio_mode=true` with multiple media IDs.
-- Play returns sent-media summary without claiming playback state.
+- `play_by_uri` validates Music Assistant player entity ID.
+- `play_by_uri` parses newline-separated media URIs and preserves order.
+- `play_by_uri` rejects more than 100 media URIs.
+- `play_by_uri` rejects `radio_mode=true` with multiple media URIs.
+- `play_by_uri` returns sent-media summary without claiming playback state.
+- `play_by_name` validates Music Assistant player entity ID.
+- `play_by_name` parses newline-separated play queries and preserves order.
+- `play_by_name` rejects more than 100 play queries.
+- `play_by_name` rejects invalid media type.
+- `play_by_name` returns `match_precision: name_based` without claiming exact
+  match.
 - Get queue validates Music Assistant player entity ID.
 - Get queue shapes current item, next item, and current-forward item list.
 - Transfer queue requires source and target.

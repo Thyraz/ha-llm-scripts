@@ -14,7 +14,6 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 - [Calendar Manager](implemented/calendar-manager.md)
 - [Demo LLM Tool](implemented/demo-tool.md)
 - [Entity Index](implemented/entity-index.md)
-- [Media Player Group Manager](implemented/media-player-group-manager.md)
 - [Calculator](implemented/calculator.md)
 - [Date Calculator](implemented/date-calculator.md)
 - [Long-Term Aggregated Statistics](implemented/long-term-aggregated-statistics.md)

@@ -145,8 +145,12 @@ The Music Assistant server whose library and connected providers the Media Manag
 _Avoid_: hardcoded beta ID, stable integration ID
 
 **Music Assistant media URI**:
-A Music Assistant result identifier selected from search or library results and later supplied to Media Manager playback operations.
-_Avoid_: plain text play query, guessed media ID, URL
+A Music Assistant result identifier selected from search or library results and later supplied to Media Manager `play_by_uri`.
+_Avoid_: plain text play query, guessed media ID, URL, media ID
+
+**Music Assistant play query**:
+A plain-text media request supplied to Media Manager `play_by_name`, usually written as `artist - title` for track playback.
+_Avoid_: Music Assistant media URI, search result, media ID
 
 **Music Assistant Player Entity ID**:
 A Home Assistant `media_player.*` entity ID belonging to Music Assistant and supplied to Media Manager playback or queue operations.

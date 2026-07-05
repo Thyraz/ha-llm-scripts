@@ -281,18 +281,29 @@ the YAML -> Python handoff failed. Check the `from_json` action data conversion.
 If `meta.truncated` is true, retry with a narrower time range, a higher limit,
 or more specific calendar IDs.
 
-### Media Player Group Manager
+### Media Manager
 
 Useful trace variables:
 
-- `media_player_group_current_members_json`
-- `media_player_group_prepare`
-- `media_player_group_helper`
-- `media_player_group_response`
+- `music_assistant_config_entry_ids_json`
+- `player_entity_id_is_music_assistant`
+- `source_player_entity_id_is_music_assistant`
+- `target_player_entity_id_is_music_assistant`
+- `current_group_members_json`
+- `media_manager_prepare`
+- `media_manager_action_response`
+- `media_manager_helper`
+- `media_manager_response`
 
 Useful Python Helper response fields:
 
 - `meta.operation`
+- `meta.count`
+- `meta.total`
+- `data.results`
+- `data.items`
+- `data.current_item`
+- `data.next_item`
 - `meta.leader_entity_id`
 - `data.join_member_entity_ids`
 - `data.unjoin_entity_ids`
@@ -307,20 +318,31 @@ Expected media player group model:
 - The public `leader_entity_id` input is passed to `media_player.join` as
   `target.entity_id`.
 - The public `member_entity_ids` input is passed to `media_player.join` as
-  `data.group_members` for `join`.
-- `unjoin` and `clear_members` call `media_player.unjoin` with one target entity
-  at a time.
-- `clear_members` and `join` with `replace_existing=true` read
+  `data.group_members` for `group_join`.
+- `group_unjoin` and `group_clear_members` call `media_player.unjoin` with one
+  target entity at a time.
+- `group_clear_members` and `group_join` with `replace_existing=true` read
   `state_attr(leader_entity_id, 'group_members')` before any actions run.
 - Missing or string `group_members` is treated as an empty current group.
+- `search` and `browse_library` resolve a Music Assistant Instance before
+  calling Music Assistant actions.
+- `play_by_uri`, `play_by_name`, `get_queue`, and `transfer_queue` validate
+  that supplied player entity IDs belong to Music Assistant before action
+  calls.
+- `play_by_uri` and `play_by_name` do not confirm playback state; call
+  `get_queue` if the Assistant needs current playback details.
 
 If the script raises a Home Assistant runtime error from `media_player.join` or
 `media_player.unjoin`, check whether the target integration supports media
 player grouping.
 
-If `replace_existing` or `clear_members` does not clear expected members,
-inspect `media_player_group_current_members_json` and verify whether the media
+If `replace_existing` or `group_clear_members` does not clear expected members,
+inspect `current_group_members_json` and verify whether the media
 player integration exposes `group_members` on the leader entity.
+
+If Music Assistant setup fails, check whether exactly one Music Assistant config
+entry can be discovered from Music Assistant `media_player.*` entities or set
+`input_text.llmtool_media_manager_music_assistant_config_entry_id`.
 
 ### Memory Manager
 
