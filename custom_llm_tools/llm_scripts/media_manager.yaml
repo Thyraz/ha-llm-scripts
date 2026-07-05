@@ -1,0 +1,604 @@
+llmtool_media_manager:
+  alias: LLM Tool Media Manager
+  icon: mdi:music-box-multiple
+  description: >
+    Use Media Manager for Music Assistant search, library browsing, playback,
+    queue checks, queue transfer, and media player grouping.
+
+    Use Entity Index first when you need Home Assistant media_player.* entity
+    IDs. Use play_by_name for ordinary voice requests to play one or more
+    well-known tracks by artist/title. Use search or browse_library, then
+    play_by_uri, for library items, exact versions, obscure tracks, or
+    corrections after a wrong name-based match.
+
+    Supported operations: search, browse_library, play_by_uri, play_by_name,
+    get_queue, transfer_queue, group_join, group_unjoin, group_clear_members.
+
+    search looks across Music Assistant and connected providers. Set
+    library_only=true to search only the user's Music Assistant library while
+    still returning grouped results across requested media types.
+
+    browse_library lists one media type from the user's Music Assistant library.
+    Use favorite=true to browse favorites. Use offset with limit to continue a
+    truncated browse response.
+
+    play_by_uri requires newline-separated media_uris from search or
+    browse_library results. play_by_name requires newline-separated
+    play_queries, usually in artist - title form. enqueue values: play,
+    replace, next, add. Empty enqueue means play.
+
+    get_queue answers what is playing and what plays next. transfer_queue
+    requires source_player_entity_id and target_player_entity_id.
+
+    Grouping operations use leader_entity_id and member_entity_ids. Use
+    group_join before playback when the user asks to play on several grouped
+    players.
+
+    Examples:
+    ```
+      operation: search
+      query: Bohemian Rhapsody
+      search_media_types: track
+      limit: 5
+    ```
+
+    ```
+      operation: search
+      query: Queen
+      search_media_types: artist,album,playlist,track
+      library_only: true
+      limit: 20
+    ```
+
+    ```
+      operation: browse_library
+      media_type: playlist
+      favorite: true
+      limit: 20
+      offset: 0
+    ```
+
+    ```
+      operation: play_by_uri
+      player_entity_id: media_player.kitchen
+      media_uris: |-
+        spotify://track/example_one
+        spotify://track/example_two
+      enqueue: play
+    ```
+
+    ```
+      operation: play_by_name
+      player_entity_id: media_player.kitchen
+      play_queries: |-
+        Lady Gaga - Aura
+        Queen - Don't Stop Me Now
+      media_type: track
+      enqueue: play
+    ```
+
+    ```
+      operation: group_join
+      leader_entity_id: media_player.living_room
+      member_entity_ids: media_player.kitchen,media_player.bedroom
+      replace_existing: true
+    ```
+  mode: queued
+  max: 2
+  fields:
+    operation:
+      name: Operation
+      description: >
+        Media Manager operation: search, browse_library, play_by_uri,
+        play_by_name, get_queue, transfer_queue, group_join, group_unjoin, or
+        group_clear_members.
+      required: true
+      example: search
+      selector:
+        select:
+          options:
+            - search
+            - browse_library
+            - play_by_uri
+            - play_by_name
+            - get_queue
+            - transfer_queue
+            - group_join
+            - group_unjoin
+            - group_clear_members
+    query:
+      name: Query
+      description: >
+        Search text for search, or optional library search text for
+        browse_library.
+      required: false
+      example: Bohemian Rhapsody
+      selector:
+        text:
+    search_media_types:
+      name: Search media types
+      description: >
+        For search only. Comma-separated media types to return. Empty means
+        track,album,artist,playlist,radio. Allowed: artist, album, audiobook,
+        playlist, podcast, track, radio.
+      required: false
+      example: track,album
+      selector:
+        text:
+    media_type:
+      name: Media type
+      description: >
+        For browse_library, one media type: artist, album, audiobook, playlist,
+        podcast, track, or radio. For play_by_name, one media type: track,
+        album, artist, playlist, or radio. Empty play_by_name media_type means
+        track.
+      required: false
+      example: playlist
+      selector:
+        select:
+          options:
+            - artist
+            - album
+            - audiobook
+            - playlist
+            - podcast
+            - track
+            - radio
+    artist:
+      name: Artist
+      description: >
+        For search only. Optional artist text to make track or album searches
+        more precise. Valid only when search_media_types includes track or album.
+      required: false
+      example: Queen
+      selector:
+        text:
+    album:
+      name: Album
+      description: >
+        For search only. Optional album text to make track or album searches
+        more precise. Valid only when search_media_types includes track or album.
+      required: false
+      example: A Night at the Opera
+      selector:
+        text:
+    library_only:
+      name: Library only
+      description: >
+        For search only. If true, search only the user's Music Assistant library.
+        Empty or false searches Music Assistant and connected providers.
+      required: false
+      default: false
+      selector:
+        boolean:
+    favorite:
+      name: Favorite
+      description: >
+        For browse_library only. If true, list favorite library items. Empty or
+        false applies no favorite filter.
+      required: false
+      default: false
+      selector:
+        boolean:
+    limit:
+      name: Limit
+      description: >
+        Optional result limit. search, browse_library, and get_queue default to
+        20 and allow 1 through 100.
+      required: false
+      default: 20
+      example: "20"
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    offset:
+      name: Offset
+      description: >
+        For browse_library only. Offset for continuing paginated library browse
+        results. Empty means 0.
+      required: false
+      default: 0
+      example: "0"
+      selector:
+        number:
+          min: 0
+          mode: box
+    album_type:
+      name: Album type
+      description: >
+        For browse_library with media_type=album only. Use album, single, ep, or
+        compilation.
+      required: false
+      example: album
+      selector:
+        select:
+          options:
+            - album
+            - single
+            - ep
+            - compilation
+    player_entity_id:
+      name: Player entity ID
+      description: >
+        Music Assistant media_player.* entity ID for play_by_uri, play_by_name,
+        or get_queue. Use Entity Index first if you do not know the ID.
+      required: false
+      example: media_player.kitchen
+      selector:
+        text:
+    media_uris:
+      name: Media URIs
+      description: >
+        For play_by_uri only. Newline-separated Music Assistant media URIs
+        selected from search or browse_library results.
+      required: false
+      example: "spotify://track/example"
+      selector:
+        text:
+          multiline: true
+    play_queries:
+      name: Play queries
+      description: >
+        For play_by_name only. Newline-separated Music Assistant play queries,
+        usually written as artist - title for track playback.
+      required: false
+      example: Lady Gaga - Aura
+      selector:
+        text:
+          multiline: true
+    enqueue:
+      name: Enqueue
+      description: >
+        For play_by_uri and play_by_name only. Use play, replace, next, or add.
+        Empty means play.
+      required: false
+      default: play
+      example: play
+      selector:
+        select:
+          options:
+            - play
+            - replace
+            - next
+            - add
+    radio_mode:
+      name: Radio mode
+      description: >
+        For play_by_uri and play_by_name only. If true, start radio mode from
+        exactly one media URI or play query.
+      required: false
+      default: false
+      selector:
+        boolean:
+    source_player_entity_id:
+      name: Source player entity ID
+      description: >
+        For transfer_queue only. Music Assistant media_player.* entity ID whose
+        queue should be transferred.
+      required: false
+      example: media_player.kitchen
+      selector:
+        text:
+    target_player_entity_id:
+      name: Target player entity ID
+      description: >
+        For transfer_queue only. Music Assistant media_player.* entity ID that
+        should receive the queue.
+      required: false
+      example: media_player.living_room
+      selector:
+        text:
+    auto_play:
+      name: Auto play
+      description: >
+        For transfer_queue only. Empty means true.
+      required: false
+      default: true
+      selector:
+        boolean:
+    leader_entity_id:
+      name: Leader entity ID
+      description: >
+        For group_join and group_clear_members. Home Assistant media_player.*
+        entity ID for the group leader.
+      required: false
+      example: media_player.living_room
+      selector:
+        text:
+    member_entity_ids:
+      name: Member entity IDs
+      description: >
+        For group_join and group_unjoin. Comma-separated Home Assistant
+        media_player.* entity IDs.
+      required: false
+      example: media_player.kitchen,media_player.bedroom
+      selector:
+        text:
+    ungroup_first:
+      name: Ungroup first
+      description: >
+        For group_join only. If true, unjoin the leader and final members before
+        joining.
+      required: false
+      default: false
+      selector:
+        boolean:
+    replace_existing:
+      name: Replace existing members
+      description: >
+        For group_join only. If true, unjoin current non-leader members from the
+        leader before joining final members.
+      required: false
+      default: false
+      selector:
+        boolean:
+  sequence:
+    # Normalize all public fields once for predictable helper handoff.
+    - alias: Prepare Media Manager template inputs
+      variables:
+        helper_operation: "{{ operation | default('', true) }}"
+        helper_query: "{{ query | default('', true) }}"
+        helper_search_media_types: "{{ search_media_types | default('', true) }}"
+        helper_media_type: "{{ media_type | default('', true) }}"
+        helper_artist: "{{ artist | default('', true) }}"
+        helper_album: "{{ album | default('', true) }}"
+        helper_library_only: "{{ library_only | default(false, true) }}"
+        helper_favorite: "{{ favorite | default(false, true) }}"
+        helper_limit: "{{ limit | default('', true) }}"
+        helper_offset: "{{ offset | default('', true) }}"
+        helper_album_type: "{{ album_type | default('', true) }}"
+        helper_player_entity_id: "{{ player_entity_id | default('', true) }}"
+        helper_media_uris: "{{ media_uris | default('', true) }}"
+        helper_play_queries: "{{ play_queries | default('', true) }}"
+        helper_enqueue: "{{ enqueue | default('', true) }}"
+        helper_radio_mode: "{{ radio_mode | default(false, true) }}"
+        helper_source_player_entity_id: "{{ source_player_entity_id | default('', true) }}"
+        helper_target_player_entity_id: "{{ target_player_entity_id | default('', true) }}"
+        helper_auto_play: "{{ auto_play | default('', true) }}"
+        helper_leader_entity_id: "{{ leader_entity_id | default('', true) }}"
+        helper_member_entity_ids: "{{ member_entity_ids | default('', true) }}"
+        helper_ungroup_first: "{{ ungroup_first | default(false, true) }}"
+        helper_replace_existing: "{{ replace_existing | default(false, true) }}"
+        config_helper_entity_id: input_text.llmtool_media_manager_music_assistant_config_entry_id
+
+    # The helper can pin one Music Assistant Instance. Without it, auto-discover
+    # loaded Music Assistant config entries from their media_player entities.
+    - alias: Resolve candidate Music Assistant instances
+      variables:
+        helper_config_entry_id: >-
+          {% set value = states(config_helper_entity_id) %}
+          {{ value if value not in ['unknown', 'unavailable', 'none', ''] else '' }}
+        helper_config_entry_state: "{{ (config_entry_attr(helper_config_entry_id, 'state') | string | lower) if helper_config_entry_id else '' }}"
+        helper_config_entry_id_is_music_assistant_loaded: "{{ helper_config_entry_id and config_entry_attr(helper_config_entry_id, 'domain') == 'music_assistant' and helper_config_entry_state in ['loaded', 'configentrystate.loaded'] }}"
+        music_assistant_config_entry_ids_json: >
+          {% set ns = namespace(items=[]) %}
+          {% for player in states.media_player %}
+            {% set entry_id = config_entry_id(player.entity_id) %}
+            {% set domain = config_entry_attr(entry_id, 'domain') if entry_id else '' %}
+            {% set entry_state = (config_entry_attr(entry_id, 'state') | string | lower) if entry_id else '' %}
+            {% if entry_id and domain == 'music_assistant' and entry_state in ['loaded', 'configentrystate.loaded'] and entry_id not in ns.items %}
+              {% set ns.items = ns.items + [entry_id] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.items | to_json }}
+
+    # Validate player targets for Music Assistant-only operations before action
+    # calls. Grouping operations intentionally allow generic media_player IDs.
+    - alias: Resolve Music Assistant player flags
+      variables:
+        player_entity_config_entry_id: "{{ config_entry_id(helper_player_entity_id) if helper_player_entity_id else '' }}"
+        source_player_config_entry_id: "{{ config_entry_id(helper_source_player_entity_id) if helper_source_player_entity_id else '' }}"
+        target_player_config_entry_id: "{{ config_entry_id(helper_target_player_entity_id) if helper_target_player_entity_id else '' }}"
+        player_entity_id_is_music_assistant: "{{ player_entity_config_entry_id and config_entry_attr(player_entity_config_entry_id, 'domain') == 'music_assistant' }}"
+        source_player_entity_id_is_music_assistant: "{{ source_player_config_entry_id and config_entry_attr(source_player_config_entry_id, 'domain') == 'music_assistant' }}"
+        target_player_entity_id_is_music_assistant: "{{ target_player_config_entry_id and config_entry_attr(target_player_config_entry_id, 'domain') == 'music_assistant' }}"
+
+    # Read the leader's current group once so replace/clear actions are planned
+    # against a stable snapshot.
+    - alias: Gather current leader group members
+      variables:
+        current_group_members_json: >
+          {% set raw_members = state_attr(helper_leader_entity_id, 'group_members') if helper_leader_entity_id else [] %}
+          {% set ns = namespace(items=[]) %}
+          {% if raw_members is iterable and raw_members is not string %}
+            {% for entity_id in raw_members %}
+              {% set entity_id_text = entity_id | string | trim %}
+              {% if entity_id_text %}
+                {% set ns.items = ns.items + [entity_id_text] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {{ ns.items | to_json }}
+
+    # Validate input and build the native Home Assistant action plan.
+    - alias: Prepare Media Manager action plan
+      action: python_script.llmtool_media_manager
+      data:
+        mode: prepare
+        operation: "{{ helper_operation }}"
+        query: "{{ helper_query }}"
+        search_media_types: "{{ helper_search_media_types }}"
+        media_type: "{{ helper_media_type }}"
+        artist: "{{ helper_artist }}"
+        album: "{{ helper_album }}"
+        library_only: "{{ helper_library_only }}"
+        favorite: "{{ helper_favorite }}"
+        limit: "{{ helper_limit }}"
+        offset: "{{ helper_offset }}"
+        album_type: "{{ helper_album_type }}"
+        player_entity_id: "{{ helper_player_entity_id }}"
+        media_uris: "{{ helper_media_uris }}"
+        play_queries: "{{ helper_play_queries }}"
+        enqueue: "{{ helper_enqueue }}"
+        radio_mode: "{{ helper_radio_mode }}"
+        source_player_entity_id: "{{ helper_source_player_entity_id }}"
+        target_player_entity_id: "{{ helper_target_player_entity_id }}"
+        auto_play: "{{ helper_auto_play }}"
+        leader_entity_id: "{{ helper_leader_entity_id }}"
+        member_entity_ids: "{{ helper_member_entity_ids }}"
+        ungroup_first: "{{ helper_ungroup_first }}"
+        replace_existing: "{{ helper_replace_existing }}"
+        helper_config_entry_id: "{{ helper_config_entry_id }}"
+        helper_config_entry_id_is_music_assistant_loaded: "{{ helper_config_entry_id_is_music_assistant_loaded }}"
+        music_assistant_config_entry_ids: >
+          {% if music_assistant_config_entry_ids_json is string %}
+            {{ music_assistant_config_entry_ids_json | from_json(default=[]) }}
+          {% else %}
+            {{ music_assistant_config_entry_ids_json }}
+          {% endif %}
+        player_entity_id_is_music_assistant: "{{ player_entity_id_is_music_assistant }}"
+        source_player_entity_id_is_music_assistant: "{{ source_player_entity_id_is_music_assistant }}"
+        target_player_entity_id_is_music_assistant: "{{ target_player_entity_id_is_music_assistant }}"
+        current_group_members: >
+          {% if current_group_members_json is string %}
+            {{ current_group_members_json | from_json(default=[]) }}
+          {% else %}
+            {{ current_group_members_json }}
+          {% endif %}
+      response_variable: media_manager_prepare
+
+    # Execute the planned Home Assistant action only after validation succeeds.
+    - alias: Execute Media Manager action
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ media_manager_prepare.success and media_manager_prepare.data.operation == 'search' }}"
+          sequence:
+            - action: music_assistant.search
+              data: >
+                {{ media_manager_prepare.data.action_data | to_json | from_json(default={}) }}
+              response_variable: media_manager_action_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ media_manager_prepare.success and media_manager_prepare.data.operation == 'browse_library' }}"
+          sequence:
+            - action: music_assistant.get_library
+              data: >
+                {{ media_manager_prepare.data.action_data | to_json | from_json(default={}) }}
+              response_variable: media_manager_action_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ media_manager_prepare.success and media_manager_prepare.data.operation in ['play_by_uri', 'play_by_name'] }}"
+          sequence:
+            - action: music_assistant.play_media
+              target:
+                entity_id: "{{ media_manager_prepare.data.target_entity_id }}"
+              data: >
+                {{ media_manager_prepare.data.action_data | to_json | from_json(default={}) }}
+            - variables:
+                media_manager_action_response: {}
+
+        - conditions:
+            - condition: template
+              value_template: "{{ media_manager_prepare.success and media_manager_prepare.data.operation == 'get_queue' }}"
+          sequence:
+            - action: music_assistant.get_queue
+              target:
+                entity_id: "{{ media_manager_prepare.data.target_entity_id }}"
+              data: >
+                {{ media_manager_prepare.data.action_data | to_json | from_json(default={}) }}
+              response_variable: media_manager_action_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ media_manager_prepare.success and media_manager_prepare.data.operation == 'transfer_queue' }}"
+          sequence:
+            - action: music_assistant.transfer_queue
+              target:
+                entity_id: "{{ media_manager_prepare.data.target_entity_id }}"
+              data: >
+                {{ media_manager_prepare.data.action_data | to_json | from_json(default={}) }}
+            - variables:
+                media_manager_action_response: {}
+
+        - conditions:
+            - condition: template
+              value_template: "{{ media_manager_prepare.success and media_manager_prepare.data.action == 'group' }}"
+          sequence:
+            - repeat:
+                for_each: "{{ media_manager_prepare.data.unjoin_entity_ids }}"
+                sequence:
+                  - action: media_player.unjoin
+                    target:
+                      entity_id: "{{ repeat.item }}"
+
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ (media_manager_prepare.data.join_member_entity_ids | count) > 0 }}"
+                  sequence:
+                    - action: media_player.join
+                      target:
+                        entity_id: "{{ media_manager_prepare.data.join_leader_entity_id }}"
+                      data:
+                        group_members: >
+                          {{ media_manager_prepare.data.join_member_entity_ids | to_json | from_json(default=[]) }}
+
+            - variables:
+                media_manager_action_response: {}
+
+    # Shape the action response. Malformed action data becomes a helper soft
+    # failure instead of a template runtime error.
+    - alias: Shape Media Manager response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ media_manager_prepare.success }}"
+          sequence:
+            - variables:
+                media_manager_action_response_json: >
+                  {% set response = media_manager_action_response | default({}, true) %}
+                  {% if response is string %}
+                    {{ response | from_json(default={'llmtool_invalid_response': true}) | to_json }}
+                  {% else %}
+                    {{ response | to_json }}
+                  {% endif %}
+
+            - action: python_script.llmtool_media_manager
+              data:
+                mode: shape
+                prepared: >
+                  {{ media_manager_prepare.data | to_json | from_json(default={}) }}
+                action_response: >
+                  {% if media_manager_action_response_json is string %}
+                    {{ media_manager_action_response_json | from_json(default={'llmtool_invalid_response': true}) }}
+                  {% else %}
+                    {{ media_manager_action_response_json }}
+                  {% endif %}
+              response_variable: media_manager_helper
+      default:
+        - variables:
+            media_manager_helper:
+              success: false
+              error: "{{ media_manager_prepare.error }}"
+              data: "{{ media_manager_prepare.data }}"
+              meta: "{{ media_manager_prepare.meta }}"
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ media_manager_helper.success }}"
+          sequence:
+            - variables:
+                media_manager_response:
+                  success: true
+                  answer: "{{ media_manager_helper.answer }}"
+                  data: "{{ media_manager_helper.data }}"
+                  meta: "{{ media_manager_helper.meta }}"
+      default:
+        - variables:
+            media_manager_response:
+              success: false
+              error: "{{ media_manager_helper.error }}"
+              data: "{{ media_manager_helper.data }}"
+              meta: "{{ media_manager_helper.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Media Manager complete
+      response_variable: media_manager_response

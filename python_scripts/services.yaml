@@ -160,41 +160,123 @@ llmtool_calendar_manager:
         Response detail: compact or detailed.
       example: compact
 
-llmtool_media_player_group_manager:
-  name: LLM Tool Media Player Group Manager
+llmtool_media_manager:
+  name: LLM Tool Media Manager
   description: >
-    Validate Media Player Group Manager input, prepare media_player join/unjoin
+    Validate Media Manager input, prepare Music Assistant and media_player
     actions, and shape the response.
   fields:
     mode:
       description: >
         Helper mode: prepare validates input and builds the action plan; shape
-        validates and shapes the executed action plan response.
+        validates and shapes the action response.
       example: prepare
     operation:
       description: >
-        Media Player Group Manager operation: join, unjoin, or clear_members.
-      example: join
+        Media Manager operation: search, browse_library, play_by_uri,
+        play_by_name, get_queue, transfer_queue, group_join, group_unjoin, or
+        group_clear_members.
+      example: search
+    query:
+      description: Search text for search and optional library search text.
+      example: Bohemian Rhapsody
+    search_media_types:
+      description: >
+        Comma-separated search media types. Empty means
+        track,album,artist,playlist,radio.
+      example: track,album
+    media_type:
+      description: Media type for browse_library or play_by_name.
+      example: playlist
+    artist:
+      description: Optional artist text for precise track or album search.
+      example: Queen
+    album:
+      description: Optional album text for precise track or album search.
+      example: A Night at the Opera
+    library_only:
+      description: For search. If true, search only the Music Assistant library.
+      example: "false"
+    favorite:
+      description: For browse_library. If true, list favorite library items.
+      example: "false"
+    limit:
+      description: Optional result limit for search, browse_library, and get_queue.
+      example: "20"
+    offset:
+      description: Offset for browse_library pagination.
+      example: "0"
+    album_type:
+      description: For browse_library with media_type=album. album, single, ep, or compilation.
+      example: album
+    player_entity_id:
+      description: Music Assistant media_player.* entity ID for playback or get_queue.
+      example: media_player.kitchen
+    media_uris:
+      description: Newline-separated Music Assistant media URIs for play_by_uri.
+      example: spotify://track/example
+    play_queries:
+      description: Newline-separated Music Assistant play queries for play_by_name.
+      example: Lady Gaga - Aura
+    enqueue:
+      description: For playback. play, replace, next, or add.
+      example: play
+    radio_mode:
+      description: For playback. If true, start radio mode from exactly one media URI or play query.
+      example: "false"
+    source_player_entity_id:
+      description: Source Music Assistant media_player.* entity ID for transfer_queue.
+      example: media_player.kitchen
+    target_player_entity_id:
+      description: Target Music Assistant media_player.* entity ID for transfer_queue.
+      example: media_player.living_room
+    auto_play:
+      description: For transfer_queue. Empty means true.
+      example: "true"
     leader_entity_id:
       description: >
-        Home Assistant media_player.* entity ID for the group leader.
+        Home Assistant media_player.* entity ID for group_join and
+        group_clear_members.
       example: media_player.living_room
     member_entity_ids:
       description: >
-        Comma-separated Home Assistant media_player.* member entity IDs.
+        Comma-separated Home Assistant media_player.* member entity IDs for
+        group_join and group_unjoin.
       example: media_player.kitchen,media_player.bedroom
     ungroup_first:
       description: >
-        For join only. Unjoin the leader and final members before joining.
+        For group_join only. Unjoin the leader and final members before joining.
       example: "false"
     replace_existing:
       description: >
-        For join only. Unjoin current non-leader members before joining.
+        For group_join only. Unjoin current non-leader members before joining.
       example: "false"
     current_group_members:
       description: >
         Internal helper input from state_attr(leader_entity_id, 'group_members').
       example: media_player.living_room,media_player.kitchen
+    helper_config_entry_id:
+      description: Internal Music Assistant Instance helper value.
+      example: 01ABC
+    helper_config_entry_id_is_music_assistant_loaded:
+      description: Internal validation flag for helper_config_entry_id.
+      example: "true"
+    music_assistant_config_entry_ids:
+      description: Internal discovered Music Assistant config entry IDs.
+      example: 01ABC
+    player_entity_id_is_music_assistant:
+      description: Internal validation flag for player_entity_id.
+      example: "true"
+    source_player_entity_id_is_music_assistant:
+      description: Internal validation flag for source_player_entity_id.
+      example: "true"
+    target_player_entity_id_is_music_assistant:
+      description: Internal validation flag for target_player_entity_id.
+      example: "true"
+    prepared:
+      description: Internal prepared action data for shape mode.
+    action_response:
+      description: Internal Home Assistant action response for shape mode.
 
 llmtool_memory_manager:
   name: LLM Tool Memory Manager

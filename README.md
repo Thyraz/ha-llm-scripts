@@ -15,7 +15,7 @@ Current implementation includes:
 - `script.llmtool_calculator` for deterministic arithmetic
 - `script.llmtool_date_calculator` for deterministic calendar and local-time calculations
 - `script.llmtool_calendar_manager` for reading Home Assistant calendar events
-- `script.llmtool_media_player_group_manager` for managing media player groups
+- `script.llmtool_media_manager` for Music Assistant media and media player groups
 - optional `script.llmtool_memory_manager` for user-provided long-term memory
 
 ## Install
@@ -467,67 +467,110 @@ Responses are capped by `limit`, default 100 and maximum 1000. Capped responses
 include `meta.truncated: true`; retry with a narrower time range or higher
 limit.
 
-## Media Player Group Manager tool
+## Media Manager tool
 
 After install, Home Assistant should expose:
 
-- `script.llmtool_media_player_group_manager`
-- `python_script.llmtool_media_player_group_manager`
+- `script.llmtool_media_manager`
+- `python_script.llmtool_media_manager`
 
-Media Player Group Manager joins media players into groups, unjoins media
-players from groups, and clears current members from a group leader. It changes
-Home Assistant media player grouping and only works with integrations that
-support media player groups.
+Media Manager searches Music Assistant, browses the user's Music Assistant
+library, plays by Music Assistant media URI or by name, reads and transfers
+Music Assistant queues, and manages Home Assistant media player groups.
 
 Supported operations:
 
-- `join`
-- `unjoin`
-- `clear_members`
+- `search`
+- `browse_library`
+- `play_by_uri`
+- `play_by_name`
+- `get_queue`
+- `transfer_queue`
+- `group_join`
+- `group_unjoin`
+- `group_clear_members`
 
-Pass `leader_entity_id` and `member_entity_ids` as Home Assistant
-`media_player.*` entity IDs. If you do not know the IDs, use Entity Index first.
+Use Entity Index first when you need Home Assistant `media_player.*` entity IDs.
+Use `play_by_name` for ordinary voice requests to play one or more well-known
+tracks by artist/title. Use search or browse first, then `play_by_uri`, for
+library items, exact versions, obscure tracks, or corrections after a wrong
+name-based match.
 
-Run `script.llmtool_media_player_group_manager` from Developer Tools -> Actions:
+If more than one Music Assistant instance is installed, create this helper and
+set it to the config entry ID to use:
 
 ```yaml
-operation: join
-leader_entity_id: media_player.living_room
-member_entity_ids: media_player.kitchen,media_player.bedroom
-ungroup_first: false
-replace_existing: true
+input_text.llmtool_media_manager_music_assistant_config_entry_id
+```
+
+Run `script.llmtool_media_manager` from Developer Tools -> Actions:
+
+```yaml
+operation: search
+query: Bohemian Rhapsody
+search_media_types: track
+limit: 5
 ```
 
 Expected response shape:
 
 ```yaml
 success: true
-answer: "Joined 2 media player group members."
+answer: "Found 1 media item."
 data:
-  operation: join
-  leader_entity_id: media_player.living_room
-  joined_member_entity_ids:
-    - media_player.kitchen
-    - media_player.bedroom
-  unjoined_entity_ids:
-    - media_player.office
-  ignored_member_entity_ids: []
-  duplicate_member_entity_ids: []
-  ungroup_first: false
-  replace_existing: true
+  results:
+    - media_type: track
+      count: 1
+      total: 1
+      items:
+        - name: Bohemian Rhapsody
+          uri: spotify://track/example
+          media_type: track
+          artist_names:
+            - Queen
+          album_name: A Night at the Opera
 meta:
-  tool: llmtool_media_player_group_manager
-  operation: join
-  leader_entity_id: media_player.living_room
+  tool: llmtool_media_manager
+  operation: search
+  query: Bohemian Rhapsody
+  search_media_types:
+    - track
+  library_only: false
+  limit: 5
+  count: 1
+  total: 1
 ```
 
-Use `join` with `leader_entity_id` and `member_entity_ids`. Set
-`ungroup_first=true` to unjoin the leader and final members before joining. Set
-`replace_existing=true` to remove current non-leader members from the leader
-before joining new members.
+Then play selected URIs:
 
-Use `unjoin` with `member_entity_ids`. Use `clear_members` with
-`leader_entity_id`.
+```yaml
+operation: play_by_uri
+player_entity_id: media_player.kitchen
+media_uris: |-
+  spotify://track/example
+enqueue: play
+```
+
+Fast name-based playback:
+
+```yaml
+operation: play_by_name
+player_entity_id: media_player.kitchen
+play_queries: |-
+  Lady Gaga - Aura
+  Queen - Don't Stop Me Now
+media_type: track
+enqueue: play
+```
+
+To group players before playback:
+
+```yaml
+operation: group_join
+leader_entity_id: media_player.living_room
+member_entity_ids: media_player.kitchen,media_player.bedroom
+replace_existing: true
+```
 
 Validation issues return soft failures with `error`, `data`, and `meta` so the
 Assistant can retry.
@@ -969,7 +1012,7 @@ know" only after likely tools were checked.
 - [Memory Manager storage decision](docs/adr/0003-optional-memory-manager-uses-variables-history.md)
 - [Tool plans](docs/plans/README.md)
 - [Memory Manager plan](docs/plans/implemented/memory-manager.md)
-- [Media Player Group Manager plan](docs/plans/implemented/media-player-group-manager.md)
+- [Media Manager plan](docs/plans/media-manager.md)
 - [Calendar Manager plan](docs/plans/implemented/calendar-manager.md)
 - [Long-Term Aggregated Statistics plan](docs/plans/implemented/long-term-aggregated-statistics.md)
 - [Raw Entity History plan](docs/plans/implemented/raw-entity-history.md)
@@ -1041,10 +1084,10 @@ For Calendar Manager helper regression checks:
 python3 tests/test_llmtool_calendar_manager.py
 ```
 
-For Media Player Group Manager helper regression checks:
+For Media Manager helper regression checks:
 
 ```bash
-python3 tests/test_llmtool_media_player_group_manager.py
+python3 tests/test_llmtool_media_manager.py
 ```
 
 For Memory Manager helper regression checks:
