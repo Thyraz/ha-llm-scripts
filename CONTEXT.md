@@ -200,6 +200,10 @@ _Avoid_: Memory Label, category, Home Assistant label, entity label
 The available Memory Topics and Memory Tags an Assistant inspects before choosing how to search or store Memory Entries.
 _Avoid_: topic list, memory dump, full memory listing
 
+**Memory First rule**:
+A tool-selection rule where an Assistant checks Memory Manager before other LLM Tools or an "I don't know" answer when a request may involve remembered user-provided knowledge.
+_Avoid_: memory gate, always use memory, recall trigger
+
 **Memory Manager operation**:
 A named memory action the Memory Manager applies, such as remembering, searching, reading, updating, forgetting, inspecting inventory, listing recent entries, or reporting status.
 _Avoid_: function, mode, command

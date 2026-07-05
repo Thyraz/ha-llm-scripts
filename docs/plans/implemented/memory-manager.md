@@ -56,6 +56,15 @@ Memory Manager lets an Assistant remember user-provided information across conve
   `inspect_inventory` first, choose existing topic and tags, then `search`.
 - The Prompt overview should say when Memory Manager should be called before
   other tools.
+- The Prompt overview uses the Memory First rule: before other tools or saying
+  "I don't know", the Assistant should check whether Memory Manager remembered
+  something relevant to the request.
+- The Memory First rule is not limited by examples, tool names, live entity
+  names, Known Memory Topics, or Known Memory Tags; users may save any
+  user-provided knowledge in memory.
+- Known Memory Topics and Known Memory Tags are Memory Inventory clues for
+  choosing a Memory Manager call, not a complete list of what memory may
+  contain.
 - The Memory Manager Tool description should focus on Memory Manager's own
   `inspect_inventory` workflow.
 - Cross-tool fallback after a memory miss belongs in the Prompt overview, not
