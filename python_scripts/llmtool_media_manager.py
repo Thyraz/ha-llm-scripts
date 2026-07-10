@@ -97,8 +97,14 @@ def mapping_value(value, key, default_value=None):
     except (KeyError, TypeError):
         pass
     try:
-        return value.get(key, default_value)
+        getter = value.get
     except AttributeError:
+        return default_value
+    if getter is None:
+        return default_value
+    try:
+        return getter(key, default_value)
+    except TypeError:
         return default_value
 
 
@@ -114,8 +120,18 @@ def has_mapping_value(value, key):
         return False
 
 
+def is_text_value(value):
+    if value is None:
+        return False
+    try:
+        value + ""
+        return True
+    except TypeError:
+        return False
+
+
 def is_sequence(value):
-    if value is None or isinstance(value, str):
+    if value is None or is_text_value(value):
         return False
     try:
         for _ in value:
@@ -232,7 +248,7 @@ def parse_entity_ids(raw_entity_ids):
 
 
 def parse_current_group_members(raw_members):
-    if raw_members is None or isinstance(raw_members, str):
+    if not is_sequence(raw_members):
         return []
 
     entity_ids = []
@@ -1187,7 +1203,7 @@ def shape_group(prepared):
 def shape_mode():
     prepared = data.get("prepared")
     action_response = data.get("action_response") or {}
-    if isinstance(prepared, str) or prepared is None:
+    if prepared is None or is_text_value(prepared):
         validation_error(
             "Invalid Media Manager helper handoff. Inspect the Script trace.",
             {},

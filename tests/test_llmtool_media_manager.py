@@ -6,6 +6,19 @@ import unittest
 SCRIPT = Path(__file__).resolve().parents[1] / "python_scripts" / "llmtool_media_manager.py"
 
 
+class NativeMappingWithMissingGet:
+    get = None
+
+    def __init__(self, values):
+        self.values = values
+
+    def __getitem__(self, key):
+        return self.values[key]
+
+    def __contains__(self, key):
+        return key in self.values
+
+
 def base_data():
     return {
         "mode": "prepare",
@@ -57,7 +70,7 @@ def run_helper(overrides, restricted_builtins=None):
     return output
 
 
-def shape_payload(prepared, action_response=None):
+def shape_payload(prepared, action_response=None, restricted_builtins=None):
     return run_helper(
         {
             "mode": "shape",
@@ -65,7 +78,8 @@ def shape_payload(prepared, action_response=None):
             "query": "",
             "prepared": prepared,
             "action_response": action_response or {},
-        }
+        },
+        restricted_builtins=restricted_builtins,
     )
 
 
@@ -94,6 +108,76 @@ class MediaManagerHelperTest(unittest.TestCase):
         )
 
         self.assertTrue(result["success"])
+
+    def test_search_shape_does_not_require_isinstance_builtin(self):
+        restricted_builtins = builtins.__dict__.copy()
+        restricted_builtins["isinstance"] = None
+        prepared = run_helper({"query": "swr3", "search_media_types": "radio"})["data"]
+
+        result = shape_payload(
+            prepared,
+            {
+                "radio": [
+                    {
+                        "name": "SWR3",
+                        "uri": "library://radio/1",
+                        "media_type": "radio",
+                        "favorite": True,
+                    },
+                    {
+                        "name": "SWR3 Rock",
+                        "uri": "tunein://radio/s97033",
+                        "media_type": "radio",
+                    },
+                ],
+            },
+            restricted_builtins=restricted_builtins,
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(2, result["meta"]["count"])
+        self.assertEqual("library://radio/1", result["data"]["results"][0]["items"][0]["uri"])
+
+    def test_search_shape_does_not_call_missing_get_on_native_mappings(self):
+        prepared = run_helper({"query": "swr3", "search_media_types": "radio"})["data"]
+
+        result = shape_payload(
+            NativeMappingWithMissingGet(prepared),
+            NativeMappingWithMissingGet(
+                {
+                    "radio": [
+                        NativeMappingWithMissingGet(
+                            {
+                                "name": "SWR3",
+                                "uri": "library://radio/1",
+                                "media_type": "radio",
+                            }
+                        )
+                    ]
+                }
+            ),
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(1, result["meta"]["count"])
+        self.assertEqual("SWR3", result["data"]["results"][0]["items"][0]["name"])
+
+    def test_group_prepare_does_not_require_isinstance_builtin(self):
+        restricted_builtins = builtins.__dict__.copy()
+        restricted_builtins["isinstance"] = None
+
+        result = run_helper(
+            {
+                "operation": "group_clear_members",
+                "query": "",
+                "leader_entity_id": "media_player.living_room",
+                "current_group_members": ["media_player.living_room", "media_player.kitchen"],
+            },
+            restricted_builtins=restricted_builtins,
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(["media_player.kitchen"], result["data"]["unjoin_entity_ids"])
 
     def test_search_resolves_helper_and_multiple_instance_soft_failures(self):
         helper = run_helper(
