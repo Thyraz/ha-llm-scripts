@@ -36,6 +36,7 @@ def candidate(
     unit_of_measurement="",
     device_class="",
     state_class="",
+    attributes=None,
 ):
     result = {
         "entity_id": entity_id,
@@ -52,6 +53,8 @@ def candidate(
         result["device_class"] = device_class
     if state_class:
         result["state_class"] = state_class
+    if attributes:
+        result.update(attributes)
     return result
 
 
@@ -257,6 +260,131 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertEqual("sensor.dishwasher_energy", energy["entity_id"])
         self.assertIn("aggregation_type=change", energy["value_hint"])
         self.assertNotIn("value_hint", power)
+
+    def test_detailed_result_adds_domain_limited_climate_fields(self):
+        result = run_helper(
+            {
+                "location": "inside",
+                "entity_scope": "filtered_by_labels",
+                "labels": "TemperatureSensor",
+                "verbosity": "detailed",
+                "candidates": [
+                    candidate(
+                        "climate.thermostat",
+                        ["TemperatureSensor"],
+                        attributes={
+                            "current_temperature": 22.4,
+                            "temperature": 10,
+                            "hvac_modes": ["off", "heat"],
+                        },
+                    ),
+                    candidate(
+                        "sensor.temperature",
+                        ["TemperatureSensor"],
+                        attributes={
+                            "current_temperature": 99,
+                            "temperature": 1,
+                        },
+                    ),
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        climate = result["data"]["entities"][0]
+        sensor = result["data"]["entities"][1]
+
+        self.assertEqual("climate.thermostat", climate["entity_id"])
+        self.assertEqual(22.4, climate["current_temperature"])
+        self.assertEqual(10, climate["temperature"])
+        self.assertNotIn("hvac_modes", climate)
+        self.assertNotIn("current_temperature", sensor)
+        self.assertNotIn("temperature", sensor)
+
+    def test_detailed_result_adds_media_player_fields_and_preserves_falsey_values(self):
+        result = run_helper(
+            {
+                "location": "inside",
+                "entity_scope": "filtered_by_labels",
+                "labels": "Light",
+                "verbosity": "detailed",
+                "candidates": [
+                    candidate(
+                        "media_player.kitchen",
+                        ["Light"],
+                        attributes={
+                            "volume_level": 0,
+                            "is_volume_muted": False,
+                            "media_title": "From disco to disco",
+                            "media_album_name": "SWR3",
+                            "shuffle": False,
+                            "repeat": "off",
+                            "group_members": [],
+                        },
+                    )
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        player = result["data"]["entities"][0]
+
+        self.assertEqual(0, player["volume_level"])
+        self.assertFalse(player["is_volume_muted"])
+        self.assertEqual("From disco to disco", player["media_title"])
+        self.assertEqual("SWR3", player["media_album_name"])
+        self.assertFalse(player["shuffle"])
+        self.assertEqual("off", player["repeat"])
+        self.assertEqual([], player["group_members"])
+
+    def test_detailed_result_omits_string_group_members(self):
+        result = run_helper(
+            {
+                "location": "inside",
+                "entity_scope": "filtered_by_labels",
+                "labels": "Light",
+                "verbosity": "detailed",
+                "candidates": [
+                    candidate(
+                        "media_player.kitchen",
+                        ["Light"],
+                        attributes={
+                            "group_members": "media_player.kitchen,media_player.office",
+                        },
+                    )
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertNotIn("group_members", result["data"]["entities"][0])
+
+    def test_compact_result_omits_detailed_climate_and_media_fields(self):
+        result = run_helper(
+            {
+                "location": "inside",
+                "entity_scope": "filtered_by_labels",
+                "labels": "TemperatureSensor",
+                "verbosity": "compact",
+                "candidates": [
+                    candidate(
+                        "climate.thermostat",
+                        ["TemperatureSensor"],
+                        attributes={
+                            "current_temperature": 22.4,
+                            "temperature": 10,
+                            "volume_level": 0,
+                        },
+                    )
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        entity = result["data"]["entities"][0]
+        self.assertNotIn("current_temperature", entity)
+        self.assertNotIn("temperature", entity)
+        self.assertNotIn("volume_level", entity)
 
 
 if __name__ == "__main__":

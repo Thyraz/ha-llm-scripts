@@ -84,6 +84,11 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - `unknown` and `unavailable` are included unless `state_filter` excludes them.
 - `detailed` adds safe operational fields only: `domain`, `area_id`, `device_id`,
   `unit_of_measurement`, `device_class`, and `state_class` when available.
+- For `climate.*`, `detailed` may also include `current_temperature` and
+  `temperature`.
+- For `media_player.*`, `detailed` may also include `volume_level`,
+  `is_volume_muted`, `media_title`, `media_album_name`, `shuffle`, `repeat`,
+  and `group_members`.
 - `detailed` omits unavailable optional fields and never dumps all attributes.
 - Cumulative sensor hints use Home Assistant metadata such as
   `state_class=total`, `state_class=total_increasing`, and energy/water/gas

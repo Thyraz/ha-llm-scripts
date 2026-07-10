@@ -52,6 +52,10 @@ _Avoid_: query mode, search mode
 The `AND` or `OR` operator that controls whether Entity Index requires all supplied `label_names` or at least one supplied `label_names` value to match.
 _Avoid_: match mode, label matching mode
 
+**Entity Index detailed field**:
+A selected Home Assistant entity attribute that Entity Index may include in detailed results because it helps an Assistant choose or explain a safe next action.
+_Avoid_: attribute dump, raw attributes, all attributes
+
 **Long-Term Aggregated Statistics**:
 An LLM Tool that returns aggregated Home Assistant long-term statistics for a requested time range.
 _Avoid_: Aggregated Longterm History Access, raw state history, history fetcher

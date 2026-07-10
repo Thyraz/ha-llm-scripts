@@ -16,6 +16,12 @@ llmtool_entity_index:
     time range, call Long-Term Aggregated Statistics with aggregation_type=change
     instead of answering from the current state.
 
+    Use verbosity=detailed when you need operational fields. For climate.*
+    entities, detailed may include current_temperature and temperature. For
+    media_player.* entities, detailed may include volume_level,
+    is_volume_muted, media_title, media_album_name, shuffle, repeat, and
+    group_members.
+
     Use meta.truncated to decide whether to retry with a narrower query or higher limit.
     On success, read data.entities. On validation failure, use error and data
     to retry.
@@ -121,7 +127,8 @@ llmtool_entity_index:
       name: Verbosity
       description: >
         'id_only' returns entity IDs, compact returns common fields, detailed adds
-        safe operational fields.
+        safe operational fields such as climate temperatures or media-player
+        playback state.
       required: false
       default: compact
       example: compact
@@ -269,6 +276,17 @@ llmtool_entity_index:
             {% else %}
               {% set state_class_text = state_class | string %}
             {% endif %}
+            {% set raw_group_members = state_attr(entity_id, 'group_members') %}
+            {% set group_members = namespace(items=none) %}
+            {% if raw_group_members is iterable and raw_group_members is not string %}
+              {% set group_members.items = [] %}
+              {% for member_entity_id in raw_group_members %}
+                {% set member_entity_id_text = member_entity_id | string | trim %}
+                {% if member_entity_id_text %}
+                  {% set group_members.items = group_members.items + [member_entity_id_text] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
             {% set record = {
               'entity_id': entity_id,
               'matched_labels': matched.labels,
@@ -281,7 +299,16 @@ llmtool_entity_index:
               'device_id': device_id(entity_id) | default('', true),
               'unit_of_measurement': unit_text,
               'device_class': device_class_text,
-              'state_class': state_class_text
+              'state_class': state_class_text,
+              'current_temperature': state_attr(entity_id, 'current_temperature'),
+              'temperature': state_attr(entity_id, 'temperature'),
+              'volume_level': state_attr(entity_id, 'volume_level'),
+              'is_volume_muted': state_attr(entity_id, 'is_volume_muted'),
+              'media_title': state_attr(entity_id, 'media_title'),
+              'media_album_name': state_attr(entity_id, 'media_album_name'),
+              'shuffle': state_attr(entity_id, 'shuffle'),
+              'repeat': state_attr(entity_id, 'repeat'),
+              'group_members': group_members.items
             } %}
             {% set ns.items = ns.items + [record] %}
           {% endfor %}

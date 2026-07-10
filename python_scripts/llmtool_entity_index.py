@@ -1,6 +1,20 @@
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 1000
 
+CLIMATE_DETAIL_FIELDS = [
+    "current_temperature",
+    "temperature",
+]
+
+MEDIA_PLAYER_DETAIL_FIELDS = [
+    "volume_level",
+    "is_volume_muted",
+    "media_title",
+    "media_album_name",
+    "shuffle",
+    "repeat",
+]
+
 
 # Small helpers keep the top-level python_script flow readable.
 def as_text(value):
@@ -47,6 +61,22 @@ def cumulative_value_hint(match):
         return "cumulative; for usage over time use Long-Term Aggregated Statistics with aggregation_type=change"
 
     return ""
+
+
+def add_native_detail_fields(entity, match, fields):
+    for field in fields:
+        if field in match and match[field] is not None:
+            entity[field] = match[field]
+
+
+def list_value(value):
+    if value is None or isinstance(value, str):
+        return None
+
+    items = []
+    for item in value:
+        items.append(item)
+    return items
 
 
 # Normalize script input and internal label names.
@@ -243,6 +273,15 @@ if output.get("success") is not False:
             if optional_value:
                 shaped[optional_field] = optional_value
 
+        for optional_field in CLIMATE_DETAIL_FIELDS + MEDIA_PLAYER_DETAIL_FIELDS:
+            if optional_field in candidate and candidate[optional_field] is not None:
+                shaped[optional_field] = candidate[optional_field]
+
+        if "group_members" in candidate:
+            group_members = list_value(candidate["group_members"])
+            if group_members is not None:
+                shaped["group_members"] = group_members
+
         matches.append(shaped)
 
     # Sort, limit, and shape the final response for Assist.
@@ -275,6 +314,13 @@ if output.get("success") is not False:
                 ]:
                     if detail_field in match:
                         entity[detail_field] = match[detail_field]
+
+                if match["domain"] == "climate":
+                    add_native_detail_fields(entity, match, CLIMATE_DETAIL_FIELDS)
+                elif match["domain"] == "media_player":
+                    add_native_detail_fields(entity, match, MEDIA_PLAYER_DETAIL_FIELDS)
+                    if "group_members" in match:
+                        entity["group_members"] = match["group_members"]
 
             value_hint = cumulative_value_hint(match)
             if value_hint:

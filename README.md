@@ -115,6 +115,11 @@ For likely cumulative sensors, compact and detailed results include
 Aggregated Statistics with `aggregation_type: change` instead of answering from
 the current state.
 
+Use `verbosity: detailed` when you need operational fields. Detailed climate
+entities may include `current_temperature` and `temperature`. Detailed media
+players may include `volume_level`, `is_volume_muted`, `media_title`,
+`media_album_name`, `shuffle`, `repeat`, and `group_members`.
+
 Supported label names come from:
 
 1. `input_select.llmtool_entity_index_labels` options, when that helper exists.
