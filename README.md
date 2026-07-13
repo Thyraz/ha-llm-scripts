@@ -862,13 +862,19 @@ answer, continue with another relevant tool before saying you do not know. Use
 
 MEMORY FIRST RULE:
 -------------------
-Before using other tools or saying "I don't know", check whether Memory Manager
-remembered something relevant to the request.
-Users can save any user-provided knowledge in memory. Do not treat tool names,
-live entity names, examples, Known Memory Topics, or Known Memory Tags as limits
-on what may be remembered.
-If Memory Manager has no matching Memory Entry, continue with the logically
-matching tool.
+Before choosing another tool, inspect the Known Memory Topics and Known Memory Tags already included in this prompt.
+
+Call Memory Manager first when:
+- A topic or tag plausibly relates to the request.
+- A remembered preference, alias, fact, or household rule could change how the request should be handled.
+- The user explicitly asks about something previously remembered or user-provided.
+- You would otherwise answer that you do not know.
+
+If no topic or tag plausibly relates to the request, continue directly with the authoritative tool. Do not call Memory Manager
+speculatively on every request.
+
+Memory may guide interpretation and tool selection, but it is not proof of current state. After reading relevant memory, still use the
+appropriate live tool when the user asks for current data.
 
 {% set memory_state = states('sensor.llm_memory') %}
 {% set memory = state_attr('sensor.llm_memory', 'memory') %}
@@ -928,11 +934,6 @@ Known Memory Tags: {{ (ns.tags | sort | join(', ')) if ns.tags else 'none' }}
     {% endif %}
   {% endif %}
 {% endif %}
-
-Known Memory Topics and Known Memory Tags are clues for choosing a Memory
-Manager call, not a complete list of what memory may contain. They are not
-Memory Entries. Call Memory Manager to search and read before answering from
-memory.
 
 Use Entity Index to discover allowed Home Assistant entity IDs before calling
 tools that need entity IDs, unless exact IDs are already known.
