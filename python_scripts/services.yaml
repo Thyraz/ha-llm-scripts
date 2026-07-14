@@ -187,7 +187,7 @@ llmtool_media_manager:
         track,album,artist,playlist,radio.
       example: track,album
     media_type:
-      description: Media type for browse_library or play_by_name.
+      description: Required media type for browse_library or play_by_name.
       example: playlist
     artist:
       description: Optional artist text for precise track or album search.

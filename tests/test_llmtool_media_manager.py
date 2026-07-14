@@ -360,6 +360,7 @@ class MediaManagerHelperTest(unittest.TestCase):
                 "player_entity_id": "media_player.kitchen",
                 "player_entity_id_is_music_assistant": "true",
                 "play_queries": "Lady Gaga - Aura\nQueen - Don't Stop Me Now",
+                "media_type": "track",
             }
         )
         shaped = shape_payload(valid["data"])
@@ -374,6 +375,15 @@ class MediaManagerHelperTest(unittest.TestCase):
         self.assertEqual("name_based", shaped["meta"]["match_precision"])
 
     def test_play_by_name_validates_media_type_and_radio_mode(self):
+        missing_type = run_helper(
+            {
+                "operation": "play_by_name",
+                "query": "",
+                "player_entity_id": "media_player.kitchen",
+                "player_entity_id_is_music_assistant": "true",
+                "play_queries": "Lady Gaga - Aura",
+            }
+        )
         invalid_type = run_helper(
             {
                 "operation": "play_by_name",
@@ -391,10 +401,14 @@ class MediaManagerHelperTest(unittest.TestCase):
                 "player_entity_id": "media_player.kitchen",
                 "player_entity_id_is_music_assistant": "true",
                 "play_queries": "Lady Gaga - Aura\nQueen - Don't Stop Me Now",
+                "media_type": "track",
                 "radio_mode": "true",
             }
         )
 
+        self.assertFalse(missing_type["success"])
+        self.assertEqual("media_type", missing_type["data"]["required"])
+        self.assertIn("track", missing_type["data"]["known_media_types"])
         self.assertFalse(invalid_type["success"])
         self.assertEqual(["podcast"], invalid_type["data"]["invalid_media_types"])
         self.assertFalse(radio_many["success"])

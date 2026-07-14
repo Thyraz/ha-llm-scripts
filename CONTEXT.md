@@ -184,6 +184,10 @@ _Avoid_: paginated library browse, single-type list
 A named media action the Media Manager applies, such as searching, browsing the library, playing media, reading a queue, transferring a queue, or changing media player groups.
 _Avoid_: function, mode, command
 
+**Media Manager operation contract**:
+The Assistant-facing rule for one Media Manager operation that defines which parameters are required, which are optional, and which non-empty parameters should return a validation failure.
+_Avoid_: hidden parameter rules, ignored extra fields, implicit mode behavior
+
 **Memory Manager**:
 An optional LLM Tool that lets an Assistant store, find, update, and forget user-provided long-term memory.
 _Avoid_: memory database, cabinet, drawer, hyperindex

@@ -159,8 +159,13 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   - `count`
   - `truncated` when returned count equals `limit`
 - Do not add `truncation_possible`; existing tools use `meta.truncated`.
-- Use `play_by_name` for ordinary voice requests to play one or more well-known
-  tracks by artist/title.
+- Use `search` first for one ambiguous "play X" request when the media type is
+  unclear.
+- Use `play_by_name` when the user clearly asks for a track, album, artist,
+  playlist, or radio station.
+- Use `play_by_name` for multi-item track lists, including user-provided or
+  web-found lists, where searching once per item would be too expensive and an
+  occasional wrong or missing name-based match is acceptable.
 - Use `search` or `browse_library` then `play_by_uri` when the user asks for
   library items, exact versions, obscure tracks, or corrects a wrong song.
 - If the user says the played song is wrong after `play_by_name`, search for
@@ -175,13 +180,14 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   separate `media_type` field for playback.
 - `play_by_name` requires `player_entity_id`.
 - `play_by_name` requires newline-separated `play_queries`.
+- `play_by_name` requires `media_type`.
 - `play_by_name` queries should usually be written as `artist - title` for
   track playback.
 - `play_by_name` supports multiple `play_queries` and sends them in one
   `music_assistant.play_media` action.
 - `play_by_name` accepts at most 100 play queries.
 - `play_by_name.media_type` supports `track`, `album`, `artist`, `playlist`,
-  and `radio`; empty means `track`.
+  and `radio`.
 - `play_by_name` does not support `library_only`; use search/library then
   `play_by_uri` for library-only playback.
 - `play_by_uri` and `play_by_name` support `enqueue`.
@@ -262,6 +268,22 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
 - Each operation uses a strict parameter allowlist. Non-empty parameters outside
   that operation's allowlist return a soft failure with `invalid_parameters`,
   `allowed_parameters`, and `operation`.
+- Operation contracts:
+  - `search`: required `operation`, `query`; optional `search_media_types`,
+    `artist`, `album`, `library_only`, `limit`.
+  - `browse_library`: required `operation`, `media_type`; optional `query`,
+    `favorite`, `limit`, `offset`, `album_type`.
+  - `play_by_uri`: required `operation`, `player_entity_id`, `media_uris`;
+    optional `enqueue`, `radio_mode`.
+  - `play_by_name`: required `operation`, `player_entity_id`, `play_queries`,
+    `media_type`; optional `enqueue`, `radio_mode`.
+  - `get_queue`: required `operation`, `player_entity_id`; optional `limit`.
+  - `transfer_queue`: required `operation`, `source_player_entity_id`,
+    `target_player_entity_id`; optional `auto_play`.
+  - `group_join`: required `operation`, `leader_entity_id`,
+    `member_entity_ids`; optional `ungroup_first`, `replace_existing`.
+  - `group_unjoin`: required `operation`, `member_entity_ids`.
+  - `group_clear_members`: required `operation`, `leader_entity_id`.
 - Operation parameter allowlists:
   - `search`: `operation`, `query`, `search_media_types`, `artist`, `album`,
     `library_only`, `limit`
@@ -639,6 +661,7 @@ meta:
 - More than 100 `media_uris`.
 - Missing `play_queries` for `play_by_name`.
 - More than 100 `play_queries`.
+- Missing `play_by_name.media_type`.
 - Invalid `play_by_name.media_type`.
 - Invalid `enqueue`.
 - `radio_mode=true` with zero or multiple media URIs or play queries.
@@ -708,6 +731,7 @@ meta:
 - `play_by_name` validates Music Assistant player entity ID.
 - `play_by_name` parses newline-separated play queries and preserves order.
 - `play_by_name` rejects more than 100 play queries.
+- `play_by_name` rejects missing media type.
 - `play_by_name` rejects invalid media type.
 - `play_by_name` returns `match_precision: name_based` without claiming exact
   match.

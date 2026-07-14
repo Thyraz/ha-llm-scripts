@@ -520,10 +520,27 @@ Supported operations:
 - `group_clear_members`
 
 Use Entity Index first when you need Home Assistant `media_player.*` entity IDs.
-Use `play_by_name` for ordinary voice requests to play one or more well-known
-tracks by artist/title. Use search or browse first, then `play_by_uri`, for
-library items, exact versions, obscure tracks, or corrections after a wrong
-name-based match.
+Use `search` first for a single ambiguous "play X" request when the notation or the 
+media type is unclear. Use `play_by_name` when the user clearly asks for a track, album,
+artist, playlist, or radio station, or when playing a multi-item track list
+where one search per item would be too expensive. Use search or browse first,
+then `play_by_uri`, for library items, exact versions, obscure tracks, or
+corrections after a wrong name-based match.
+
+Operation contracts:
+
+- `search`: required `operation`, `query`; optional `search_media_types`, `artist`, `album`, `library_only`, `limit`
+- `browse_library`: required `operation`, `media_type`; optional `query`, `favorite`, `limit`, `offset`, `album_type`
+- `play_by_uri`: required `operation`, `player_entity_id`, `media_uris`; optional `enqueue`, `radio_mode`
+- `play_by_name`: required `operation`, `player_entity_id`, `play_queries`, `media_type`; optional `enqueue`, `radio_mode`
+- `get_queue`: required `operation`, `player_entity_id`; optional `limit`
+- `transfer_queue`: required `operation`, `source_player_entity_id`, `target_player_entity_id`; optional `auto_play`
+- `group_join`: required `operation`, `leader_entity_id`, `member_entity_ids`; optional `ungroup_first`, `replace_existing`
+- `group_unjoin`: required `operation`, `member_entity_ids`
+- `group_clear_members`: required `operation`, `leader_entity_id`
+
+Only pass parameters listed for the selected operation. Non-empty parameters
+outside that operation contract return a soft failure.
 
 If more than one Music Assistant instance is installed, create this helper and
 set it to the config entry ID to use:
@@ -589,6 +606,16 @@ play_queries: |-
   Lady Gaga - Aura
   Queen - Don't Stop Me Now
 media_type: track
+enqueue: play
+```
+
+Radio by name:
+
+```yaml
+operation: play_by_name
+player_entity_id: media_player.buro
+play_queries: SWR3
+media_type: radio
 enqueue: play
 ```
 
@@ -1023,11 +1050,14 @@ the user as keyword; do not translate it.
 
 Media Manager: use for Music Assistant search, library browsing, playback,
 queue checks, queue transfers, and media_player grouping. Use Entity Index
-first when you need player entity IDs. Use play_by_name for ordinary voice
-requests to play one or more well-known tracks by artist/title. Use search or
-browse first, then play_by_uri, for library items, exact versions, obscure
-tracks, or corrections after a wrong name-based match. Use group_join before
-playback when the user asks to play on grouped players.
+first when you need player entity IDs. Use search first for one ambiguous
+"play X" request when the notation or the media type is unclear. 
+Use play_by_name with explicit media_type when the user clearly asks 
+for track, album, artist, playlist, or radio, 
+or when playing a multi-item track list where one search per item is too
+expensive. Use search or browse first, then play_by_uri, for library items,
+exact versions, obscure tracks, or corrections after a wrong name-based match.
+Use group_join before playback when the user asks to play on grouped players.
 
 Memory Manager: use for user-provided long-term memory. Save memory only when
 the user asks or clearly confirms. Use Known Memory Topics and Known Memory Tags

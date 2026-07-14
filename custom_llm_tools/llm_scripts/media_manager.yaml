@@ -6,13 +6,61 @@ llmtool_media_manager:
     queue checks, queue transfer, and media player grouping.
 
     Use Entity Index first when you need Home Assistant media_player.* entity
-    IDs. Use play_by_name for ordinary voice requests to play one or more
-    well-known tracks by artist/title. Use search or browse_library, then
-    play_by_uri, for library items, exact versions, obscure tracks, or
-    corrections after a wrong name-based match.
+    IDs. Use search first for a single ambiguous "play X" request when media
+    type is unclear. Use play_by_name with explicit media_type for known direct
+    playback and multi-item lists where one search per item is too expensive.
+    Use search or browse_library, then play_by_uri, for library items, exact
+    versions, obscure tracks, or corrections after a wrong name-based match.
 
     Supported operations: search, browse_library, play_by_uri, play_by_name,
     get_queue, transfer_queue, group_join, group_unjoin, group_clear_members.
+
+    Operation contracts:
+
+    search:
+      Required: operation, query.
+      Optional: search_media_types, artist, album, library_only, limit.
+      Use for single ambiguous play requests, exact selection, or when media
+      type is unclear.
+
+    browse_library:
+      Required: operation, media_type.
+      Optional: query, favorite, limit, offset, album_type.
+      Use when the user asks for saved, liked, favorite, or library media.
+
+    play_by_uri:
+      Required: operation, player_entity_id, media_uris.
+      Optional: enqueue, radio_mode.
+      Use after search or browse_library selected exact result URIs.
+
+    play_by_name:
+      Required: operation, player_entity_id, play_queries, media_type.
+      Optional: enqueue, radio_mode.
+      Use for direct playback when the media type is known. Also use for
+      multiple user-provided or web-found tracks/items where searching every
+      item would be too expensive and an occasional wrong or missing match is
+      acceptable. For one ambiguous "play X" request, search first.
+
+    get_queue:
+      Required: operation, player_entity_id.
+      Optional: limit.
+
+    transfer_queue:
+      Required: operation, source_player_entity_id, target_player_entity_id.
+      Optional: auto_play.
+
+    group_join:
+      Required: operation, leader_entity_id, member_entity_ids.
+      Optional: ungroup_first, replace_existing.
+
+    group_unjoin:
+      Required: operation, member_entity_ids.
+
+    group_clear_members:
+      Required: operation, leader_entity_id.
+
+    Only pass parameters listed for the selected operation. Non-empty
+    parameters not listed for that operation return validation failure.
 
     search looks across Music Assistant and connected providers. Set
     library_only=true to search only the user's Music Assistant library while
@@ -24,8 +72,8 @@ llmtool_media_manager:
 
     play_by_uri requires newline-separated media_uris from search or
     browse_library results. play_by_name requires newline-separated
-    play_queries, usually in artist - title form. enqueue values: play,
-    replace, next, add. Empty enqueue means play.
+    play_queries and a media_type. Track queries are usually in artist - title
+    form. enqueue values: play, replace, next, add. Empty enqueue means play.
 
     get_queue answers what is playing and what plays next. transfer_queue
     requires source_player_entity_id and target_player_entity_id.
@@ -74,6 +122,14 @@ llmtool_media_manager:
         Lady Gaga - Aura
         Queen - Don't Stop Me Now
       media_type: track
+      enqueue: play
+    ```
+
+    ```
+      operation: play_by_name
+      player_entity_id: media_player.buro
+      play_queries: SWR3
+      media_type: radio
       enqueue: play
     ```
 
@@ -130,8 +186,8 @@ llmtool_media_manager:
       description: >
         For browse_library, one media type: artist, album, audiobook, playlist,
         podcast, track, or radio. For play_by_name, one media type: track,
-        album, artist, playlist, or radio. Empty play_by_name media_type means
-        track.
+        album, artist, playlist, or radio. Required for browse_library and
+        play_by_name.
       required: false
       example: playlist
       selector:

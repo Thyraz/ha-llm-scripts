@@ -666,7 +666,7 @@ def operation_prepare_play_by_name():
     operation = "play_by_name"
     player_entity_id = as_text(data.get("player_entity_id"))
     play_queries = parse_newline_list(data.get("play_queries"))
-    media_type = as_text(data.get("media_type")) or "track"
+    media_type = as_text(data.get("media_type"))
     enqueue = as_text(data.get("enqueue")) or "play"
     radio_mode = parse_bool_field("radio_mode")[0]
 
@@ -674,6 +674,12 @@ def operation_prepare_play_by_name():
         validate_music_assistant_player(operation, player_entity_id, "player_entity_id_is_music_assistant", "player_entity_id")
     elif not play_queries:
         validation_error("Missing play_queries. Provide one or more Music Assistant play queries.", {"required": "play_queries"}, base_meta(operation))
+    elif not media_type:
+        validation_error(
+            "Missing media_type. Provide track, album, artist, playlist, or radio.",
+            {"required": "media_type", "known_media_types": PLAY_BY_NAME_MEDIA_TYPES},
+            base_meta(operation),
+        )
     elif len(play_queries) > MAX_PLAYBACK_ITEMS:
         validation_error("Too many play_queries. Use at most 100 play queries.", {"max_play_queries": MAX_PLAYBACK_ITEMS}, base_meta(operation))
     elif media_type not in PLAY_BY_NAME_MEDIA_TYPES:
