@@ -60,7 +60,7 @@ def restricted_range(*args):
 def run_helper(overrides, now=None, datetime_module=None, restricted_builtins=None):
     data = {
         "operation": "weekday_for_date",
-        "date": "2026-06-21 09:30:00",
+        "date": "",
         "date2": "",
         "segments": "",
         "weekday": "",
@@ -102,6 +102,37 @@ class DateCalculatorHelperTest(unittest.TestCase):
 
         self.assertFalse(result["success"])
         self.assertIn("weekday_for_date", result["data"]["known_operations"])
+
+    def test_operation_contract_rejects_extra_parameters(self):
+        weekday_extra = run_helper(
+            {
+                "operation": "weekday_for_date",
+                "date": "2026-06-21 09:30:00",
+                "segments": "days=1",
+            }
+        )
+        epoch_extra = run_helper(
+            {
+                "operation": "epoch_to_date",
+                "epoch_time_s": "0",
+                "date": "1970-01-01 02:00:00",
+            }
+        )
+        next_match_extra = run_helper(
+            {
+                "operation": "next_matching_date",
+                "weekday": "Monday",
+                "limit": "10",
+            }
+        )
+
+        self.assertFalse(weekday_extra["success"])
+        self.assertEqual(["segments"], weekday_extra["data"]["invalid_parameters"])
+        self.assertIn("date", weekday_extra["data"]["allowed_parameters"])
+        self.assertFalse(epoch_extra["success"])
+        self.assertEqual(["date"], epoch_extra["data"]["invalid_parameters"])
+        self.assertFalse(next_match_extra["success"])
+        self.assertEqual(["limit"], next_match_extra["data"]["invalid_parameters"])
 
     def test_rejects_invalid_date_formats(self):
         iso = run_helper({"operation": "weekday_for_date", "date": "2026-06-21T09:30:00"})
@@ -147,9 +178,10 @@ class DateCalculatorHelperTest(unittest.TestCase):
         self.assertEqual("2025-02-28 23:59:59", result["data"]["new_date"])
 
     def test_segment_validation_errors(self):
-        missing = run_helper({"operation": "date_by_adding_segments", "segments": ""})
-        unknown = run_helper({"operation": "date_by_adding_segments", "segments": "fortnights=1"})
-        invalid = run_helper({"operation": "date_by_adding_segments", "segments": "days=1.5"})
+        base = {"operation": "date_by_adding_segments", "date": "2025-01-31 10:00:00"}
+        missing = run_helper({**base, "segments": ""})
+        unknown = run_helper({**base, "segments": "fortnights=1"})
+        invalid = run_helper({**base, "segments": "days=1.5"})
 
         self.assertFalse(missing["success"])
         self.assertFalse(unknown["success"])

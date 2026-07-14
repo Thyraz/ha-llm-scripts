@@ -663,6 +663,20 @@ Supported operations:
 - `list_recent`
 - `status`
 
+Operation contracts:
+
+- `remember`: required `operation`, `topic`, `tags`, `text`
+- `search`: required `operation` plus at least one of `query`, `topic`, `tags`; optional `query`, `topic`, `tags`, `tag_match_mode`, `limit`
+- `read`: required `operation`, `memory_id`
+- `update`: required `operation`, `memory_id`, `text`; optional `topic`, `tags`
+- `forget`: required `operation`, `memory_id`
+- `inspect_inventory`: required `operation`
+- `list_recent`: required `operation`; optional `limit`
+- `status`: required `operation`
+
+Only pass parameters listed for the selected operation. Non-empty parameters
+outside that operation contract return a soft failure.
+
 Run `script.llmtool_memory_manager` from Developer Tools -> Actions:
 
 ```yaml
@@ -825,6 +839,19 @@ Supported operations:
 - `list_calendar_days`
 - `epoch_to_date`
 - `date_to_epoch`
+
+Operation contracts:
+
+- `duration_between_dates`: required `operation`, `date`, `date2`
+- `date_by_adding_segments`: required `operation`, `date`, `segments`
+- `weekday_for_date`: required `operation`, `date`
+- `next_matching_date`: required `operation` plus at least one of `month`, `day_of_month`, `weekday`; optional `date`, `month`, `day_of_month`, `weekday`, `hour`, `minute`, `second`
+- `list_calendar_days`: required `operation`, `date`, `date2`; optional `limit`
+- `epoch_to_date`: required `operation`, `epoch_time_s`
+- `date_to_epoch`: required `operation`, `date`
+
+Only pass parameters listed for the selected operation. Non-empty parameters
+outside that operation contract return a soft failure.
 
 Use local Home Assistant time in exactly this format:
 

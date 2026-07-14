@@ -157,6 +157,22 @@ Common fields:
 - `query`: lexical search text for `search`.
 - `text`: Memory Entry text for `remember` and `update`.
 - `limit`: optional maximum result count for `search` and `list_recent`.
+- Each operation uses a strict parameter allowlist. Non-empty parameters outside
+  that operation's allowlist return a soft failure with `invalid_parameters`,
+  `allowed_parameters`, and `operation`.
+
+Operation contracts:
+
+- `remember`: required `operation`, `topic`, `tags`, `text`.
+- `search`: required `operation` plus at least one of `query`, `topic`, or
+  `tags`; optional `query`, `topic`, `tags`, `tag_match_mode`, `limit`.
+- `read`: required `operation`, `memory_id`.
+- `update`: required `operation`, `memory_id`, `text`; optional `topic`,
+  `tags`.
+- `forget`: required `operation`, `memory_id`.
+- `inspect_inventory`: required `operation`.
+- `list_recent`: required `operation`; optional `limit`.
+- `status`: required `operation`.
 
 Successful `remember`:
 

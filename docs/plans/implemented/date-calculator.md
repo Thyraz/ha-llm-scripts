@@ -41,6 +41,20 @@ entities, history, or statistics.
   - `epoch_to_date`
   - `date_to_epoch`
 - No operation aliases in v1.
+- Each operation uses a strict parameter allowlist. Non-empty parameters outside
+  that operation's allowlist return a soft failure with `invalid_parameters`,
+  `allowed_parameters`, and `operation`.
+- Operation contracts:
+  - `duration_between_dates`: required `operation`, `date`, `date2`.
+  - `date_by_adding_segments`: required `operation`, `date`, `segments`.
+  - `weekday_for_date`: required `operation`, `date`.
+  - `next_matching_date`: required `operation` plus at least one of `month`,
+    `day_of_month`, or `weekday`; optional `date`, `month`, `day_of_month`,
+    `weekday`, `hour`, `minute`, `second`.
+  - `list_calendar_days`: required `operation`, `date`, `date2`; optional
+    `limit`.
+  - `epoch_to_date`: required `operation`, `epoch_time_s`.
+  - `date_to_epoch`: required `operation`, `date`.
 - Dates are local Home Assistant times.
 - Date input format is exactly `YYYY-MM-DD HH:MM:SS`.
 - Relative time text, timezone suffixes, dates without seconds, and ISO `T`
@@ -136,7 +150,7 @@ entities, history, or statistics.
 - `limit` is used by `list_calendar_days`.
 - `limit` default is 366.
 - `limit` maximum is 3660.
-- Other operations ignore `limit`.
+- Other operations reject non-empty `limit` as outside their operation contract.
 - `list_calendar_days` treats `date` and `date2` as local datetimes, then lists
   local calendar dates.
 - `list_calendar_days` is inclusive of both local calendar dates.

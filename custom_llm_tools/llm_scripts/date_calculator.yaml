@@ -9,6 +9,40 @@ llmtool_date_calculator:
     weekday_for_date, next_matching_date, list_calendar_days, epoch_to_date, or
     date_to_epoch.
 
+    Operation contracts:
+
+    duration_between_dates:
+      Required: operation, date, date2.
+      Optional: none.
+
+    date_by_adding_segments:
+      Required: operation, date, segments.
+      Optional: none.
+
+    weekday_for_date:
+      Required: operation, date.
+      Optional: none.
+
+    next_matching_date:
+      Required: operation, and at least one of month, day_of_month, or weekday.
+      Optional: date, month, day_of_month, weekday, hour, minute, second.
+      Empty date means now.
+
+    list_calendar_days:
+      Required: operation, date, date2.
+      Optional: limit.
+
+    epoch_to_date:
+      Required: operation, epoch_time_s.
+      Optional: none.
+
+    date_to_epoch:
+      Required: operation, date.
+      Optional: none.
+
+    Only pass parameters listed for the selected operation. Non-empty
+    parameters not listed for that operation return validation failure.
+
     Pass dates as local Home Assistant times in exactly this format:
     YYYY-MM-DD HH:MM:SS. Relative time text and timezone suffixes are not valid.
 

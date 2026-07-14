@@ -25,6 +25,30 @@ WEEKDAYS = [
 
 SEGMENT_KEYS = ["years", "months", "days", "hours", "minutes", "seconds"]
 
+PARAMETER_NAMES = [
+    "date",
+    "date2",
+    "segments",
+    "month",
+    "weekday",
+    "day_of_month",
+    "hour",
+    "minute",
+    "second",
+    "epoch_time_s",
+    "limit",
+]
+
+ALLOWLISTS = {
+    "duration_between_dates": ["operation", "date", "date2"],
+    "date_by_adding_segments": ["operation", "date", "segments"],
+    "weekday_for_date": ["operation", "date"],
+    "next_matching_date": ["operation", "date", "month", "weekday", "day_of_month", "hour", "minute", "second"],
+    "list_calendar_days": ["operation", "date", "date2", "limit"],
+    "epoch_to_date": ["operation", "epoch_time_s"],
+    "date_to_epoch": ["operation", "date"],
+}
+
 
 # Small helpers keep the top-level python_script flow readable.
 def as_text(value):
@@ -38,6 +62,26 @@ def validation_error(message, data_payload=None, meta_payload=None):
     output["error"] = message
     output["data"] = data_payload or {}
     output["meta"] = meta_payload or {"tool": TOOL_NAME, "operation": operation}
+
+
+def validate_allowlist(operation):
+    allowed = ALLOWLISTS.get(operation) or []
+    invalid_parameters = []
+
+    for parameter_name in PARAMETER_NAMES:
+        if parameter_name not in allowed and as_text(data.get(parameter_name)) != "":
+            invalid_parameters.append(parameter_name)
+
+    if invalid_parameters:
+        validation_error(
+            "Invalid parameters for operation.",
+            {
+                "operation": operation,
+                "invalid_parameters": invalid_parameters,
+                "allowed_parameters": allowed,
+            },
+            {"tool": TOOL_NAME, "operation": operation},
+        )
 
 
 def two_digit(value):
@@ -575,6 +619,9 @@ if operation not in OPERATIONS:
         {"known_operations": OPERATIONS},
         {"tool": TOOL_NAME, "operation": operation},
     )
+
+if output.get("success") is not False:
+    validate_allowlist(operation)
 
 if output.get("success") is not False and operation == "weekday_for_date":
     date_value = parse_required_date(date_text, "date")

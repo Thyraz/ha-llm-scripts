@@ -20,6 +20,27 @@ OPERATIONS = [
 ]
 TAG_MATCH_MODES = ["all", "any"]
 
+PARAMETER_NAMES = [
+    "memory_id",
+    "topic",
+    "tags",
+    "tag_match_mode",
+    "query",
+    "text",
+    "limit",
+]
+
+ALLOWLISTS = {
+    "remember": ["operation", "topic", "tags", "text"],
+    "search": ["operation", "query", "topic", "tags", "tag_match_mode", "limit"],
+    "read": ["operation", "memory_id"],
+    "update": ["operation", "memory_id", "topic", "tags", "text"],
+    "forget": ["operation", "memory_id"],
+    "inspect_inventory": ["operation"],
+    "list_recent": ["operation", "limit"],
+    "status": ["operation"],
+}
+
 
 # Small helpers keep the top-level python_script flow readable.
 def as_text(value):
@@ -119,6 +140,34 @@ def success_response(answer, data_payload, meta_payload):
 
 def base_meta(operation):
     return {"tool": TOOL_NAME, "operation": operation}
+
+
+def is_present_parameter(parameter_name):
+    if parameter_name == "tags" and as_bool(data.get("tags_invalid_shape")):
+        return True
+    return as_text(data.get(parameter_name)) != ""
+
+
+def validate_allowlist(operation):
+    allowed = ALLOWLISTS.get(operation) or []
+    invalid_parameters = []
+
+    for parameter_name in PARAMETER_NAMES:
+        if parameter_name not in allowed and is_present_parameter(parameter_name):
+            invalid_parameters.append(parameter_name)
+
+    if invalid_parameters:
+        return validation_response(
+            "Invalid parameters for operation.",
+            {
+                "operation": operation,
+                "invalid_parameters": invalid_parameters,
+                "allowed_parameters": allowed,
+            },
+            base_meta(operation),
+        )
+
+    return None
 
 
 def tags_shape_error(operation):
@@ -954,17 +1003,21 @@ initialized_empty_store = False
 if operation not in OPERATIONS:
     response, write_memory = dispatch(operation, empty_store())
 else:
-    raw_store, initialized_empty_store, store_error = store_from_entity()
-    if store_error:
-        response = store_error
+    allowlist_error = validate_allowlist(operation)
+    if allowlist_error:
+        response = allowlist_error
     else:
-        store, validation_error_result = validate_store(raw_store)
-        if validation_error_result:
-            response = validation_error_result
+        raw_store, initialized_empty_store, store_error = store_from_entity()
+        if store_error:
+            response = store_error
         else:
-            response, write_memory = dispatch(operation, store)
-            if initialized_empty_store and write_memory is None:
-                write_memory = store
+            store, validation_error_result = validate_store(raw_store)
+            if validation_error_result:
+                response = validation_error_result
+            else:
+                response, write_memory = dispatch(operation, store)
+                if initialized_empty_store and write_memory is None:
+                    write_memory = store
 
 output["success"] = response["success"]
 output["response"] = response

@@ -117,6 +117,25 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertFalse(result["response"]["success"])
         self.assertIn("remember", result["response"]["data"]["known_operations"])
 
+    def test_operation_contract_rejects_extra_parameters(self):
+        read_extra = run_helper({"operation": "read", "memory_id": "m000001", "topic": "school"})
+        inventory_extra = run_helper({"operation": "inspect_inventory", "tags": "schedule"})
+        status_extra_list = run_helper(
+            {
+                "operation": "status",
+                "tags_invalid_shape": "true",
+                "tags_received_type": "array",
+            }
+        )
+
+        self.assertFalse(read_extra["response"]["success"])
+        self.assertEqual(["topic"], read_extra["response"]["data"]["invalid_parameters"])
+        self.assertIn("memory_id", read_extra["response"]["data"]["allowed_parameters"])
+        self.assertFalse(inventory_extra["response"]["success"])
+        self.assertEqual(["tags"], inventory_extra["response"]["data"]["invalid_parameters"])
+        self.assertFalse(status_extra_list["response"]["success"])
+        self.assertEqual(["tags"], status_extra_list["response"]["data"]["invalid_parameters"])
+
     def test_remember_creates_stable_id_and_normalizes_topic_tags(self):
         result = run_helper(
             {

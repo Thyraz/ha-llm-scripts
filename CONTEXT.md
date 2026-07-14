@@ -104,6 +104,10 @@ _Avoid_: date function, calendar plugin, time backend
 A named calendar or local-time calculation the Date Calculator applies to supplied date values.
 _Avoid_: function, mode, command
 
+**Date Calculator operation contract**:
+The Assistant-facing rule for one Date Calculator operation that defines which parameters are required, which are optional, and which non-empty parameters should return a validation failure.
+_Avoid_: hidden parameter rules, ignored extra fields, implicit mode behavior
+
 **Date Calculator segments**:
 A comma-separated set of integer calendar/time offsets supplied to the Date Calculator, using keys such as `years`, `months`, `days`, `hours`, `minutes`, and `seconds`.
 _Avoid_: object selector, duration object, date patch
@@ -219,3 +223,7 @@ _Avoid_: memory gate, always use memory, recall trigger
 **Memory Manager operation**:
 A named memory action the Memory Manager applies, such as remembering, searching, reading, updating, forgetting, inspecting inventory, listing recent entries, or reporting status.
 _Avoid_: function, mode, command
+
+**Memory Manager operation contract**:
+The Assistant-facing rule for one Memory Manager operation that defines which parameters are required, which are optional, and which non-empty parameters should return a validation failure.
+_Avoid_: hidden parameter rules, ignored extra fields, implicit mode behavior

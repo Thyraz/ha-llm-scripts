@@ -25,6 +25,43 @@ llmtool_memory_manager:
     Choose operation from: remember, search, read, update, forget,
     inspect_inventory, list_recent, status.
 
+    Operation contracts:
+
+    remember:
+      Required: operation, topic, tags, text.
+      Optional: none.
+
+    search:
+      Required: operation, and at least one of query, topic, or tags.
+      Optional: query, topic, tags, tag_match_mode, limit.
+
+    read:
+      Required: operation, memory_id.
+      Optional: none.
+
+    update:
+      Required: operation, memory_id, text.
+      Optional: topic, tags.
+
+    forget:
+      Required: operation, memory_id.
+      Optional: none.
+
+    inspect_inventory:
+      Required: operation.
+      Optional: none.
+
+    list_recent:
+      Required: operation.
+      Optional: limit.
+
+    status:
+      Required: operation.
+      Optional: none.
+
+    Only pass parameters listed for the selected operation. Non-empty
+    parameters not listed for that operation return validation failure.
+
     remember requires topic, tags, and text. Use existing topics/tags from
     inspect_inventory; avoid new tags that duplicate existing ones. remember
     always creates a new Memory Entry. If the user asks to change or replace old
