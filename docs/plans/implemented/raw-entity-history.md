@@ -68,6 +68,10 @@ long-term aggregated statistics.
 - `meta.count` is returned history entries after truncation.
 - `meta.total` is matching history entries before truncation.
 - Capped responses include `meta.truncated: true`.
+- Capped responses include `data.truncation` with `count_returned`,
+  `count_total_before_truncation`, `limit`, and `retry_hint`.
+- Capped response `answer` includes an explicit Attention warning and retry
+  hint so small Assistants do not miss partial data.
 - Raw history entries return `changed_at` and `state`.
 - `state` remains a Home Assistant state string. The tool does not parse
   numbers, booleans, or units.
@@ -244,6 +248,9 @@ meta:
 - Returns soft failure when all entities are missing.
 - Truncates globally over `limit`.
 - Reports `meta.count`, `meta.total`, and `meta.truncated`.
+- Reports visible truncation warning in `answer`.
+- Reports `data.truncation` with returned count, total-before-truncation count,
+  limit, and retry hint.
 - Returns authentication-focused soft failure for HTTP 401/403.
 - Returns soft failure for other non-200 responses.
 - Returns soft failure for malformed JSON or unexpected REST response shape.

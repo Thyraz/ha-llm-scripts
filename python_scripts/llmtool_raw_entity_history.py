@@ -3,6 +3,7 @@ MAX_ENTITY_IDS = 10
 DEFAULT_LIMIT = 100
 MAX_LIMIT = 1000
 DEFAULT_BASE_URL = "http://localhost:8123"
+TRUNCATION_RETRY_HINT = "Retry with a higher limit or narrower time range if needed data was not included."
 
 
 # Small helpers keep the top-level python_script flow readable.
@@ -737,6 +738,10 @@ def shape_mode():
             }
             output["meta"] = response_meta
         else:
+            data_payload = {
+                "entities": response_entities,
+                "missing_entities": missing_entities,
+            }
             answer = "Found {} history {}.".format(
                 count,
                 plural(count, "entry", "entries"),
@@ -747,6 +752,21 @@ def shape_mode():
                     total,
                     plural(total, "entry", "entries"),
                 )
+                data_payload["truncation"] = {
+                    "truncated": True,
+                    "count_returned": count,
+                    "count_total_before_truncation": total,
+                    "limit": limit,
+                    "retry_hint": TRUNCATION_RETRY_HINT,
+                }
+                answer = (
+                    answer
+                    + " Attention: returned data is truncated because total matching data points ({}) exceeded limit ({}). {}".format(
+                        total,
+                        limit,
+                        TRUNCATION_RETRY_HINT,
+                    )
+                )
             if missing_entities:
                 answer = answer + " No raw history found for {} requested {}.".format(
                     len(missing_entities),
@@ -755,10 +775,7 @@ def shape_mode():
 
             output["success"] = True
             output["answer"] = answer
-            output["data"] = {
-                "entities": response_entities,
-                "missing_entities": missing_entities,
-            }
+            output["data"] = data_payload
             output["meta"] = response_meta
 
 

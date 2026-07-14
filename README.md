@@ -385,8 +385,26 @@ meta:
 ```
 
 Responses are capped by `limit`, default 100 and maximum 1000. Capped responses
-include `meta.truncated: true`; retry with a narrower time range or higher
-limit.
+include `meta.truncated: true`, add `data.truncation`, and make `answer` warn
+about truncation. Retry with a narrower time range or higher limit if needed
+data was not included:
+
+```yaml
+success: true
+answer: "Found 20 of 132 history entries. Attention: returned data is truncated because total matching data points (132) exceeded limit (20). Retry with a higher limit or narrower time range if needed data was not included."
+data:
+  truncation:
+    truncated: true
+    count_returned: 20
+    count_total_before_truncation: 132
+    limit: 20
+    retry_hint: "Retry with a higher limit or narrower time range if needed data was not included."
+meta:
+  count: 20
+  total: 132
+  limit: 20
+  truncated: true
+```
 
 ## Calendar Manager tool
 
