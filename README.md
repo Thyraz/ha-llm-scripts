@@ -150,6 +150,8 @@ verbosity: compact
 limit: 50
 ```
 
+Pass `label_names` as comma-separated text, not a YAML/JSON list.
+
 Expected response shape:
 
 ```yaml
@@ -642,6 +644,8 @@ topic: school
 tags: schedule,kid_one
 text: School starts at 08:10 on regular weekdays.
 ```
+
+Pass `tags` as comma-separated text, not a YAML/JSON list.
 
 Expected response shape:
 

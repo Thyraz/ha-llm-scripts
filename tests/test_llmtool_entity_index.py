@@ -205,6 +205,22 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertEqual([], result["meta"]["label_names"])
         self.assertIn("Candidate records arrived as a string", result["error"])
 
+    def test_label_names_array_shape_returns_actionable_error(self):
+        result = run_helper(
+            {
+                "entity_scope": "filtered_by_labels",
+                "label_names_invalid_shape": "true",
+                "label_names_received_type": "array",
+            }
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("comma-separated text", result["error"])
+        self.assertEqual("label_names", result["data"]["parameter"])
+        self.assertEqual("comma-separated text", result["data"]["expected"])
+        self.assertEqual("array", result["data"]["received"])
+        self.assertEqual("LivingRoom,Light", result["data"]["example"])
+
     def test_all_scope_rejects_labels_and_label_operator(self):
         labels = run_helper(
             {

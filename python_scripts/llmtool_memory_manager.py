@@ -28,6 +28,12 @@ def as_text(value):
     return str(value).strip()
 
 
+def as_bool(value):
+    if isinstance(value, bool):
+        return value
+    return as_text(value).lower() in ["true", "1", "yes", "on"]
+
+
 def plural(value, singular, plural_text):
     if value == 1:
         return singular
@@ -113,6 +119,23 @@ def success_response(answer, data_payload, meta_payload):
 
 def base_meta(operation):
     return {"tool": TOOL_NAME, "operation": operation}
+
+
+def tags_shape_error(operation):
+    if not as_bool(data.get("tags_invalid_shape")):
+        return None
+
+    received_type = as_text(data.get("tags_received_type")) or "non-string"
+    return validation_response(
+        "Invalid tags. Use comma-separated text, not an array/list.",
+        {
+            "parameter": "tags",
+            "expected": "comma-separated text",
+            "received": received_type,
+            "example": "schedule,kid_one",
+        },
+        base_meta(operation),
+    )
 
 
 def two_digit(value):
@@ -594,10 +617,14 @@ def ensure_store_limit(operation, current_store, attempted_store):
 
 
 def remember(store):
+    meta = base_meta("remember")
+    shape_error = tags_shape_error("remember")
+    if shape_error:
+        return shape_error, None
+
     topic = normalize_key(data.get("topic"))
     tags, invalid_tags = parse_tags(data.get("tags"))
     text = as_text(data.get("text"))
-    meta = base_meta("remember")
 
     if not topic:
         return validation_response("remember requires topic.", {"required": "topic"}, meta), None
@@ -667,6 +694,11 @@ def inspect_inventory(store):
 
 
 def search(store):
+    meta = base_meta("search")
+    shape_error = tags_shape_error("search")
+    if shape_error:
+        return shape_error, None
+
     raw_topic = as_text(data.get("topic"))
     topic = normalize_key(raw_topic) if raw_topic else ""
     tags, invalid_tags = parse_tags(data.get("tags"))
@@ -674,7 +706,6 @@ def search(store):
     query = as_text(data.get("query"))
     query_tokens = tokenize(query)
     limit, limit_error = parse_limit(data.get("limit"))
-    meta = base_meta("search")
 
     if raw_topic and not topic:
         return validation_response("Invalid Memory Topic. Use short topic text.", {"invalid_topic": raw_topic}, meta), None
@@ -765,13 +796,17 @@ def read(store):
 
 
 def update(store):
+    meta = base_meta("update")
+    shape_error = tags_shape_error("update")
+    if shape_error:
+        return shape_error, None
+
     memory_id = as_text(data.get("memory_id"))
     raw_topic = as_text(data.get("topic"))
     topic = normalize_key(raw_topic) if raw_topic else ""
     raw_tags = as_text(data.get("tags"))
     tags, invalid_tags = parse_tags(raw_tags)
     text = as_text(data.get("text"))
-    meta = base_meta("update")
 
     if not is_memory_id(memory_id):
         return validation_response("Invalid memory_id. Use a Memory ID such as m000001.", {"required": "memory_id"}, meta), None

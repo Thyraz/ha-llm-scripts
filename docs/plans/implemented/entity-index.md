@@ -45,6 +45,8 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - Tool input accepts friendly label names only, not internal label IDs.
 - Tool input accepts multiple label names as a comma-separated string in
   `label_names`.
+- Non-string `label_names` values, such as YAML/JSON arrays, return a soft
+  failure that asks the caller to retry with comma-separated text.
 - The user-provided `label_names` value must not include `Everywhere`, `Inside`,
   or `Outside`; `location` owns the location labels and visibility is always required.
 - `location` is a mandatory parameter with values `inside`, `outside`, or `everywhere`.

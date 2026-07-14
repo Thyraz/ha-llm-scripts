@@ -151,6 +151,8 @@ Common fields:
 - `memory_id`: Memory ID for `read`, `update`, and `forget`.
 - `topic`: required for `remember`, optional for `search` and `update`.
 - `tags`: comma-separated Memory Tags. Required for `remember`, optional for `search` and `update`.
+- Non-string `tags` values, such as YAML/JSON arrays, return a soft failure
+  that asks the caller to retry with comma-separated text.
 - `tag_match_mode`: `all` or `any` for multi-tag search. Empty means `all`.
 - `query`: lexical search text for `search`.
 - `text`: Memory Entry text for `remember` and `update`.

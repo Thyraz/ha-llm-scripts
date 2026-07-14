@@ -76,7 +76,8 @@ llmtool_entity_index:
       name: Label names
       description: >
         Comma-separated supported label names. Required when entity_scope is
-        filtered_by_labels. Supported labels are configured in Home Assistant and shown
+        filtered_by_labels. Do not pass an array/list; use text like
+        LivingRoom,Light. Supported labels are configured in Home Assistant and shown
         in the Assistant instructions. (Warning: the values in the example string are just placeholders and might not be available in your system, check the instructions for the actual supported labels.)
       required: false
       example: TemperatureSensor,Light
@@ -198,7 +199,18 @@ llmtool_entity_index:
     # Normalize input names and resolve them to HA's internal label IDs.
     - alias: Prepare candidate labels
       variables:
-        raw_label_names: "{{ label_names if label_names is string else '' }}"
+        raw_label_names: "{{ label_names if label_names is defined and label_names is string else '' }}"
+        label_names_invalid_shape: "{{ label_names is defined and label_names is not none and label_names is not string }}"
+        label_names_received_type: >-
+          {% if label_names is not defined or label_names is none %}
+            {{ '' }}
+          {% elif label_names is string %}
+            string
+          {% elif label_names is iterable %}
+            array
+          {% else %}
+            non-string
+          {% endif %}
         entity_scope_raw: "{{ entity_scope | default('filtered_by_labels', true) }}"
         location_raw: "{{ location | default('', true) }}"
         user_label_names: >
@@ -325,6 +337,8 @@ llmtool_entity_index:
         verbosity: "{{ verbosity | default('compact', true) }}"
         state_filter: "{{ state_filter | default('', true) }}"
         limit: "{{ limit | default('', true) }}"
+        label_names_invalid_shape: "{{ label_names_invalid_shape }}"
+        label_names_received_type: "{{ label_names_received_type }}"
         known_labels: "{{ known_label_names }}"
         visibility_label: "{{ visibility_label_name }}"
         inside_label: "{{ inside_label_name }}"

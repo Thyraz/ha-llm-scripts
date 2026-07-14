@@ -154,6 +154,32 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertFalse(large_text["response"]["success"])
         self.assertEqual(4096, large_text["response"]["data"]["text_limit_bytes"])
 
+    def test_tags_array_shape_returns_actionable_error_for_tag_operations(self):
+        memory = store({"m000001": entry()}, next_id=2)
+        cases = [
+            {"operation": "remember", "topic": "school", "text": "School starts at 08:10."},
+            {"operation": "search", "query": "school"},
+            {"operation": "update", "memory_id": "m000001", "text": "School starts at 08:20."},
+        ]
+
+        for case in cases:
+            result = run_helper(
+                {
+                    "tags_invalid_shape": "true",
+                    "tags_received_type": "array",
+                    **case,
+                },
+                memory=memory,
+            )
+            response = result["response"]
+
+            self.assertFalse(response["success"])
+            self.assertIn("comma-separated text", response["error"])
+            self.assertEqual("tags", response["data"]["parameter"])
+            self.assertEqual("comma-separated text", response["data"]["expected"])
+            self.assertEqual("array", response["data"]["received"])
+            self.assertEqual("schedule,kid_one", response["data"]["example"])
+
     def test_remember_rejects_hard_store_limit_and_warns_at_soft_limit(self):
         near_soft_entries = {}
         for index in range(1, 26):

@@ -122,7 +122,8 @@ llmtool_memory_manager:
       name: Tags
       description: >
         Comma-separated Memory Tags. Required for remember, optional for
-        search and update.
+        search and update. Do not pass an array/list; use text like
+        schedule,kid_one.
       required: false
       example: schedule,kid_one
       selector:
@@ -175,6 +176,22 @@ llmtool_memory_manager:
           max: 100
           mode: box
   sequence:
+    # Preserve tag field shape so the helper can return an actionable soft failure.
+    - alias: Prepare Memory Manager helper input
+      variables:
+        helper_tags: "{{ tags if tags is defined and tags is string else '' }}"
+        tags_invalid_shape: "{{ tags is defined and tags is not none and tags is not string }}"
+        tags_received_type: >-
+          {% if tags is not defined or tags is none %}
+            {{ '' }}
+          {% elif tags is string %}
+            string
+          {% elif tags is iterable %}
+            array
+          {% else %}
+            non-string
+          {% endif %}
+
     # Validate input, read the Memory Store Entity, and shape the public response.
     - alias: Call Memory Manager Python Helper
       action: python_script.llmtool_memory_manager
@@ -182,7 +199,9 @@ llmtool_memory_manager:
         operation: "{{ operation | default('', true) }}"
         memory_id: "{{ memory_id | default('', true) }}"
         topic: "{{ topic | default('', true) }}"
-        tags: "{{ tags | default('', true) }}"
+        tags: "{{ helper_tags }}"
+        tags_invalid_shape: "{{ tags_invalid_shape }}"
+        tags_received_type: "{{ tags_received_type }}"
         tag_match_mode: "{{ tag_match_mode | default('', true) }}"
         query: "{{ query | default('', true) }}"
         text: "{{ text | default('', true) }}"

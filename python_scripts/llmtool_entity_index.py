@@ -23,6 +23,12 @@ def as_text(value):
     return str(value).strip()
 
 
+def as_bool(value):
+    if isinstance(value, bool):
+        return value
+    return as_text(value).lower() in ["true", "1", "yes", "on"]
+
+
 def parse_labels(raw_labels):
     parsed = []
     for part in str(raw_labels or "").split(","):
@@ -92,6 +98,8 @@ label_operator = as_text(data.get("label_operator")).upper()
 verbosity = as_text(data.get("verbosity")) or "compact"
 state_filter = as_text(data.get("state_filter"))
 raw_limit = as_text(data.get("limit"))
+label_names_invalid_shape = as_bool(data.get("label_names_invalid_shape"))
+label_names_received_type = as_text(data.get("label_names_received_type")) or "non-string"
 
 valid_locations = ["inside", "outside", "everywhere"]
 valid_entity_scopes = ["filtered_by_labels", "all"]
@@ -99,7 +107,22 @@ valid_label_operators = ["AND", "OR"]
 valid_verbosity = ["id_only", "compact", "detailed"]
 
 # Validate caller parameters before touching candidate records.
-if location not in valid_locations:
+if label_names_invalid_shape:
+    validation_error(
+        "Invalid label_names. Use comma-separated text, not an array/list.",
+        {
+            "parameter": "label_names",
+            "expected": "comma-separated text",
+            "received": label_names_received_type,
+            "example": "LivingRoom,Light",
+        },
+        {
+            "tool": "llmtool_entity_index",
+            "entity_scope": entity_scope,
+            "location": location,
+        },
+    )
+elif location not in valid_locations:
     validation_error(
         "Invalid location. Use inside, outside, or everywhere.",
         {"known_locations": valid_locations},
