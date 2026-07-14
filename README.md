@@ -402,6 +402,28 @@ Supported operations:
 - `list_upcoming`
 - `list_range`
 
+Operation contracts:
+
+```yaml
+search_events:
+  required: operation, keyword, start_time, end_time
+  optional: calendar_entity_ids, event_type, verbosity, limit
+list_range:
+  required: operation, start_time, end_time
+  optional: calendar_entity_ids, event_type, verbosity, limit
+list_upcoming:
+  required: operation
+  optional: calendar_entity_ids, days_ahead, event_type, verbosity, limit
+```
+
+Only pass parameters listed for the selected operation. Non-empty parameters not
+listed for that operation return a soft failure.
+
+Use `search_events` when the user gives event text to find. Pass exact event
+text from the user; do not translate it. Always provide a Calendar Manager Time
+Range: `start_time` is the start of the range to search, and `end_time` is the
+end of that range.
+
 Pass `calendar_entity_ids` as comma-separated Home Assistant `calendar.*`
 entity IDs. Empty `calendar_entity_ids` uses all available `calendar.*`
 entities.
@@ -991,7 +1013,9 @@ entities that do not provide long-term statistics.
 
 Calendar Manager: use for Home Assistant calendar events, upcoming events,
 event ranges, and event text search. Calendar Manager Time Range must be 365
-days or less. This version reads events only.
+days or less. This version reads events only. For event text search, use
+search_events with keyword, start_time, and end_time. Pass exact event text from
+the user as keyword; do not translate it.
 
 Media Manager: use for Music Assistant search, library browsing, playback,
 queue checks, queue transfers, and media_player grouping. Use Entity Index

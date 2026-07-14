@@ -10,12 +10,54 @@ OPERATIONS = ["search_events", "list_upcoming", "list_range"]
 EVENT_TYPES = ["all", "all_day", "timed"]
 VERBOSITIES = ["compact", "detailed"]
 
+PARAMETER_NAMES = [
+    "calendar_entity_ids",
+    "keyword",
+    "start_time",
+    "end_time",
+    "days_ahead",
+    "limit",
+    "event_type",
+    "verbosity",
+]
+
+ALLOWLISTS = {
+    "search_events": [
+        "calendar_entity_ids",
+        "keyword",
+        "start_time",
+        "end_time",
+        "limit",
+        "event_type",
+        "verbosity",
+    ],
+    "list_upcoming": [
+        "calendar_entity_ids",
+        "days_ahead",
+        "limit",
+        "event_type",
+        "verbosity",
+    ],
+    "list_range": [
+        "calendar_entity_ids",
+        "start_time",
+        "end_time",
+        "limit",
+        "event_type",
+        "verbosity",
+    ],
+}
+
 
 # Small helpers keep the top-level python_script flow readable.
 def as_text(value):
     if value is None:
         return ""
     return str(value).strip()
+
+
+def is_present(value):
+    return as_text(value) != ""
 
 
 def validation_error(message, data_payload=None, meta_payload=None):
@@ -78,6 +120,25 @@ def parse_calendar_entity_ids(raw_entity_ids):
             entity_ids.append(entity_id)
 
     return entity_ids, invalid_entity_ids
+
+
+def validate_allowlist(operation):
+    allowed = ALLOWLISTS.get(operation) or []
+    invalid_parameters = []
+    for parameter_name in PARAMETER_NAMES:
+        if parameter_name not in allowed and is_present(data.get(parameter_name)):
+            invalid_parameters.append(parameter_name)
+
+    if invalid_parameters:
+        validation_error(
+            "Invalid parameters for operation.",
+            {
+                "operation": operation,
+                "invalid_parameters": invalid_parameters,
+                "allowed_parameters": allowed,
+            },
+            {"tool": TOOL_NAME, "operation": operation},
+        )
 
 
 def available_calendar_entity_ids():
@@ -568,6 +629,9 @@ def prepare_mode():
             meta,
         )
 
+    if output.get("success") is not False:
+        validate_allowlist(operation)
+
     if output.get("success") is not False and event_type not in EVENT_TYPES:
         validation_error(
             "Invalid event_type. Use all, all_day, or timed.",
@@ -591,7 +655,8 @@ def prepare_mode():
                 meta,
             )
 
-    if output.get("success") is not False:
+    days_ahead = None
+    if output.get("success") is not False and operation == "list_upcoming":
         days_ahead, days_ahead_error = parse_min_int_field(
             raw_days_ahead,
             "days_ahead",
@@ -642,16 +707,16 @@ def prepare_mode():
 
     if output.get("success") is not False:
         now_local = local_naive_from_datetime(dt_util.now())
-        if operation == "list_range":
+        if operation == "list_range" or operation == "search_events":
             if not raw_start_time:
                 validation_error(
-                    "Missing start_time. Use local time in format YYYY-MM-DD HH:MM:SS.",
+                    "Missing start_time. Provide the start of the Calendar Manager Time Range in format YYYY-MM-DD HH:MM:SS.",
                     {"expected_format": "YYYY-MM-DD HH:MM:SS"},
                     meta,
                 )
             elif not raw_end_time:
                 validation_error(
-                    "Missing end_time. Use local time in format YYYY-MM-DD HH:MM:SS.",
+                    "Missing end_time. Provide the end of the Calendar Manager Time Range in format YYYY-MM-DD HH:MM:SS.",
                     {"expected_format": "YYYY-MM-DD HH:MM:SS"},
                     meta,
                 )
@@ -660,39 +725,16 @@ def prepare_mode():
                 end_local = parse_local_time(raw_end_time)
                 if start_local is None:
                     validation_error(
-                        "Invalid start_time. Use local time in format YYYY-MM-DD HH:MM:SS.",
+                        "Invalid start_time. Provide the start of the Calendar Manager Time Range in format YYYY-MM-DD HH:MM:SS.",
                         {"expected_format": "YYYY-MM-DD HH:MM:SS"},
                         meta,
                     )
                 elif end_local is None:
                     validation_error(
-                        "Invalid end_time. Use local time in format YYYY-MM-DD HH:MM:SS.",
+                        "Invalid end_time. Provide the end of the Calendar Manager Time Range in format YYYY-MM-DD HH:MM:SS.",
                         {"expected_format": "YYYY-MM-DD HH:MM:SS"},
                         meta,
                     )
-        elif operation == "search_events":
-            if raw_start_time:
-                start_local = parse_local_time(raw_start_time)
-                if start_local is None:
-                    validation_error(
-                        "Invalid start_time. Use local time in format YYYY-MM-DD HH:MM:SS.",
-                        {"expected_format": "YYYY-MM-DD HH:MM:SS"},
-                        meta,
-                    )
-            else:
-                start_local = now_local
-
-            if output.get("success") is not False:
-                if raw_end_time:
-                    end_local = parse_local_time(raw_end_time)
-                    if end_local is None:
-                        validation_error(
-                            "Invalid end_time. Use local time in format YYYY-MM-DD HH:MM:SS.",
-                            {"expected_format": "YYYY-MM-DD HH:MM:SS"},
-                            meta,
-                        )
-                else:
-                    end_local = add_days(now_local, days_ahead)
         else:
             start_local = now_local
             end_local = add_days(now_local, days_ahead)
@@ -708,7 +750,7 @@ def prepare_mode():
                 meta,
             )
 
-    if output.get("success") is not False and days_ahead > MAX_TIME_RANGE_DAYS:
+    if output.get("success") is not False and days_ahead is not None and days_ahead > MAX_TIME_RANGE_DAYS:
         validation_error(
             "Calendar Manager Time Range too long. Use 365 days or less.",
             {
@@ -733,7 +775,7 @@ def prepare_mode():
             "keyword": keyword,
             "start_time": start_text,
             "end_time": end_text,
-            "days_ahead": days_ahead,
+            "days_ahead": days_ahead if days_ahead is not None else "",
             "limit": limit,
             "event_type": event_type,
             "verbosity": verbosity,
@@ -749,13 +791,16 @@ def shape_mode():
     end_text = as_text(data.get("end_time"))
     event_type = as_text(data.get("event_type")) or "all"
     verbosity = as_text(data.get("verbosity")) or "compact"
-    days_ahead, days_ahead_error = parse_int_field(
-        data.get("days_ahead"),
-        "days_ahead",
-        DEFAULT_DAYS_AHEAD,
-        1,
-        MAX_TIME_RANGE_DAYS,
-    )
+    days_ahead = None
+    days_ahead_error = ""
+    if operation == "list_upcoming":
+        days_ahead, days_ahead_error = parse_int_field(
+            data.get("days_ahead"),
+            "days_ahead",
+            DEFAULT_DAYS_AHEAD,
+            1,
+            MAX_TIME_RANGE_DAYS,
+        )
     limit, limit_error = parse_int_field(data.get("limit"), "limit", DEFAULT_LIMIT, 1, MAX_LIMIT)
 
     meta = {"tool": TOOL_NAME, "operation": operation}

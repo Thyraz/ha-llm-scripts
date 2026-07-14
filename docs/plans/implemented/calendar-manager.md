@@ -36,6 +36,45 @@ events in the same LLM Tool.
   - `search_events`
   - `list_upcoming`
   - `list_range`
+- Calendar Manager uses explicit operation contracts because Home Assistant
+  limits the total number of exposed LLM Tools and small Assistants struggle
+  with implicit conditional parameters.
+- `search_events` requires:
+  - `operation`
+  - `keyword`
+  - `start_time`
+  - `end_time`
+- `search_events` accepts:
+  - `calendar_entity_ids`
+  - `event_type`
+  - `verbosity`
+  - `limit`
+- When the user supplies event text plus a month or date range, the Assistant
+  should prefer `search_events` and pass both `start_time` and `end_time`.
+- Assistants should pass exact user event text as `keyword`, without
+  translation.
+- `start_time` is the start of the Calendar Manager Time Range to search or
+  list.
+- `end_time` is the end of the Calendar Manager Time Range to search or list.
+- `list_range` requires:
+  - `operation`
+  - `start_time`
+  - `end_time`
+- `list_range` accepts:
+  - `calendar_entity_ids`
+  - `event_type`
+  - `verbosity`
+  - `limit`
+- `list_upcoming` requires:
+  - `operation`
+- `list_upcoming` accepts:
+  - `calendar_entity_ids`
+  - `days_ahead`
+  - `event_type`
+  - `verbosity`
+  - `limit`
+- Non-empty parameters outside the selected operation contract return a soft
+  validation failure.
 - Future write operations may include:
   - `create_event`
   - `update_event`
@@ -60,11 +99,9 @@ events in the same LLM Tool.
 - `start_time` is inclusive.
 - `end_time` is exclusive for querying Home Assistant.
 - `list_range` requires `start_time` and `end_time`.
-- `search_events` accepts optional `start_time` and `end_time`.
-- Empty `search_events.start_time` means local now.
-- Empty `search_events.end_time` means local now plus `days_ahead`.
+- `search_events` requires `start_time` and `end_time`.
 - `list_upcoming` uses local now through local now plus `days_ahead`.
-- `days_ahead` is optional.
+- `days_ahead` is optional for `list_upcoming`.
 - Empty `days_ahead` uses 31.
 - Maximum `days_ahead` is 365.
 - `end_time` before or equal to `start_time` is invalid.
@@ -224,8 +261,8 @@ meta:
 - Unknown supplied calendar entity ID.
 - No available calendar entities.
 - Missing `keyword` for `search_events`.
-- Missing `start_time` for `list_range`.
-- Missing `end_time` for `list_range`.
+- Missing `start_time` for `search_events` or `list_range`.
+- Missing `end_time` for `search_events` or `list_range`.
 - Invalid `start_time` format.
 - Invalid `end_time` format.
 - `end_time` before or equal to `start_time`.
@@ -234,6 +271,7 @@ meta:
 - Invalid `limit`.
 - Invalid `event_type`.
 - Invalid `verbosity`.
+- Parameter outside selected operation contract.
 - Invalid Calendar Manager helper handoff.
 - Invalid `calendar.get_events` response shape.
 
@@ -267,12 +305,12 @@ meta:
 - Return setup soft failure when no calendar entities exist.
 - Reject missing keyword for `search_events`.
 - Reject missing range fields for `list_range`.
+- Reject missing range fields for `search_events`.
 - Reject invalid date format.
 - Reject ISO `T`, timezone suffixes, date-only values, and missing seconds.
 - Reject `end_time <= start_time`.
-- Default `search_events` range to now through now plus `days_ahead`.
 - Default `list_upcoming` range to now through now plus `days_ahead`.
-- Validate `days_ahead`, default 31, maximum 365.
+- Validate `days_ahead` for `list_upcoming`, default 31, maximum 365.
 - Reject Calendar Manager Time Range over 365 days.
 - Validate `limit`, default 100, maximum 1000.
 - Validate `event_type`.

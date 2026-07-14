@@ -8,24 +8,41 @@ llmtool_calendar_manager:
 
     Pass operation as one of: search_events, list_upcoming, list_range.
 
+    Operation contracts:
+
+    search_events:
+      Required: operation, keyword, start_time, end_time.
+      Optional: calendar_entity_ids, event_type, verbosity, limit.
+      Use when the user gives event text to find. Pass exact event text from
+      the user; do not translate it. Always provide a Calendar Manager Time
+      Range: start_time is the start of that range, and end_time is the end of
+      that range. Keyword search matches title, description, and location as a
+      case-insensitive exact phrase.
+
+    list_range:
+      Required: operation, start_time, end_time.
+      Optional: calendar_entity_ids, event_type, verbosity, limit.
+      Use when the user gives a date range but no useful event text.
+
+    list_upcoming:
+      Required: operation.
+      Optional: calendar_entity_ids, days_ahead, event_type, verbosity, limit.
+      Use when the user asks for upcoming events.
+
+    Only pass parameters listed for the selected operation. Non-empty
+    parameters not listed for that operation return validation failure.
+
     Pass calendar_entity_ids as comma-separated Home Assistant calendar.*
     entity IDs. Empty calendar_entity_ids searches all available calendar.*
     entities. If you do not know calendar entity IDs, use Entity Index first or
     use IDs from the Assistant instructions.
 
-    Pass start_time and end_time as local Home Assistant times in exactly this
+    start_time and end_time are the Calendar Manager Time Range boundaries to
+    search or list. Pass them as local Home Assistant times in exactly this
     format: YYYY-MM-DD HH:MM:SS. Relative time text and timezone suffixes are
     not valid.
 
     Calendar Manager Time Range must be 365 days or less.
-
-    search_events requires keyword. Empty start_time means now. Empty end_time
-    means now plus days_ahead. Keyword search matches title, description, and
-    location as a case-insensitive exact phrase.
-
-    list_upcoming uses now through now plus days_ahead.
-
-    list_range requires start_time and end_time.
 
     event_type filters returned events: all, all_day, or timed. Empty means all.
 
@@ -42,6 +59,16 @@ llmtool_calendar_manager:
     failure, use error and data to retry.
 
     Example:
+    ```
+      operation: search_events
+      keyword: dentist
+      start_time: "2026-08-01 00:00:00"
+      end_time: "2026-10-01 00:00:00"
+      event_type: all
+      verbosity: compact
+      limit: 100
+    ```
+
     ```
       operation: list_range
       calendar_entity_ids: calendar.family
@@ -88,8 +115,9 @@ llmtool_calendar_manager:
     start_time:
       name: Start time
       description: >
-        Required for list_range. Optional for search_events. Use local Home
-        Assistant time in exactly YYYY-MM-DD HH:MM:SS.
+        Start of the Calendar Manager Time Range to search or list. Required
+        for search_events and list_range. Use local Home Assistant time in
+        exactly YYYY-MM-DD HH:MM:SS.
       required: false
       example: "2026-06-22 00:00:00"
       selector:
@@ -97,7 +125,8 @@ llmtool_calendar_manager:
     end_time:
       name: End time
       description: >
-        Required for list_range. Optional for search_events. Use local Home
+        End of the Calendar Manager Time Range to search or list. Required for
+        search_events and list_range. Must be after start_time. Use local Home
         Assistant time in exactly YYYY-MM-DD HH:MM:SS.
       required: false
       example: "2026-06-23 00:00:00"
@@ -106,8 +135,8 @@ llmtool_calendar_manager:
     days_ahead:
       name: Days ahead
       description: >
-        Optional future search window for list_upcoming and defaulted
-        search_events. Default 31. Maximum 365.
+        Optional future search window for list_upcoming. Default 31. Maximum
+        365.
       required: false
       default: 31
       example: "31"

@@ -222,11 +222,71 @@ class CalendarManagerHelperTest(unittest.TestCase):
         self.assertFalse(invalid_event_type["success"])
         self.assertFalse(invalid_verbosity["success"])
 
-    def test_prepare_search_defaults_range_and_accepts_explicit_range(self):
+    def test_prepare_rejects_parameters_outside_operation_contract(self):
         states = {"calendar.family": FakeState()}
 
-        defaulted = run_helper(
-            {"operation": "search_events", "keyword": "dentist", "days_ahead": "10"},
+        list_range_keyword = run_helper(
+            {
+                "operation": "list_range",
+                "keyword": "dentist",
+                "start_time": "2026-06-22 00:00:00",
+                "end_time": "2026-06-23 00:00:00",
+            },
+            states=states,
+        )
+        list_range_days_ahead = run_helper(
+            {
+                "operation": "list_range",
+                "days_ahead": "10",
+                "start_time": "2026-06-22 00:00:00",
+                "end_time": "2026-06-23 00:00:00",
+            },
+            states=states,
+        )
+        list_upcoming_range = run_helper(
+            {
+                "operation": "list_upcoming",
+                "start_time": "2026-06-22 00:00:00",
+                "end_time": "2026-06-23 00:00:00",
+            },
+            states=states,
+        )
+
+        self.assertFalse(list_range_keyword["success"])
+        self.assertEqual(["keyword"], list_range_keyword["data"]["invalid_parameters"])
+        self.assertIn("start_time", list_range_keyword["data"]["allowed_parameters"])
+        self.assertFalse(list_range_days_ahead["success"])
+        self.assertEqual(["days_ahead"], list_range_days_ahead["data"]["invalid_parameters"])
+        self.assertFalse(list_upcoming_range["success"])
+        self.assertEqual(["start_time", "end_time"], list_upcoming_range["data"]["invalid_parameters"])
+
+    def test_prepare_search_requires_and_accepts_explicit_range(self):
+        states = {"calendar.family": FakeState()}
+
+        missing_start = run_helper(
+            {
+                "operation": "search_events",
+                "keyword": "dentist",
+                "end_time": "2026-06-24 00:00:00",
+            },
+            states=states,
+        )
+        missing_end = run_helper(
+            {
+                "operation": "search_events",
+                "keyword": "dentist",
+                "start_time": "2026-06-23 00:00:00",
+            },
+            states=states,
+        )
+        invalid_days_ahead = run_helper(
+            {
+                "operation": "search_events",
+                "keyword": "dentist",
+                "start_time": "2026-06-23 00:00:00",
+                "end_time": "2026-06-24 00:00:00",
+                "days_ahead": "10",
+            },
             states=states,
         )
         explicit = run_helper(
@@ -239,11 +299,17 @@ class CalendarManagerHelperTest(unittest.TestCase):
             states=states,
         )
 
-        self.assertTrue(defaulted["success"])
-        self.assertEqual("2026-07-02 12:00:00", defaulted["data"]["end_time"])
+        self.assertFalse(missing_start["success"])
+        self.assertIn("Calendar Manager Time Range", missing_start["error"])
+        self.assertFalse(missing_end["success"])
+        self.assertIn("Calendar Manager Time Range", missing_end["error"])
+        self.assertFalse(invalid_days_ahead["success"])
+        self.assertEqual(["days_ahead"], invalid_days_ahead["data"]["invalid_parameters"])
         self.assertTrue(explicit["success"])
         self.assertEqual("2026-06-23 00:00:00", explicit["data"]["start_time"])
         self.assertEqual("2026-06-24 00:00:00", explicit["data"]["end_time"])
+        self.assertEqual("", explicit["data"]["days_ahead"])
+        self.assertNotIn("days_ahead", explicit["meta"])
 
     def test_prepare_accepts_exact_365_day_range(self):
         states = {"calendar.family": FakeState()}

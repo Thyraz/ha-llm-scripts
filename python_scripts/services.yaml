@@ -135,16 +135,17 @@ llmtool_calendar_manager:
       example: dentist
     start_time:
       description: >
-        Local Home Assistant start time in format YYYY-MM-DD HH:MM:SS.
+        Start of the Calendar Manager Time Range for search_events and
+        list_range. Use local Home Assistant time in format YYYY-MM-DD HH:MM:SS.
       example: "2026-06-22 00:00:00"
     end_time:
       description: >
-        Local Home Assistant end time in format YYYY-MM-DD HH:MM:SS.
+        End of the Calendar Manager Time Range for search_events and
+        list_range. Use local Home Assistant time in format YYYY-MM-DD HH:MM:SS.
       example: "2026-06-23 00:00:00"
     days_ahead:
       description: >
-        Future search window for list_upcoming and defaulted search_events.
-        Default 31, maximum 365.
+        Future search window for list_upcoming. Default 31, maximum 365.
       example: "31"
     limit:
       description: >

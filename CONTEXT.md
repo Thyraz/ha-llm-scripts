@@ -136,6 +136,10 @@ _Avoid_: appointment object, reminder item, calendar row
 A named calendar-event action the Calendar Manager applies, such as reading upcoming events or searching events.
 _Avoid_: function, mode, command
 
+**Calendar Manager operation contract**:
+The Assistant-facing rule for one Calendar Manager operation that defines which parameters are required, which are optional, and which non-empty parameters should return a validation failure.
+_Avoid_: hidden parameter rules, ignored extra fields, implicit mode behavior
+
 **Calendar Manager event type**:
 A Calendar Manager filter that selects all events, all-day events, or timed events.
 _Avoid_: all_day boolean, calendar state
