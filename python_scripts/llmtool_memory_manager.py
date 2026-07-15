@@ -621,6 +621,23 @@ def topic_count(store):
     return len(topics)
 
 
+def memory_inventory_names(store):
+    topics = []
+    tags = []
+    for memory_id in store["entries"]:
+        entry = store["entries"][memory_id]
+        topic = entry["topic"]
+        if topic not in topics:
+            topics.append(topic)
+        for tag in entry["tags"]:
+            if tag not in tags:
+                tags.append(tag)
+
+    topics.sort()
+    tags.sort()
+    return topics, tags
+
+
 def store_warning_state(size_bytes):
     if size_bytes >= HARD_LIMIT_BYTES:
         return "hard_limit"
@@ -775,6 +792,56 @@ def search(store):
             meta,
         ), None
 
+    known_topics, known_tags = memory_inventory_names(store)
+    unknown_topic = ""
+    tag_names_used_as_topic = []
+    if topic and topic not in known_topics:
+        unknown_topic = topic
+        if topic in known_tags:
+            tag_names_used_as_topic.append(topic)
+
+    unknown_tags = []
+    topic_names_used_as_tags = []
+    for tag in tags:
+        if tag not in known_tags:
+            unknown_tags.append(tag)
+            if tag in known_topics:
+                topic_names_used_as_tags.append(tag)
+
+    if unknown_topic or unknown_tags:
+        message_parts = []
+        if unknown_topic:
+            message_parts.append("Unknown Memory Topic: {}.".format(unknown_topic))
+        if unknown_tags:
+            message_parts.append("Unknown Memory Tags: {}.".format(", ".join(unknown_tags)))
+        if topic_names_used_as_tags:
+            message_parts.append(
+                "You used known Memory Topics as tags: {}. Retry with topic instead of tags.".format(
+                    ", ".join(topic_names_used_as_tags)
+                )
+            )
+        if tag_names_used_as_topic:
+            message_parts.append(
+                "You used known Memory Tags as topic: {}. Retry with tags instead of topic.".format(
+                    ", ".join(tag_names_used_as_topic)
+                )
+            )
+        message_parts.append("Call inspect_inventory, choose known topic/tags, and retry.")
+
+        return validation_response(
+            " ".join(message_parts),
+            {
+                "unknown_topic": unknown_topic,
+                "unknown_tags": unknown_tags,
+                "topic_names_used_as_tags": topic_names_used_as_tags,
+                "tag_names_used_as_topic": tag_names_used_as_topic,
+                "known_topics": known_topics,
+                "known_tags": known_tags,
+                "retry_hint": "Call inspect_inventory, choose known topic/tags, and retry search.",
+            },
+            meta,
+        ), None
+
     matches = []
     for memory_id in sorted_entry_ids_by_updated(store["entries"]):
         entry = store["entries"][memory_id]
@@ -806,8 +873,10 @@ def search(store):
     answer = "Found {} matching memory {}.".format(len(entries), plural(len(entries), "entry", "entries"))
     if total == 0:
         hint = (
-            "If you have not already inspected memory inventory for this user request, "
-            "call inspect_inventory, choose existing topic/tags, and retry search before saying no memory was found."
+            "Memory query is lexical token matching, not semantic search. "
+            "If you have not already inspected memory inventory for this user request, call inspect_inventory, "
+            "choose known topic/tags, and retry search without query or with only exact or distinctive terms "
+            "before saying no memory was found."
         )
         answer = answer + " " + hint
         data_payload["hint"] = hint

@@ -15,12 +15,13 @@ llmtool_memory_manager:
     memory_id, exact known topic/tags, or you already called inspect_inventory
     for this user request.
 
-    Recall workflow: inspect_inventory, choose existing topic/tags, search,
-    then read a returned memory_id before answering. Do not invent query terms
-    first unless the user gave a distinctive term. If search returns 0 entries
+    Recall workflow: inspect_inventory, choose existing topic/tags, search
+    mostly by topic and/or tags, then read a returned memory_id before
+    answering. Do not invent topics or tags. Do not use a Memory Topic as a
+    Memory Tag. Do not invent query terms first unless the user gave an exact
+    or distinctive term to search for in memory. If search returns 0 entries
     and you have not already called inspect_inventory for this request, call
-    inspect_inventory and retry by topic/tags before saying no memory was
-    found.
+    inspect_inventory and retry by topic/tags before saying no memory was found.
 
     Choose operation from: remember, search, read, update, forget,
     inspect_inventory, list_recent, status.
@@ -34,6 +35,7 @@ llmtool_memory_manager:
     search:
       Required: operation, and at least one of query, topic, or tags.
       Optional: query, topic, tags, tag_match_mode, limit.
+      Prefer topic and/or tags. Query-only is for exact/distinctive terms.
 
     read:
       Required: operation, memory_id.
@@ -67,13 +69,15 @@ llmtool_memory_manager:
     always creates a new Memory Entry. If the user asks to change or replace old
     memory, use search, read, and update instead.
 
-    search accepts query, topic, tags, or a useful combination. Omit query to
-    list snippets by topic and/or tags. Query-only search is valid only for
-    distinctive terms. Empty query plus empty topic plus empty tags is
-    invalid; use list_recent only for broad browsing, recent-memory checks, or
-    debugging when search scope is unknown. tag_match_mode=all means AND;
-    every tag must match. tag_match_mode=any means OR; at least one tag
-    must match.
+    search is primarily a filter by known Memory Topic and/or known Memory
+    Tags from inspect_inventory or the prompt Memory Inventory. Omit query to
+    list snippets by topic and/or tags. query is optional lexical token
+    narrowing, not semantic search. Query-only search is valid only when the
+    user asks to search memories for an exact or distinctive term. Empty query
+    plus empty topic plus empty tags is invalid; use list_recent only for broad
+    browsing, recent-memory checks, or debugging when search scope is unknown.
+    tag_match_mode=all means AND; every tag must match. tag_match_mode=any
+    means OR; at least one tag must match.
 
     search and list_recent return snippets only. Snippets choose candidates;
     they are not factual answer sources. Call read with a returned memory_id
@@ -181,10 +185,11 @@ llmtool_memory_manager:
     query:
       name: Query
       description: >
-        Optional lexical search text for search. Search matches query words
-        against Memory Entry text, topic, and tags. Query-only search is valid
-        for distinctive names or terms when no topic or tag is known. Omit
-        query when listing by topic or tags.
+        Optional lexical token narrowing for search. Search matches query words
+        against Memory Entry text, topic, and tags. This is not semantic
+        search. Prefer known topic and/or tags, and omit query when listing by
+        topic or tags. Query-only search is valid only when the user asks to
+        search memories for an exact or distinctive term.
       required: false
       example: school starts today
       selector:

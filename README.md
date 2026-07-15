@@ -684,7 +684,7 @@ Supported operations:
 Operation contracts:
 
 - `remember`: required `operation`, `topic`, `tags`, `text`
-- `search`: required `operation` plus at least one of `query`, `topic`, `tags`; optional `query`, `topic`, `tags`, `tag_match_mode`, `limit`
+- `search`: required `operation` plus at least one of `query`, `topic`, `tags`; optional `query`, `topic`, `tags`, `tag_match_mode`, `limit`; prefer topic/tags, query-only is for exact/distinctive terms
 - `read`: required `operation`, `memory_id`
 - `update`: required `operation`, `memory_id`, `text`; optional `topic`, `tags`
 - `forget`: required `operation`, `memory_id`
@@ -738,9 +738,12 @@ an exact `memory_id`, exact known topic/tags, or you already called
 `inspect_inventory` for this user request. For recall, choose existing topic and
 tags from the Memory Inventory, then `search`, then `read`.
 
-Use `search` for snippets, then `read` for full text. Snippets are for choosing
-candidates, not factual answers. Do not guess Memory IDs. Search results include
-`memory_id`; pass that ID to `read`, `update`, or `forget`.
+Use `search` for snippets, then `read` for full text. Search is primarily a
+filter by known Memory Topic and/or known Memory Tags. Query text is optional
+lexical token narrowing, not semantic search. Use query-only search only when
+the user asks to search memories for an exact or distinctive term. Snippets are
+for choosing candidates, not factual answers. Do not guess Memory IDs. Search
+results include `memory_id`; pass that ID to `read`, `update`, or `forget`.
 
 ```yaml
 operation: search
@@ -750,14 +753,17 @@ tag_match_mode: all
 limit: 5
 ```
 
-Omit `query` when listing by `topic` or `tags`. Query-only search is also
-valid for distinctive names or terms when no Memory Topic or Memory Tag is
-known, but topic and tags keep results smaller when available. Empty `query`
+Omit `query` when listing by `topic` or `tags`. Query-only search is valid only
+for exact or distinctive terms the user asks to find in memory. Empty `query`
 plus empty `topic` plus empty `tags` is invalid; use `list_recent` only for
 broad browsing, recent-memory checks, or debugging when search scope is unknown.
 For example, `search` with `topic: school` and no `query` lists school Memory
 Entry snippets. `search` with `tags: kid_one` and no `query` lists `kid_one`
 Memory Entry snippets across topics.
+
+If `search` uses an unknown topic or tag, the tool returns a soft failure with
+`known_topics`, `known_tags`, and whether a Memory Topic was accidentally used
+as a tag or a Memory Tag was accidentally used as topic.
 
 `remember` always creates a new Memory Entry. `update` replaces full text by
 Memory ID and keeps omitted topic or tags unchanged. `forget` hard-deletes a
@@ -961,7 +967,7 @@ State that the answer is unknown only after the likely tools have been checked. 
 MEMORY FIRST RULE:
 -------------------
 
-Before choosing another tool, inspect the Known Memory Topics and Known Memory Tags already included in this prompt.
+Before choosing another tool, inspect the Memory Inventory already included in this prompt.
 
 Call the "Memory Manager" tool first when:
 - A known topic or tag plausibly relates to the request.
@@ -969,9 +975,9 @@ Call the "Memory Manager" tool first when:
 - The user explicitly asks about something previously remembered or user-provided.
 - You would otherwise state that the answer is unknown.
 
-If no known topic or tag plausibly relates to the request, continue directly with the authoritative tool. Do not call the "Memory Manager" tool speculatively on every request.
+If no Memory Topic or Memory Tag plausibly relates to the request, continue directly with the authoritative tool. Do not call the "Memory Manager" tool speculatively on every request.
 
-Known Memory Topics and Known Memory Tags are routing clues, not a limit on what memory can contain.
+Memory Topics and Memory Tags are routing clues, not a limit on what memory can contain.
 
 Memory may guide interpretation and tool selection, but it is not proof of current state. After reading relevant memory, still call the appropriate live tool when the user asks for current data.
 
@@ -981,24 +987,35 @@ Memory can define defaults, preferences, aliases, and household-specific behavio
 {% set memory = state_attr('sensor.llm_memory', 'memory') %}
 {% if memory_state not in ['unknown', 'unavailable', 'none', ''] %}
 Memory Inventory:
+------------------
   {% if memory is none %}
-Known Memory Topics: none
-Known Memory Tags: none
+Memory Topics (folder-like; each Memory Entry is saved inside exactly one topic; pass these as topic, never as tags):
+- none
+Memory Tags (cross-topic grouping; a Memory Entry can have multiple tags; pass these as tags, never as topic):
+- none
   {% elif memory is not mapping %}
-Known Memory Topics: unavailable
-Known Memory Tags: unavailable
+Memory Topics (folder-like; each Memory Entry is saved inside exactly one topic; pass these as topic, never as tags):
+- unavailable
+Memory Tags (cross-topic grouping; a Memory Entry can have multiple tags; pass these as tags, never as topic):
+- unavailable
   {% else %}
     {% set schema_version = memory.get('schema_version') %}
     {% set entries = memory.get('entries') %}
     {% if schema_version is not none and schema_version != 2 %}
-Known Memory Topics: unavailable
-Known Memory Tags: unavailable
+Memory Topics (folder-like; each Memory Entry is saved inside exactly one topic; pass these as topic, never as tags):
+- unavailable
+Memory Tags (cross-topic grouping; a Memory Entry can have multiple tags; pass these as tags, never as topic):
+- unavailable
     {% elif entries is none %}
-Known Memory Topics: none
-Known Memory Tags: none
+Memory Topics (folder-like; each Memory Entry is saved inside exactly one topic; pass these as topic, never as tags):
+- none
+Memory Tags (cross-topic grouping; a Memory Entry can have multiple tags; pass these as tags, never as topic):
+- none
     {% elif entries is not mapping %}
-Known Memory Topics: unavailable
-Known Memory Tags: unavailable
+Memory Topics (folder-like; each Memory Entry is saved inside exactly one topic; pass these as topic, never as tags):
+- unavailable
+Memory Tags (cross-topic grouping; a Memory Entry can have multiple tags; pass these as tags, never as topic):
+- unavailable
     {% else %}
       {% set ns = namespace(topics=[], tags=[], malformed=false) %}
       {% for memory_id, entry in entries.items() %}
@@ -1026,11 +1043,27 @@ Known Memory Tags: unavailable
         {% endif %}
       {% endfor %}
       {% if ns.malformed %}
-Known Memory Topics: unavailable
-Known Memory Tags: unavailable
+Memory Topics (folder-like; each Memory Entry is saved inside exactly one topic; pass these as topic, never as tags):
+- unavailable
+Memory Tags (cross-topic grouping; a Memory Entry can have multiple tags; pass these as tags, never as topic):
+- unavailable
       {% else %}
-Known Memory Topics: {{ (ns.topics | sort | join(', ')) if ns.topics else 'none' }}
-Known Memory Tags: {{ (ns.tags | sort | join(', ')) if ns.tags else 'none' }}
+Memory Topics (folder-like; each Memory Entry is saved inside exactly one topic; pass these as topic, never as tags):
+        {% if ns.topics %}
+          {% for topic in ns.topics | sort %}
+- {{ topic }}
+          {% endfor %}
+        {% else %}
+- none
+        {% endif %}
+Memory Tags (cross-topic grouping; a Memory Entry can have multiple tags; pass these as tags, never as topic):
+        {% if ns.tags %}
+          {% for tag in ns.tags | sort %}
+- {{ tag }}
+          {% endfor %}
+        {% else %}
+- none
+        {% endif %}
       {% endif %}
     {% endif %}
   {% endif %}
@@ -1105,11 +1138,12 @@ exact versions, obscure tracks, or corrections after a wrong name-based match.
 Use group_join before playback when the user asks to play on grouped players.
 
 Memory Manager: use for user-provided long-term memory. Save memory only when
-the user asks or clearly confirms. Use Known Memory Topics and Known Memory Tags
-to choose topic/tags when searching or remembering. For recall, call
+the user asks or clearly confirms. Use Memory Inventory topics and tags to
+choose topic/tags when searching or remembering. For recall, call
 inspect_inventory unless an exact memory_id, topic, or tags are already
-available. Search and list_recent return snippets only; read before answering
-from memory.
+available from the Memory Inventory. Prefer search by topic/tags with empty
+query. Use query only to narrow by exact/distinctive lexical terms. Search and
+list_recent return snippets only; read before answering from memory.
 
 Calculator: use for every arithmetic calculation from numbers you already have.
 It does not fetch entities, states, units, history, or statistics.

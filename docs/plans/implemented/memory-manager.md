@@ -60,26 +60,27 @@ Memory Manager lets an Assistant remember user-provided information across conve
   "I don't know", the Assistant should check whether Memory Manager remembered
   something relevant to the request.
 - The Memory First rule is not limited by examples, tool names, live entity
-  names, Known Memory Topics, or Known Memory Tags; users may save any
-  user-provided knowledge in memory.
-- Known Memory Topics and Known Memory Tags are Memory Inventory clues for
-  choosing a Memory Manager call, not a complete list of what memory may
-  contain.
+  names, Memory Topics, or Memory Tags; users may save any user-provided
+  knowledge in memory.
+- Memory Topics and Memory Tags are Memory Inventory clues for choosing a
+  Memory Manager call, not a complete list of what memory may contain.
 - The Memory Manager Tool description should focus on Memory Manager's own
   `inspect_inventory` workflow.
 - Cross-tool fallback after a memory miss belongs in the Prompt overview, not
   the Memory Manager Tool description.
 - Assistant-facing guidance should put the inspect-inventory-first workflow
   before the operation list because small Assist models overweight early text.
-- The Assistant should not invent query terms first unless the user gave a
-  distinctive term.
+- The Assistant should not invent query terms first unless the user gave an
+  exact or distinctive term to search for in memory.
 - If `search` returns no result, the helper should return a hint to call
   `inspect_inventory` and retry by topic and tags before answering that no
   memory was found.
 - The Assistant should not skip `inspect_inventory` just because it can invent
   likely query terms.
 - `search` can filter by topic and tags.
-- `search` can run with only query text when no topic or tag is known.
+- `search` can run with only query text when the user asks to search memories
+  for an exact or distinctive term.
+- `search.query` is lexical token narrowing, not semantic search.
 - `search` can run with topic and/or tags and an empty query to list matching
   Memory Entries as snippets.
 - The Assistant should omit `query` when listing by topic and/or tags.
@@ -92,6 +93,12 @@ Memory Manager lets an Assistant remember user-provided information across conve
   search scope is unknown. It is not the default recall strategy.
 - The Assistant should prefer topic and tags when available to keep results
   small.
+- `search` rejects unknown topics and unknown tags with known inventory values
+  so the Assistant can retry.
+- If `search.tags` contains a known Memory Topic, the helper returns a soft
+  failure telling the Assistant to use `topic` instead.
+- If `search.topic` contains a known Memory Tag, the helper returns a soft
+  failure telling the Assistant to use `tags` instead.
 - `search` accepts `tag_match_mode=all` or `any`; default is `all`.
 - `tag_match_mode=all` means AND: every requested tag must match.
 - `tag_match_mode=any` means OR: at least one requested tag must match.
@@ -154,7 +161,8 @@ Common fields:
 - Non-string `tags` values, such as YAML/JSON arrays, return a soft failure
   that asks the caller to retry with comma-separated text.
 - `tag_match_mode`: `all` or `any` for multi-tag search. Empty means `all`.
-- `query`: lexical search text for `search`.
+- `query`: optional lexical token narrowing for `search`; query-only is for
+  exact or distinctive user-provided terms.
 - `text`: Memory Entry text for `remember` and `update`.
 - `limit`: optional maximum result count for `search` and `list_recent`.
 - Each operation uses a strict parameter allowlist. Non-empty parameters outside
@@ -166,6 +174,7 @@ Operation contracts:
 - `remember`: required `operation`, `topic`, `tags`, `text`.
 - `search`: required `operation` plus at least one of `query`, `topic`, or
   `tags`; optional `query`, `topic`, `tags`, `tag_match_mode`, `limit`.
+  Prefer topic and/or tags. Query-only is for exact or distinctive terms.
 - `read`: required `operation`, `memory_id`.
 - `update`: required `operation`, `memory_id`, `text`; optional `topic`,
   `tags`.

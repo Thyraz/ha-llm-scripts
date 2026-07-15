@@ -287,8 +287,38 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertTrue(result["response"]["success"])
         self.assertEqual([], result["response"]["data"]["entries"])
         self.assertIn("inspect_inventory", result["response"]["answer"])
+        self.assertIn("lexical token matching", result["response"]["answer"])
         self.assertIn("hint", result["response"]["data"])
         self.assertIn("hint", result["response"]["meta"])
+
+    def test_search_rejects_unknown_inventory_names(self):
+        memory = store(
+            {
+                "m000001": entry(topic="school", tags=["schedule", "kid_one"]),
+                "m000002": entry(topic="heating", tags=["bedroom"]),
+            },
+            next_id=3,
+        )
+
+        topic_as_tag = run_helper({"operation": "search", "tags": "school"}, memory=memory)
+        tag_as_topic = run_helper({"operation": "search", "topic": "schedule"}, memory=memory)
+        unknown_tag = run_helper({"operation": "search", "tags": "appointment"}, memory=memory)
+
+        self.assertFalse(topic_as_tag["response"]["success"])
+        self.assertEqual(["school"], topic_as_tag["response"]["data"]["unknown_tags"])
+        self.assertEqual(["school"], topic_as_tag["response"]["data"]["topic_names_used_as_tags"])
+        self.assertIn("Retry with topic", topic_as_tag["response"]["error"])
+        self.assertIn("school", topic_as_tag["response"]["data"]["known_topics"])
+        self.assertIn("schedule", topic_as_tag["response"]["data"]["known_tags"])
+
+        self.assertFalse(tag_as_topic["response"]["success"])
+        self.assertEqual("schedule", tag_as_topic["response"]["data"]["unknown_topic"])
+        self.assertEqual(["schedule"], tag_as_topic["response"]["data"]["tag_names_used_as_topic"])
+        self.assertIn("Retry with tags", tag_as_topic["response"]["error"])
+
+        self.assertFalse(unknown_tag["response"]["success"])
+        self.assertEqual(["appointment"], unknown_tag["response"]["data"]["unknown_tags"])
+        self.assertEqual([], unknown_tag["response"]["data"]["topic_names_used_as_tags"])
 
     def test_search_requires_scope_and_valid_tag_match_mode(self):
         broad = run_helper({"operation": "search"})

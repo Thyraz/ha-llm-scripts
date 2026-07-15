@@ -216,6 +216,10 @@ _Avoid_: Memory Label, category, Home Assistant label, entity label
 The available Memory Topics and Memory Tags an Assistant inspects before choosing how to search or store Memory Entries.
 _Avoid_: topic list, memory dump, full memory listing
 
+**Memory Search Query**:
+Optional lexical token text used to narrow Memory Manager search results, usually after choosing a Memory Topic or Memory Tag from Memory Inventory.
+_Avoid_: semantic search, fuzzy recall, exact phrase search, topic/tag substitute
+
 **Memory First rule**:
 A tool-selection rule where an Assistant checks Memory Manager before other LLM Tools or an "I don't know" answer when a request may involve remembered user-provided knowledge.
 _Avoid_: memory gate, always use memory, recall trigger
