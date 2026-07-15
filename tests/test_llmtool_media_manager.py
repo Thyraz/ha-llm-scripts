@@ -162,6 +162,40 @@ class MediaManagerHelperTest(unittest.TestCase):
         self.assertEqual(1, result["meta"]["count"])
         self.assertEqual("SWR3", result["data"]["results"][0]["items"][0]["name"])
 
+    def test_search_artist_narrowing_returns_self_filter_guidance(self):
+        prepared = run_helper(
+            {
+                "query": "*",
+                "search_media_types": "album",
+                "artist": "Dillon",
+            }
+        )["data"]
+
+        result = shape_payload(
+            prepared,
+            {
+                "albums": [
+                    {
+                        "name": "This Silence Kills",
+                        "uri": "spotify://album/dillon",
+                        "artists": [{"name": "Dillon"}],
+                    },
+                    {
+                        "name": "Money Sucks, Friends Rule",
+                        "uri": "spotify://album/francis",
+                        "artists": [{"name": "Dillon Francis"}],
+                    },
+                ]
+            },
+        )
+
+        self.assertTrue(result["success"])
+        self.assertNotIn("truncation", result["data"])
+        self.assertIn("search_guidance", result["data"])
+        self.assertIn("not strict filters", result["data"]["search_guidance"]["artist_album_narrowing"])
+        self.assertIn("Do not retry", result["data"]["search_guidance"]["retry_rule"])
+        self.assertIn("not a strict filter", result["answer"])
+
     def test_group_prepare_does_not_require_isinstance_builtin(self):
         restricted_builtins = builtins.__dict__.copy()
         restricted_builtins["isinstance"] = None
@@ -249,6 +283,11 @@ class MediaManagerHelperTest(unittest.TestCase):
         self.assertTrue(result["meta"]["truncated"])
         self.assertEqual(2, result["data"]["results"][0]["count"])
         self.assertEqual(0, result["data"]["results"][1]["count"])
+        self.assertIn("Attention: returned data is truncated", result["answer"])
+        self.assertEqual(2, result["data"]["truncation"]["count_returned"])
+        self.assertEqual(4, result["data"]["truncation"]["count_total_before_truncation"])
+        self.assertTrue(result["data"]["truncation"]["by_media_type"]["album"]["hidden_by_global_limit"])
+        self.assertIn("search that type separately", result["data"]["truncation"]["retry_hint"])
         self.assertEqual("Queen", result["data"]["results"][0]["items"][0]["artist_names"][0])
         self.assertEqual("Album A", result["data"]["results"][0]["items"][0]["album_name"])
 
@@ -285,6 +324,9 @@ class MediaManagerHelperTest(unittest.TestCase):
         self.assertEqual(1, shaped["meta"]["count"])
         self.assertTrue(shaped["meta"]["truncated"])
         self.assertEqual(1, shaped["meta"]["next_offset"])
+        self.assertIn("Attention: library browse may be truncated", shaped["answer"])
+        self.assertEqual(1, shaped["data"]["truncation"]["count_returned"])
+        self.assertEqual(1, shaped["data"]["truncation"]["next_offset"])
 
     def test_browse_library_sends_album_type_as_list(self):
         prepared = run_helper(
@@ -439,6 +481,29 @@ class MediaManagerHelperTest(unittest.TestCase):
                 }
             },
         )
+        queue_truncated_prepare = run_helper(
+            {
+                "operation": "get_queue",
+                "query": "",
+                "player_entity_id": "media_player.kitchen",
+                "player_entity_id_is_music_assistant": "true",
+                "limit": "1",
+            }
+        )
+        queue_truncated = shape_payload(
+            queue_truncated_prepare["data"],
+            {
+                "media_player.kitchen": {
+                    "current_index": 0,
+                    "item_count": 3,
+                    "items": [
+                        {"name": "Current", "uri": "spotify://track/current"},
+                        {"name": "Next", "uri": "spotify://track/next"},
+                        {"name": "Later", "uri": "spotify://track/later"},
+                    ],
+                }
+            },
+        )
         transfer = run_helper(
             {
                 "operation": "transfer_queue",
@@ -467,6 +532,10 @@ class MediaManagerHelperTest(unittest.TestCase):
         self.assertEqual("Next", queue["data"]["next_item"]["name"])
         self.assertEqual(["Current", "Next"], [item["name"] for item in queue["data"]["items"]])
         self.assertNotIn("truncated", queue["meta"])
+        self.assertTrue(queue_truncated["meta"]["truncated"])
+        self.assertIn("Attention: returned data is truncated", queue_truncated["answer"])
+        self.assertEqual(1, queue_truncated["data"]["truncation"]["count_returned"])
+        self.assertEqual(3, queue_truncated["data"]["truncation"]["count_total_before_truncation"])
         self.assertTrue(transfer["success"])
         self.assertTrue(transfer["data"]["auto_play"])
         self.assertFalse(transfer_no_autoplay["data"]["auto_play"])

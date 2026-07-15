@@ -3,6 +3,7 @@ TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 MAX_ENTITY_IDS = 10
 MAX_RESPONSE_ROWS = 500
 TOTAL_SHORT_RANGE_SECONDS = 3 * 60 * 60
+TRUNCATION_RETRY_HINT = "Retry with a narrower time range, coarser aggregation period, or fewer entities if needed statistics rows were not included."
 
 AGGREGATION_TYPES = ["mean", "min", "max", "change"]
 AGGREGATION_PERIODS = ["5minute", "hour", "day", "week", "month", "year", "total"]
@@ -293,6 +294,39 @@ def value_row_count(entities):
     return count
 
 
+def count_values_by_entity_id(entities):
+    counts = {}
+    for entity in entities:
+        counts[entity["entity_id"]] = len(entity["values"])
+    return counts
+
+
+def truncation_payload(response_entities, entities, count, total):
+    returned_counts = count_values_by_entity_id(response_entities)
+    total_counts = count_values_by_entity_id(entities)
+    by_entity_id = {}
+
+    for entity in entities:
+        entity_id = entity["entity_id"]
+        returned_count = returned_counts.get(entity_id, 0)
+        total_count = total_counts.get(entity_id, 0)
+        by_entity_id[entity_id] = {
+            "count_returned": returned_count,
+            "count_total_before_truncation": total_count,
+        }
+        if total_count > 0 and returned_count == 0:
+            by_entity_id[entity_id]["hidden_by_global_limit"] = True
+
+    return {
+        "truncated": True,
+        "count_returned": count,
+        "count_total_before_truncation": total,
+        "limit": MAX_RESPONSE_ROWS,
+        "by_entity_id": by_entity_id,
+        "retry_hint": TRUNCATION_RETRY_HINT,
+    }
+
+
 def truncate_entities(entities):
     remaining = MAX_RESPONSE_ROWS
     truncated_entities = []
@@ -343,10 +377,16 @@ def build_meta(entity_ids, start_text, end_text, aggregation_type, aggregation_p
 
 def success_answer(count, total, missing_count):
     if count < total:
-        answer = "Found {} of {} statistics {}.".format(
-            count,
-            total,
-            plural(total, "row", "rows"),
+        answer = (
+            "Found {} of {} statistics {}. Attention: returned data is truncated because "
+            "total matching statistics rows ({}) exceeded limit ({}). {}".format(
+                count,
+                total,
+                plural(total, "row", "rows"),
+                total,
+                MAX_RESPONSE_ROWS,
+                TRUNCATION_RETRY_HINT,
+            )
         )
     else:
         answer = "Found {} statistics {}.".format(
@@ -611,4 +651,6 @@ if output.get("success") is not False:
             "entities": response_entities,
             "missing_entities": missing_entities,
         }
+        if count < total:
+            output["data"]["truncation"] = truncation_payload(response_entities, entities, count, total)
         output["meta"] = response_meta

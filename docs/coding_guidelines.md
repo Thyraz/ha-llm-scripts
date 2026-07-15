@@ -42,6 +42,10 @@ Keep the code easy to read. Prefer clear, boring control flow over defensive han
 - Use `logger.info()` / `logger.warning()` only for useful debugging.
 - Validate expected handoff shapes and return a soft error if a list/dict arrives
   as a string.
+- When a successful response is capped, keep `success: true`, set
+  `meta.truncated: true`, add `data.truncation` with `count_returned`, known
+  total/count fields, `limit`, and `retry_hint`, and make `answer` include an
+  Attention warning.
 - Avoid broad defensive wrappers that hide useful failure signals during testing.
 
 ## Docs

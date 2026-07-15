@@ -155,7 +155,8 @@ entities, history, or statistics.
   local calendar dates.
 - `list_calendar_days` is inclusive of both local calendar dates.
 - `list_calendar_days` returns at most `limit` days.
-- If the full result exceeds `limit`, set `meta.truncated: true`.
+- If the full result exceeds `limit`, set `meta.truncated: true`, add
+  `data.truncation`, and make `answer` warn about truncation.
 - If `date2 < date`, `list_calendar_days` returns a soft validation failure.
 
 ## Tool contract
@@ -239,7 +240,8 @@ meta:
 - Resolve next matching month and weekday.
 - Skip same-day matching dates when requested time has already passed.
 - List calendar days inclusively.
-- Truncate calendar day list globally and set `meta.truncated`.
+- Truncate calendar day list globally and set `meta.truncated` plus
+  `data.truncation`.
 - Reject reversed calendar day list range.
 - Reject invalid weekdays with `known_weekdays`.
 - Reject invalid segment keys and values.

@@ -51,8 +51,9 @@ llmtool_calendar_manager:
     truncated.
 
     limit caps returned events globally across all calendars. Empty means 100.
-    Maximum is 1000. Use meta.truncated to decide whether to retry with a
-    narrower time range.
+    Maximum is 1000. If response data is capped, answer includes an Attention
+    warning and data.truncation includes count_returned,
+    count_total_before_truncation, limit, by_calendar_entity_id, and retry_hint.
 
     On success, read data.calendars. Results are grouped by calendar. All-day
     event end times are returned as the final day at 23:59:59. On validation

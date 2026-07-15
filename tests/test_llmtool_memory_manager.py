@@ -276,6 +276,9 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertEqual(1, topic_search["response"]["meta"]["count"])
         self.assertEqual(2, topic_search["response"]["meta"]["total"])
         self.assertTrue(topic_search["response"]["meta"]["truncated"])
+        self.assertIn("Attention: returned data is truncated", topic_search["response"]["answer"])
+        self.assertEqual(1, topic_search["response"]["data"]["truncation"]["count_returned"])
+        self.assertEqual(2, topic_search["response"]["data"]["truncation"]["count_total_before_truncation"])
         self.assertEqual(2, tag_any["response"]["meta"]["count"])
         self.assertEqual(["m000001"], [item["memory_id"] for item in query_search["response"]["data"]["entries"]])
 
@@ -392,6 +395,9 @@ class MemoryManagerHelperTest(unittest.TestCase):
         self.assertIn("snippet", first)
         self.assertNotIn("text", first)
         self.assertTrue(result["response"]["meta"]["truncated"])
+        self.assertIn("Attention: returned data is truncated", result["response"]["answer"])
+        self.assertEqual(1, result["response"]["data"]["truncation"]["count_returned"])
+        self.assertEqual(2, result["response"]["data"]["truncation"]["count_total_before_truncation"])
 
     def test_status_reports_counts_and_warning_state(self):
         memory = store({"m000001": entry(), "m000002": entry(topic="heating", tags=["bedroom"])}, next_id=3)

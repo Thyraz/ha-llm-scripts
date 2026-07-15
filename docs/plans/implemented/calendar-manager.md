@@ -128,7 +128,10 @@ events in the same LLM Tool.
 - `limit` is a global cap across all returned events, not per calendar.
 - `meta.count` is returned events after truncation.
 - `meta.total` is matching events before truncation.
-- Capped responses include `meta.truncated: true`.
+- Capped responses include `meta.truncated: true`, add `data.truncation`, and
+  make `answer` warn about truncation.
+- `data.truncation.by_calendar_entity_id` reports returned and total event
+  counts by calendar.
 - `verbosity` controls event detail.
 - `verbosity` values:
   - `compact`
@@ -334,7 +337,8 @@ meta:
   `description_truncated`.
 - Return success with empty results.
 - Truncate globally over `limit`.
-- Report `meta.count`, `meta.total`, and `meta.truncated`.
+- Report `meta.count`, `meta.total`, `meta.truncated`, and `data.truncation`
+  when capped.
 - Return soft failure for invalid helper handoff.
 - Return soft failure for invalid `calendar.get_events` response shape.
 - Run under restricted native `python_script` builtins without imports.

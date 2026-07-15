@@ -7,6 +7,7 @@ HARD_LIMIT_BYTES = 120 * 1024
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 100
 SNIPPET_LENGTH = 240
+TRUNCATION_RETRY_HINT = "Retry with a higher limit or narrower memory search scope if needed memory entries were not included."
 
 OPERATIONS = [
     "remember",
@@ -866,11 +867,31 @@ def search(store):
     }
     if tags:
         meta["tags"] = tags
+    data_payload = {"entries": entries}
     if total > limit:
         meta["truncated"] = True
+        data_payload["truncation"] = {
+            "truncated": True,
+            "count_returned": len(entries),
+            "count_total_before_truncation": total,
+            "limit": limit,
+            "retry_hint": TRUNCATION_RETRY_HINT,
+        }
 
-    data_payload = {"entries": entries}
-    answer = "Found {} matching memory {}.".format(len(entries), plural(len(entries), "entry", "entries"))
+    if total > limit:
+        answer = (
+            "Found {} of {} matching memory {}. Attention: returned data is truncated because "
+            "total matching memory entries ({}) exceeded limit ({}). {}".format(
+                len(entries),
+                total,
+                plural(total, "entry", "entries"),
+                total,
+                limit,
+                TRUNCATION_RETRY_HINT,
+            )
+        )
+    else:
+        answer = "Found {} matching memory {}.".format(len(entries), plural(len(entries), "entry", "entries"))
     if total == 0:
         hint = (
             "Memory query is lexical token matching, not semantic search. "
@@ -1005,12 +1026,35 @@ def list_recent(store):
         "total": total,
         "limit": limit,
     }
+    data_payload = {"entries": limited}
     if total > limit:
         meta["truncated"] = True
+        data_payload["truncation"] = {
+            "truncated": True,
+            "count_returned": len(limited),
+            "count_total_before_truncation": total,
+            "limit": limit,
+            "retry_hint": TRUNCATION_RETRY_HINT,
+        }
+
+    if total > limit:
+        answer = (
+            "Found {} of {} recent memory {}. Attention: returned data is truncated because "
+            "total memory entries ({}) exceeded limit ({}). {}".format(
+                len(limited),
+                total,
+                plural(total, "entry", "entries"),
+                total,
+                limit,
+                TRUNCATION_RETRY_HINT,
+            )
+        )
+    else:
+        answer = "Found {} recent memory {}.".format(len(limited), plural(len(limited), "entry", "entries"))
 
     return success_response(
-        "Found {} recent memory {}.".format(len(limited), plural(len(limited), "entry", "entries")),
-        {"entries": limited},
+        answer,
+        data_payload,
         meta,
     ), None
 

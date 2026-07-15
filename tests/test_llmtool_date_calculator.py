@@ -340,6 +340,17 @@ class DateCalculatorHelperTest(unittest.TestCase):
         self.assertEqual(2, result["meta"]["count"])
         self.assertEqual(3, result["meta"]["total"])
         self.assertTrue(result["meta"]["truncated"])
+        self.assertIn("Attention: returned data is truncated", result["answer"])
+        self.assertEqual(
+            {
+                "truncated": True,
+                "count_returned": 2,
+                "count_total_before_truncation": 3,
+                "limit": 2,
+                "retry_hint": "Retry with a higher limit or narrower date range if needed days were not included.",
+            },
+            result["data"]["truncation"],
+        )
 
     def test_list_calendar_days_rejects_reversed_range(self):
         result = run_helper(

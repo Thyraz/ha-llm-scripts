@@ -126,7 +126,10 @@ for raw state history.
 - If an entity has some rows removed by truncation, set `truncated: true` on
   that entity entry.
 - Truncated entities are not listed in `missing_entities`.
-- If truncation happens, `meta.truncated` is `true`.
+- If truncation happens, `meta.truncated` is `true`, `data.truncation` is
+  present, and `answer` warns about truncation.
+- `data.truncation.by_entity_id` reports returned and total row counts by
+  entity.
 - `meta.count` is returned value rows after truncation.
 - `meta.total` is matching result value rows before truncation.
 - For `aggregation_period=total`, `meta.total` counts result rows, not internal
@@ -269,6 +272,9 @@ meta:
 - Returns soft failure when all entities are missing.
 - Truncates non-`total` responses over 500 value rows.
 - Reports `meta.count`, `meta.total`, and `meta.truncated`.
+- Reports visible truncation warning in `answer`.
+- Reports `data.truncation` with returned count, total-before-truncation count,
+  limit, by-entity counts, and retry hint.
 - Preserves Home Assistant row numeric values without rounding.
 - Normalizes `-0.0` to `0`.
 - Computes `total` mean, min, max, and change.

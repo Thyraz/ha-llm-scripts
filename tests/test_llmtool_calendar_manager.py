@@ -438,6 +438,14 @@ class CalendarManagerHelperTest(unittest.TestCase):
         self.assertEqual(2, timed["meta"]["count"])
         self.assertEqual(3, timed["meta"]["total"])
         self.assertTrue(timed["meta"]["truncated"])
+        self.assertIn("Attention: returned data is truncated", timed["answer"])
+        self.assertEqual(2, timed["data"]["truncation"]["count_returned"])
+        self.assertEqual(3, timed["data"]["truncation"]["count_total_before_truncation"])
+        self.assertEqual(1, timed["data"]["truncation"]["by_calendar_entity_id"]["calendar.family"]["count_returned"])
+        self.assertEqual(
+            2,
+            timed["data"]["truncation"]["by_calendar_entity_id"]["calendar.family"]["count_total_before_truncation"],
+        )
         returned_titles = []
         for calendar in timed["data"]["calendars"]:
             for shaped_event in calendar["events"]:

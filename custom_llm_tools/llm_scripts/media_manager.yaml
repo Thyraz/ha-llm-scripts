@@ -21,12 +21,15 @@ llmtool_media_manager:
       Required: operation, query.
       Optional: search_media_types, artist, album, library_only, limit.
       Use for single ambiguous play requests, exact selection, or when media
-      type is unclear.
+      type is unclear. For availability, playable, "do we have", or general
+      search requests, leave library_only false unless the user explicitly says
+      library, favorite, saved, liked, or added.
 
     browse_library:
       Required: operation, media_type.
       Optional: query, favorite, limit, offset, album_type.
-      Use when the user asks for saved, liked, favorite, or library media.
+      Use only when the user explicitly asks for saved, liked, favorite,
+      added, or library media.
 
     play_by_uri:
       Required: operation, player_entity_id, media_uris.
@@ -63,17 +66,37 @@ llmtool_media_manager:
     parameters not listed for that operation return validation failure.
 
     search looks across Music Assistant and connected providers. Set
-    library_only=true to search only the user's Music Assistant library while
-    still returning grouped results across requested media types.
+    library_only=true only when the user explicitly says library, favorite,
+    saved, liked, or added. Leave library_only false for availability,
+    playable, findable, search, "do we have", "is this available here/for us",
+    or "can you play/find" requests. "My music" alone is ambiguous; do not set
+    library_only unless saved/library wording is present. "My Spotify" or "my
+    music services" means connected provider context, not saved library.
+
+    For albums or tracks by an artist, search one media type with artist set
+    and query "*". Example: operation=search, query="*", search_media_types=album,
+    artist=Dillon, library_only=true. artist narrows Music Assistant search; it
+    is not a strict filter and may return partial or similar artist names.
+    Inspect returned artist_names and answer only from matching results. Do not
+    retry only to force a stricter artist filter; self-filter returned items.
 
     browse_library lists one media type from the user's Music Assistant library.
-    Use favorite=true to browse favorites. Use offset with limit to continue a
-    truncated browse response.
+    Do not use browse_library for general available/playable media. Use search
+    with library_only=false. Use favorite=true to browse favorites. Use offset
+    with limit to continue a truncated browse response.
+
+    If search, browse_library, or get_queue response data is capped, answer
+    includes an Attention warning and data.truncation includes retry_hint. For
+    grouped search, data.truncation.by_media_type shows count_returned and
+    count_total_before_truncation per media type. If a media type has total > 0
+    but count_returned is 0, search that media type separately.
 
     play_by_uri requires newline-separated media_uris from search or
-    browse_library results. play_by_name requires newline-separated
-    play_queries and a media_type. Track queries are usually in artist - title
-    form. enqueue values: play, replace, next, add. Empty enqueue means play.
+    browse_library results. For "play from my library/saved/favorites" requests,
+    use search with library_only=true or browse_library, then play_by_uri.
+    play_by_name requires newline-separated play_queries and a media_type. Track
+    queries are usually in artist - title form. enqueue values: play, replace,
+    next, add. Empty enqueue means play.
 
     get_queue answers what is playing and what plays next. transfer_queue
     requires source_player_entity_id and target_player_entity_id.
@@ -96,6 +119,15 @@ llmtool_media_manager:
       search_media_types: artist,album,playlist,track
       library_only: true
       limit: 20
+    ```
+
+    ```
+      operation: search
+      query: "*"
+      search_media_types: album
+      artist: Dillon
+      library_only: true
+      limit: 100
     ```
 
     ```
@@ -222,7 +254,9 @@ llmtool_media_manager:
       name: Library only
       description: >
         For search only. If true, search only the user's Music Assistant library.
-        Empty or false searches Music Assistant and connected providers.
+        Use true only when the user explicitly says library, saved, liked,
+        favorite, or added. Empty or false searches Music Assistant and connected
+        providers for availability/playable/search/"do we have" requests.
       required: false
       default: false
       selector:

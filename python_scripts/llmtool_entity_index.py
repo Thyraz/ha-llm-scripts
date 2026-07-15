@@ -1,5 +1,6 @@
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 1000
+TRUNCATION_RETRY_HINT = "Retry with a higher limit or narrower query if needed entities were not included."
 
 CLIMATE_DETAIL_FIELDS = [
     "current_temperature",
@@ -364,10 +365,31 @@ if output.get("success") is not False:
         "limit": limit,
     }
 
+    data_payload = {"entities": entities}
+
     if total > limit:
         meta["truncated"] = True
+        data_payload["truncation"] = {
+            "truncated": True,
+            "count_returned": len(entities),
+            "count_total_before_truncation": total,
+            "limit": limit,
+            "retry_hint": TRUNCATION_RETRY_HINT,
+        }
 
     output["success"] = True
-    output["answer"] = "Found {} matching entities.".format(len(entities))
-    output["data"] = {"entities": entities}
+    if total > limit:
+        output["answer"] = (
+            "Found {} of {} matching entities. Attention: returned data is truncated because "
+            "total matching entities ({}) exceeded limit ({}). {}".format(
+                len(entities),
+                total,
+                total,
+                limit,
+                TRUNCATION_RETRY_HINT,
+            )
+        )
+    else:
+        output["answer"] = "Found {} matching entities.".format(len(entities))
+    output["data"] = data_payload
     output["meta"] = meta

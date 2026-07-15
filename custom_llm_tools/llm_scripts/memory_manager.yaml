@@ -83,6 +83,10 @@ llmtool_memory_manager:
     they are not factual answer sources. Call read with a returned memory_id
     before answering from memory.
 
+    If search or list_recent response data is capped, answer includes an
+    Attention warning and data.truncation includes count_returned,
+    count_total_before_truncation, limit, and retry_hint.
+
     read, update, and forget require memory_id. Do not guess Memory IDs. Get
     them from remember, search, or list_recent results. After search, read
     before update or ambiguous forget. If multiple plausible entries match

@@ -22,9 +22,10 @@ llmtool_entity_index:
     is_volume_muted, media_title, media_album_name, shuffle, repeat, and
     group_members.
 
-    Use meta.truncated to decide whether to retry with a narrower query or higher limit.
-    On success, read data.entities. On validation failure, use error and data
-    to retry.
+    If response data is capped, answer includes an Attention warning and
+    data.truncation includes count_returned, count_total_before_truncation,
+    limit, and retry_hint. On success, read data.entities. On validation
+    failure, use error and data to retry.
 
     Example:
     ```

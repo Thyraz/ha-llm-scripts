@@ -180,6 +180,11 @@ meta:
   limit: 50
 ```
 
+Responses are capped by `limit`, default 50 and maximum 1000. Capped responses
+include `meta.truncated: true`, add `data.truncation`, and make `answer` warn
+about truncation. Retry with a narrower query or higher limit if needed
+entities were not included.
+
 For room/floor plus device-type searches, use `label_operator: AND`. Use
 `label_operator: OR` only for broad alternatives; it is a shortcut for multiple
 Entity Index calls with one label each.
@@ -293,8 +298,9 @@ meta:
 ```
 
 Responses are capped at 500 value rows. Capped responses include
-`meta.truncated: true`; retry with a narrower time range or coarser
-`aggregation_period`.
+`meta.truncated: true`, add `data.truncation`, and make `answer` warn about
+truncation. Retry with a narrower time range, coarser `aggregation_period`, or
+fewer entities if needed data was not included.
 
 `aggregation_period=total` returns one value per entity for the whole requested
 time range. It is derived from Home Assistant statistics rows. For `mean`, the
@@ -511,8 +517,9 @@ All-day event `end` is returned as the final local day at `23:59:59`, not Home
 Assistant's exclusive all-day end.
 
 Responses are capped by `limit`, default 100 and maximum 1000. Capped responses
-include `meta.truncated: true`; retry with a narrower time range or higher
-limit.
+include `meta.truncated: true`, add `data.truncation`, and make `answer` warn
+about truncation. Retry with a narrower time range or higher limit if needed
+events were not included.
 
 ## Media Manager tool
 
@@ -544,6 +551,15 @@ artist, playlist, or radio station, or when playing a multi-item track list
 where one search per item would be too expensive. Use search or browse first,
 then `play_by_uri`, for library items, exact versions, obscure tracks, or
 corrections after a wrong name-based match.
+
+Use `library_only: true` only when the user explicitly says library, saved,
+liked, favorite, or added. For availability, playable, "do we have", or general
+search requests, leave `library_only` false so Music Assistant can search
+connected providers. Use `browse_library` only for explicit library intent, not
+for general available media. Treat "can you play/find X?", "do we have X?", and
+"is X available here/for us?" as provider search unless the user also says
+library, saved, liked, favorite, or added. "My music" alone is ambiguous; do
+not set `library_only` unless saved or library wording is present.
 
 Operation contracts:
 
@@ -605,6 +621,31 @@ meta:
   total: 1
 ```
 
+Responses capped by `limit` include `meta.truncated: true`, add
+`data.truncation`, and make `answer` warn about truncation. Search truncation
+can hide later requested media types when earlier types consume the global
+limit; if a media type has `count_total_before_truncation > 0` but
+`count_returned: 0`, search that media type separately.
+
+For albums or tracks by an artist, use `search` with the artist name in
+`artist` and `query: "*"`. Keep `library_only: true` only when the user asks
+for saved, liked, favorite, added, or library media:
+
+```yaml
+operation: search
+query: "*"
+search_media_types: album
+artist: Dillon
+library_only: true
+limit: 100
+```
+
+`artist` narrows Music Assistant search; it is not a strict filter and may
+return partial or similar artist names. Before answering "albums by X" or
+"tracks by X", inspect returned `artist_names` and answer only from matching
+results. Do not retry only to force a stricter artist filter; self-filter
+returned items.
+
 Then play selected URIs:
 
 ```yaml
@@ -614,6 +655,11 @@ media_uris: |-
   spotify://track/example
 enqueue: play
 ```
+
+For "play from my library/saved/favorites" requests, search with
+`library_only: true` or browse the library first, then play the selected URI
+with `play_by_uri`. `play_by_name` is fine for general "play X" requests when
+the media type is known.
 
 Fast name-based playback:
 
@@ -764,6 +810,11 @@ Memory Entry snippets across topics.
 If `search` uses an unknown topic or tag, the tool returns a soft failure with
 `known_topics`, `known_tags`, and whether a Memory Topic was accidentally used
 as a tag or a Memory Tag was accidentally used as topic.
+
+Search and `list_recent` responses capped by `limit` include
+`meta.truncated: true`, add `data.truncation`, and make `answer` warn about
+truncation. Retry with a higher limit or narrower memory search scope if
+needed entries were not included.
 
 `remember` always creates a new Memory Entry. `update` replaces full text by
 Memory ID and keeps omitted topic or tags unchanged. `forget` hard-deletes a
@@ -925,7 +976,8 @@ Optional `hour`, `minute`, and `second` set the returned time. Empty `date`
 means now.
 
 For `list_calendar_days`, optional `limit` defaults to 366 and maximum is 3660.
-Capped responses include `meta.truncated: true`.
+Capped responses include `meta.truncated: true`, add `data.truncation`, and
+make `answer` warn about truncation.
 
 ## LLM tool response format
 
@@ -939,6 +991,10 @@ meta: {}
 ```
 
 Assist tool traces wrap that payload under `result`.
+
+When `meta.truncated: true`, the response is a partial success. Read
+`data.truncation`, do not treat missing items as proof that no matches exist,
+and retry with the included `retry_hint` if needed.
 
 Expected validation failures return:
 
@@ -959,6 +1015,9 @@ Tools starting with "LLM Tool ..." are from a tool collection.
 They share one structured response. Use answer for a short summary, data
 for structured details, and meta for counts, query echo, truncation, and
 warnings. On validation failure, use error and data to retry.
+When meta.truncated is true, the response is partial. Read data.truncation and
+retry with its retry_hint if needed; do not treat missing returned items as
+proof that no matches exist.
 
 Tool results are not final by themselves. If one plausible tool returns no
 answer, continue with another relevant tool.
@@ -1136,6 +1195,20 @@ or when playing a multi-item track list where one search per item is too
 expensive. Use search or browse first, then play_by_uri, for library items,
 exact versions, obscure tracks, or corrections after a wrong name-based match.
 Use group_join before playback when the user asks to play on grouped players.
+Set library_only=true only when the user explicitly says library, saved, liked,
+favorite, or added. For availability/playable/search/"do we have" requests,
+leave library_only false. For "play from my library" requests, search/browse
+first, then play_by_uri.
+Treat "can you play/find X?", "do we have X?", and "is X available here/for
+us?" as provider search unless the user also says library, saved, liked,
+favorite, or added. "My music" alone is ambiguous; do not set library_only
+unless saved or library wording is present.
+For albums or tracks by an artist, search one media type with artist set and
+query "*"; keep library_only=true only for explicit library intent. Artist
+narrowing is not a strict filter: inspect artist_names and ignore non-matching
+items yourself instead of retrying only to force stricter filtering. If search
+truncation says another media type has hidden results, search that media type
+separately.
 
 Memory Manager: use for user-provided long-term memory. Save memory only when
 the user asks or clearly confirms. Use Memory Inventory topics and tags to

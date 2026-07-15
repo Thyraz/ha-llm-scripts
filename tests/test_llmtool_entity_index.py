@@ -92,6 +92,26 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertEqual(["light.visible"], result["data"]["entities"])
         self.assertNotIn("effective_labels", result["meta"])
 
+    def test_truncated_response_includes_retry_payload(self):
+        result = run_helper(
+            {
+                "location": "everywhere",
+                "limit": "1",
+                "verbosity": "id_only",
+                "candidates": [
+                    candidate("light.one", [], visible=True),
+                    candidate("light.two", [], visible=True),
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertTrue(result["meta"]["truncated"])
+        self.assertIn("Attention: returned data is truncated", result["answer"])
+        self.assertEqual(1, result["data"]["truncation"]["count_returned"])
+        self.assertEqual(2, result["data"]["truncation"]["count_total_before_truncation"])
+        self.assertEqual(1, result["data"]["truncation"]["limit"])
+
     def test_filtered_by_labels_requires_visibility_location_and_query_label(self):
         result = run_helper(
             {

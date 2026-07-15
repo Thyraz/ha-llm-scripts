@@ -102,7 +102,8 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
   `verbosity`, and `limit`.
 - Runtime responses must not expose hidden visibility/location labels through
   `answer`, `error`, `data`, or `meta`.
-- Capped responses include `meta.truncated: true`.
+- Capped responses include `meta.truncated: true`, add `data.truncation`, and
+  make `answer` warn about truncation.
 - Success `answer` is a short count summary; details stay in `data.entities`.
 - Results are sorted by `entity_id` ascending.
 - The LLM Tool Script handles fields, Home Assistant label name-to-ID lookup, and

@@ -103,6 +103,9 @@ Memory Manager lets an Assistant remember user-provided information across conve
 - `tag_match_mode=all` means AND: every requested tag must match.
 - `tag_match_mode=any` means OR: at least one requested tag must match.
 - `search` and `list_recent` return snippets only.
+- Truncated `search` and `list_recent` responses include
+  `meta.truncated: true`, add `data.truncation`, and make `answer` warn about
+  truncation.
 - Snippets are for candidate selection, not the source for factual answers.
 - The Assistant should `read` before answering from a Memory Entry.
 - Memory IDs come from `remember`, `search`, and `list_recent` results.

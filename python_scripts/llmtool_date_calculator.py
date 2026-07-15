@@ -2,6 +2,7 @@ TOOL_NAME = "llmtool_date_calculator"
 TIME_FORMAT = "YYYY-MM-DD HH:MM:SS"
 DEFAULT_LIMIT = 366
 MAX_LIMIT = 3660
+TRUNCATION_RETRY_HINT = "Retry with a higher limit or narrower date range if needed days were not included."
 
 OPERATIONS = [
     "duration_between_dates",
@@ -855,10 +856,30 @@ if output.get("success") is not False and operation == "list_calendar_days":
                 "limit": limit,
             }
         )
+        data_payload = {"days": days}
         if count < total:
             meta["truncated"] = True
+            data_payload["truncation"] = {
+                "truncated": True,
+                "count_returned": count,
+                "count_total_before_truncation": total,
+                "limit": limit,
+                "retry_hint": TRUNCATION_RETRY_HINT,
+            }
+            answer = (
+                "Listed {} of {} calendar days. Attention: returned data is truncated because "
+                "total matching days ({}) exceeded limit ({}). {}".format(
+                    count,
+                    total,
+                    total,
+                    limit,
+                    TRUNCATION_RETRY_HINT,
+                )
+            )
+        else:
+            answer = "Listed {} calendar days.".format(count)
         success_response(
-            "Listed {} calendar days.".format(count),
-            {"days": days},
+            answer,
+            data_payload,
             meta,
         )

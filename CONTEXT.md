@@ -24,6 +24,10 @@ _Avoid_: backend, worker, integration
 A mapping returned by an LLM Tool with predictable keys so an Assistant can use the result reliably.
 _Avoid_: text blob, raw output
 
+**Tool Result Truncation**:
+A partial LLM Tool response where matching data exists beyond the returned item limit and the Assistant may need a narrower query, higher limit, offset, or separate call to answer safely.
+_Avoid_: no results, failure, complete list
+
 **Assist exposure**:
 The user-controlled Home Assistant step that makes an LLM Tool Script available to an Assistant.
 _Avoid_: auto expose, storage patching
@@ -177,12 +181,28 @@ The user's saved, liked, or added Music Assistant media collection.
 _Avoid_: streaming catalog, provider search results
 
 **Music Assistant provider search**:
-A Music Assistant search across connected music providers outside the user's saved library.
-_Avoid_: library search, global Home Assistant search
+A Music Assistant search across connected music providers that is not restricted to the user's saved library.
+_Avoid_: library-only search, global Home Assistant search
+
+**Music Assistant library intent**:
+A user request that explicitly names saved, liked, added, favorite, or library media instead of everything that connected music providers can search or play.
+_Avoid_: general availability, playable media, provider search
+
+**Music Assistant availability intent**:
+A user request asking whether media is playable or available through the user's connected music setup without explicitly naming saved, liked, added, favorite, or library media.
+_Avoid_: library intent, ownership check, saved media search
 
 **Music Assistant grouped search**:
 A Music Assistant search response organized by requested media types, used when the Assistant should inspect several media categories before choosing what to play.
 _Avoid_: paginated library browse, single-type list
+
+**Media Search Global Limit**:
+A result cap shared across all requested Media Manager search result groups, where earlier media types can consume the returned item budget before later media types are included.
+_Avoid_: per-type limit, provider limit, no results
+
+**Media Search Artist Narrowing**:
+A broad Media Manager search technique that supplies an artist name separately from the search query to find likely tracks or albums by that artist; returned results can still include partial or similar artist-name matches.
+_Avoid_: strict artist filter, album browse by artist, artist media type search
 
 **Media Manager operation**:
 A named media action the Media Manager applies, such as searching, browsing the library, playing media, reading a queue, transferring a queue, or changing media player groups.

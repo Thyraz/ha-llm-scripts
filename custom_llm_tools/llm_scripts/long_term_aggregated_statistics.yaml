@@ -26,9 +26,10 @@ llmtool_long_term_aggregated_statistics:
 
     On success, read data.entities. Each entity has a values array. On partial
     success, data.missing_entities lists requested entity IDs with no statistics
-    for the requested time range. Use meta.truncated to decide whether to retry
-    with a narrower time range or coarser aggregation_period. On validation
-    failure, use error and data to retry.
+    for the requested time range. If response data is capped, answer includes
+    an Attention warning and data.truncation includes count_returned,
+    count_total_before_truncation, limit, by_entity_id, and retry_hint. On
+    validation failure, use error and data to retry.
 
     Example:
     ```

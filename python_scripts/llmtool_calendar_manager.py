@@ -5,6 +5,7 @@ SECONDS_PER_DAY = 86400
 DEFAULT_LIMIT = 100
 MAX_LIMIT = 1000
 MAX_DESCRIPTION_LENGTH = 1000
+TRUNCATION_RETRY_HINT = "Retry with a higher limit or narrower calendar/time scope if needed events were not included."
 
 OPERATIONS = ["search_events", "list_upcoming", "list_range"]
 EVENT_TYPES = ["all", "all_day", "timed"]
@@ -609,6 +610,46 @@ def build_meta(
     return meta
 
 
+def calendar_truncation_payload(all_events, limited_events, calendar_entity_ids, count, total, limit):
+    by_calendar_entity_id = {}
+    for calendar_entity_id in calendar_entity_ids:
+        by_calendar_entity_id[calendar_entity_id] = {
+            "count_returned": 0,
+            "count_total_before_truncation": 0,
+        }
+
+    for event in all_events:
+        calendar_entity_id = event["_calendar_entity_id"]
+        if calendar_entity_id not in by_calendar_entity_id:
+            by_calendar_entity_id[calendar_entity_id] = {
+                "count_returned": 0,
+                "count_total_before_truncation": 0,
+            }
+        by_calendar_entity_id[calendar_entity_id]["count_total_before_truncation"] = (
+            by_calendar_entity_id[calendar_entity_id]["count_total_before_truncation"] + 1
+        )
+
+    for event in limited_events:
+        calendar_entity_id = event["_calendar_entity_id"]
+        by_calendar_entity_id[calendar_entity_id]["count_returned"] = (
+            by_calendar_entity_id[calendar_entity_id]["count_returned"] + 1
+        )
+
+    for calendar_entity_id in by_calendar_entity_id:
+        entry = by_calendar_entity_id[calendar_entity_id]
+        if entry["count_total_before_truncation"] > 0 and entry["count_returned"] == 0:
+            entry["hidden_by_global_limit"] = True
+
+    return {
+        "truncated": True,
+        "count_returned": count,
+        "count_total_before_truncation": total,
+        "limit": limit,
+        "by_calendar_entity_id": by_calendar_entity_id,
+        "retry_hint": TRUNCATION_RETRY_HINT,
+    }
+
+
 def prepare_mode():
     operation = as_text(data.get("operation"))
     raw_calendar_entity_ids = as_text(data.get("calendar_entity_ids"))
@@ -934,12 +975,36 @@ def shape_mode():
             days_ahead,
         )
 
+        data_payload = {"calendars": calendars}
+        if count < total:
+            data_payload["truncation"] = calendar_truncation_payload(
+                all_events,
+                limited_events,
+                calendar_entity_ids,
+                count,
+                total,
+                limit,
+            )
+
         output["success"] = True
-        output["answer"] = "Found {} calendar {}.".format(
-            count,
-            plural(count, "event", "events"),
-        )
-        output["data"] = {"calendars": calendars}
+        if count < total:
+            output["answer"] = (
+                "Found {} of {} calendar {}. Attention: returned data is truncated because "
+                "total matching events ({}) exceeded limit ({}). {}".format(
+                    count,
+                    total,
+                    plural(total, "event", "events"),
+                    total,
+                    limit,
+                    TRUNCATION_RETRY_HINT,
+                )
+            )
+        else:
+            output["answer"] = "Found {} calendar {}.".format(
+                count,
+                plural(count, "event", "events"),
+            )
+        output["data"] = data_payload
         output["meta"] = response_meta
 
 

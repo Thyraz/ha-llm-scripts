@@ -33,6 +33,17 @@ BROWSE_MAX_LIMIT = 100
 QUEUE_DEFAULT_LIMIT = 20
 QUEUE_MAX_LIMIT = 100
 MAX_PLAYBACK_ITEMS = 100
+SEARCH_TRUNCATION_RETRY_HINT = (
+    "Search a single media type, raise limit, or narrow with artist/album. "
+    "If a media type has total > 0 but count_returned is 0, search that type separately."
+)
+SEARCH_NARROWING_HINT = (
+    "Attention: artist/album narrowing is not a strict filter. Results may include "
+    "partial or similar artist names. Inspect artist_names and album_name, ignore "
+    "non-matching items yourself, and do not retry only to force a stricter artist/album filter."
+)
+BROWSE_TRUNCATION_RETRY_HINT = "Use offset {} to continue browsing, increase limit, or narrow query."
+QUEUE_TRUNCATION_RETRY_HINT = "Retry with a higher limit if needed queue items were not included."
 
 CONFIG_HELPER_ENTITY_ID = "input_text.llmtool_media_manager_music_assistant_config_entry_id"
 
@@ -482,6 +493,42 @@ def shape_media_item(row, fallback_media_type):
         item["elapsed_seconds"] = elapsed
 
     return item
+
+
+def search_truncation_payload(count_by_media_type, total_by_media_type, count, total, limit, action_limit_hit):
+    by_media_type = {}
+    for media_type in total_by_media_type:
+        count_returned = count_by_media_type.get(media_type, 0)
+        count_total = total_by_media_type[media_type]
+        by_media_type[media_type] = {
+            "count_returned": count_returned,
+            "count_total_before_truncation": count_total,
+        }
+        if count_total > 0 and count_returned == 0:
+            by_media_type[media_type]["hidden_by_global_limit"] = True
+
+    payload = {
+        "truncated": True,
+        "count_returned": count,
+        "count_total_before_truncation": total,
+        "limit": limit,
+        "by_media_type": by_media_type,
+        "retry_hint": SEARCH_TRUNCATION_RETRY_HINT,
+    }
+    if action_limit_hit:
+        payload["upstream_limit_hit"] = True
+    return payload
+
+
+def search_narrowing_guidance(prepared):
+    if not prepared["artist"] and not prepared["album"]:
+        return None
+
+    return {
+        "artist_album_narrowing": "artist and album narrow Music Assistant search; they are not strict filters.",
+        "matching_rule": "Inspect returned artist_names and album_name. Answer only from items matching the requested artist/album.",
+        "retry_rule": "Do not retry only to force a stricter artist/album filter; the tool cannot enforce exact artist filtering.",
+    }
 
 
 def response_rows_for_media_type(response, media_type):
@@ -978,12 +1025,50 @@ def shape_search(prepared, action_response):
     if count < total or action_limit_hit:
         meta["truncated"] = True
 
+    narrowing_guidance = search_narrowing_guidance(prepared)
+
+    data_payload = {"results": results}
+    if narrowing_guidance:
+        data_payload["search_guidance"] = narrowing_guidance
+    if count < total or action_limit_hit:
+        data_payload["truncation"] = search_truncation_payload(
+            count_by_media_type,
+            total_by_media_type,
+            count,
+            total,
+            limit,
+            action_limit_hit,
+        )
+
     output["success"] = True
-    if count < total:
-        output["answer"] = "Found {} of {} returned media {}.".format(count, total, plural(total, "item", "items"))
+    if count < total or action_limit_hit:
+        if count < total:
+            output["answer"] = (
+                "Found {} of {} returned media {}. Attention: returned data is truncated because "
+                "total matching media items ({}) exceeded limit ({}). {}".format(
+                    count,
+                    total,
+                    plural(total, "item", "items"),
+                    total,
+                    limit,
+                    SEARCH_TRUNCATION_RETRY_HINT,
+                )
+            )
+        else:
+            output["answer"] = (
+                "Found {} returned media {}. Attention: returned data may be truncated because "
+                "Music Assistant returned at least {} items for one media type. {}".format(
+                    count,
+                    plural(count, "item", "items"),
+                    action_limit,
+                    SEARCH_TRUNCATION_RETRY_HINT,
+                )
+            )
     else:
         output["answer"] = "Found {} media {}.".format(count, plural(count, "item", "items"))
-    output["data"] = {"results": results}
+    if narrowing_guidance:
+        output["answer"] = "{} {}".format(output["answer"], SEARCH_NARROWING_HINT)
+    output["data"] = data_payload
     output["meta"] = meta
 
 
@@ -1011,13 +1096,33 @@ def shape_browse_library(prepared, action_response):
         meta["favorite"] = True
     if prepared["album_type"]:
         meta["album_type"] = prepared["album_type"]
+    data_payload = {"media_type": prepared["media_type"], "items": items}
     if count == prepared["limit"]:
         meta["truncated"] = True
         meta["next_offset"] = prepared["offset"] + count
+        retry_hint = BROWSE_TRUNCATION_RETRY_HINT.format(meta["next_offset"])
+        data_payload["truncation"] = {
+            "truncated": True,
+            "count_returned": count,
+            "limit": prepared["limit"],
+            "next_offset": meta["next_offset"],
+            "retry_hint": retry_hint,
+        }
 
     output["success"] = True
-    output["answer"] = "Found {} library {}.".format(count, plural(count, "item", "items"))
-    output["data"] = {"media_type": prepared["media_type"], "items": items}
+    if count == prepared["limit"]:
+        output["answer"] = (
+            "Found {} library {}. Attention: library browse may be truncated because returned count "
+            "reached limit ({}). {}".format(
+                count,
+                plural(count, "item", "items"),
+                prepared["limit"],
+                retry_hint,
+            )
+        )
+    else:
+        output["answer"] = "Found {} library {}.".format(count, plural(count, "item", "items"))
+    output["data"] = data_payload
     output["meta"] = meta
 
 
@@ -1129,9 +1234,28 @@ def shape_get_queue(prepared, action_response):
         remaining_item_count = item_count
     if len(shaped_items) < remaining_item_count:
         meta["truncated"] = True
+        data_payload["truncation"] = {
+            "truncated": True,
+            "count_returned": len(shaped_items),
+            "count_total_before_truncation": remaining_item_count,
+            "limit": limit,
+            "retry_hint": QUEUE_TRUNCATION_RETRY_HINT,
+        }
 
     output["success"] = True
-    output["answer"] = "Queue has {} media {}.".format(item_count, plural(item_count, "item", "items"))
+    if len(shaped_items) < remaining_item_count:
+        output["answer"] = (
+            "Queue has {} media {}. Attention: returned data is truncated because remaining queue items ({}) "
+            "exceeded limit ({}). {}".format(
+                item_count,
+                plural(item_count, "item", "items"),
+                remaining_item_count,
+                limit,
+                QUEUE_TRUNCATION_RETRY_HINT,
+            )
+        )
+    else:
+        output["answer"] = "Queue has {} media {}.".format(item_count, plural(item_count, "item", "items"))
     output["data"] = data_payload
     output["meta"] = meta
 

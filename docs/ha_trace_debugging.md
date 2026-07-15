@@ -105,6 +105,9 @@ The Python Helper `candidates` service data must be a list. If `candidates` is
 shown as one quoted string, the `from_json` handoff at the Python Helper action
 did not produce a native list.
 
+If `meta.truncated` is true in the helper response, read `data.truncation` and
+retry with its `retry_hint` if needed.
+
 ### Long-Term Aggregated Statistics
 
 Useful trace variables:
@@ -130,6 +133,7 @@ Useful Python Helper response fields:
 - `meta.truncated`
 - `data.entities`
 - `data.missing_entities`
+- `data.truncation`
 
 Expected recorder model:
 
@@ -150,8 +154,8 @@ seconds are intentionally invalid.
 If the helper returns no data for an entity that exists, check whether that
 entity actually has long-term statistics. Raw state history does not count.
 
-If `meta.truncated` is true, the helper found more value rows than it returned.
-Retry with a narrower time range or coarser `aggregation_period`.
+If `meta.truncated` is true, read `data.truncation`. The helper found more
+value rows than it returned. Retry with its `retry_hint` if needed.
 
 If the trace shows a Home Assistant runtime error from `recorder.get_statistics`,
 check that recorder is loaded and that Assist-exposed script calls can access
@@ -179,6 +183,7 @@ Useful Python Helper response fields:
 - `meta.limit`
 - `data.entities`
 - `data.missing_entities`
+- `data.truncation`
 
 Expected REST model:
 
@@ -226,8 +231,8 @@ If the helper returns no data for an entity that exists, check Recorder
 retention, Recorder include/exclude filters, and whether the requested time
 range is inside the raw history retention period.
 
-If `meta.truncated` is true, retry with a narrower time range or higher
-`limit`.
+If `meta.truncated` is true, read `data.truncation` and retry with its
+`retry_hint` if needed.
 
 ### Calendar Manager
 
@@ -251,6 +256,7 @@ Useful Python Helper response fields:
 - `meta.total`
 - `meta.truncated`
 - `data.calendars`
+- `data.truncation`
 
 Expected calendar model:
 
@@ -278,8 +284,8 @@ If `calendar_manager_events` is missing a requested calendar key, inspect
 If `calendar_manager_events_json` arrives at the helper as one quoted string,
 the YAML -> Python handoff failed. Check the `from_json` action data conversion.
 
-If `meta.truncated` is true, retry with a narrower time range, a higher limit,
-or more specific calendar IDs.
+If `meta.truncated` is true, read `data.truncation` and retry with its
+`retry_hint` if needed.
 
 ### Media Manager
 
@@ -300,8 +306,10 @@ Useful Python Helper response fields:
 - `meta.operation`
 - `meta.count`
 - `meta.total`
+- `meta.truncated`
 - `data.results`
 - `data.items`
+- `data.truncation`
 - `data.current_item`
 - `data.next_item`
 - `meta.leader_entity_id`
@@ -374,6 +382,8 @@ Expected memory model:
 - `search` and `list_recent` return snippets only.
 - `read` returns full text for one Memory Entry.
 - Search is deterministic lexical token search, not semantic or fuzzy search.
+- If `response.meta.truncated` is true, read `response.data.truncation` and
+  retry with its `retry_hint` if needed.
 
 If the helper returns a setup failure, confirm `sensor.llm_memory` exists and is
 a Variables+History Sensor variable.

@@ -82,15 +82,38 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
 - `search_media_types` is comma-separated and can include multiple media types.
 - Empty `search_media_types` means `track,album,artist,playlist,radio`.
 - `search` supports `library_only`.
-- Use `library_only=true` when the user asks for the user's Music Assistant
-  library but the requested media type is uncertain.
+- Use `library_only=true` only when the user explicitly says library, saved,
+  liked, favorite, or added.
+- Leave `library_only` false for general availability, playable, find, search,
+  "do we have", "is this available here/for us", or "can you play/find"
+  requests.
+- "Do we have X?" and "Is X available here/for us?" mean provider search unless
+  the user also says library, saved, liked, favorite, or added.
+- "Can you play/find X?" means provider search unless the user also says
+  library, saved, liked, favorite, or added.
+- "My music" is ambiguous and is not enough for library intent by itself. "My
+  Spotify" or "my music services" means connected provider context, not saved
+  library.
 - Empty or false `library_only` searches Music Assistant and connected
   providers; it does not exclude library items.
 - `search` supports optional `artist` and `album` to make a query more precise.
-  These are not strict filters.
+  These are not strict filters and may return partial or similar artist/album
+  matches.
 - `search.artist` and `search.album` are valid only when `search_media_types`
   includes `track` or `album`.
+- For "albums by artist" and "tracks by artist" requests, the Assistant should
+  search one media type with `artist` set and `query: "*"`.
+- Keep `library_only=true` with artist narrowing only for explicit library
+  intent.
+- The Assistant must inspect returned `artist_names` before answering from
+  artist-narrowed results because `artist` is not a strict post-filter.
+- The Assistant must not retry only to force stricter `artist` or `album`
+  filtering; it must self-filter returned items.
 - `browse_library` uses `music_assistant.get_library`.
+- Use `browse_library` only for explicit library, saved, liked, favorite, or
+  added media requests.
+- Do not use `browse_library` for general available or playable media; use
+  `search` with `library_only=false`.
 - `browse_library` requires single `media_type`.
 - `browse_library` uses `query` as the optional library search text and maps it
   to the Home Assistant action's `search` field.
@@ -144,9 +167,20 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   - `count_by_media_type`
   - `total_by_media_type`
   - `truncated` when matching returned action rows exceed `limit`
+- Truncated search responses add `data.truncation`, including
+  `count_returned`, `count_total_before_truncation`, `limit`,
+  `by_media_type`, and `retry_hint`.
+- Artist- or album-narrowed search responses add `data.search_guidance`
+  explaining that narrowing is not strict and the Assistant must self-filter
+  returned items.
+- `data.truncation.by_media_type` marks `hidden_by_global_limit: true` when a
+  media type had matching returned rows but no items were returned because the
+  global search limit was consumed by earlier media types.
 - Browse-library response data uses:
   - `data.media_type`
   - `data.items`
+- Truncated browse-library responses add `data.truncation`, including
+  `count_returned`, `limit`, `next_offset`, and `retry_hint`.
 - Browse-library response metadata includes:
   - `operation`
   - `query` only when provided
@@ -158,7 +192,8 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   - `next_offset`
   - `count`
   - `truncated` when returned count equals `limit`
-- Do not add `truncation_possible`; existing tools use `meta.truncated`.
+- Do not add `truncation_possible`; use `meta.truncated` plus
+  `data.truncation`.
 - Use `search` first for one ambiguous "play X" request when the media type is
   unclear.
 - Use `play_by_name` when the user clearly asks for a track, album, artist,
@@ -168,6 +203,10 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   occasional wrong or missing name-based match is acceptable.
 - Use `search` or `browse_library` then `play_by_uri` when the user asks for
   library items, exact versions, obscure tracks, or corrects a wrong song.
+- For "play from my library/saved/favorites" requests, search or browse the
+  library first, then call `play_by_uri` with selected URIs.
+- For general "play X" requests, `play_by_name` is acceptable when the media
+  type is clear.
 - If the user says the played song is wrong after `play_by_name`, search for
   the intended item and retry with `play_by_uri`.
 - `play_by_uri` and `play_by_name` use `music_assistant.play_media`.
@@ -188,8 +227,8 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
 - `play_by_name` accepts at most 100 play queries.
 - `play_by_name.media_type` supports `track`, `album`, `artist`, `playlist`,
   and `radio`.
-- `play_by_name` does not support `library_only`; use search/library then
-  `play_by_uri` for library-only playback.
+- `play_by_name` does not support `library_only`; use search or
+  `browse_library` then `play_by_uri` for library playback.
 - `play_by_uri` and `play_by_name` support `enqueue`.
 - `enqueue` values:
   - `play`
@@ -213,6 +252,8 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
 - `get_queue` returns current item, next item, capped queue items, item count,
   current index, and available queue playback state fields.
 - `get_queue` `items` starts with the current queue item and continues forward.
+- Truncated `get_queue` responses add `data.truncation`, including
+  `count_returned`, `count_total_before_truncation`, `limit`, and `retry_hint`.
 - `transfer_queue` uses `music_assistant.transfer_queue`.
 - `transfer_queue` requires `source_player_entity_id`.
 - `transfer_queue` requires `target_player_entity_id`.
@@ -313,7 +354,7 @@ search_media_types: track
 limit: 5
 ```
 
-- Library grouped search when the media type is uncertain:
+- Explicit library grouped search when the media type is uncertain:
 
 ```yaml
 operation: search
@@ -423,7 +464,7 @@ Truncated search:
 
 ```yaml
 success: true
-answer: "Found 20 of 36 returned media items."
+answer: "Found 20 of 36 returned media items. Attention: returned data is truncated because total matching media items (36) exceeded limit (20). Search a single media type, raise limit, or narrow with artist/album. If a media type has total > 0 but count_returned is 0, search that type separately."
 data:
   results:
     - media_type: track
@@ -434,6 +475,20 @@ data:
       count: 0
       total: 5
       items: []
+  truncation:
+    truncated: true
+    count_returned: 20
+    count_total_before_truncation: 36
+    limit: 20
+    by_media_type:
+      track:
+        count_returned: 20
+        count_total_before_truncation: 31
+      album:
+        count_returned: 0
+        count_total_before_truncation: 5
+        hidden_by_global_limit: true
+    retry_hint: "Search a single media type, raise limit, or narrow with artist/album. If a media type has total > 0 but count_returned is 0, search that type separately."
 meta:
   tool: llmtool_media_manager
   operation: search

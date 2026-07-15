@@ -57,7 +57,10 @@ llmtool_date_calculator:
     recurring date, call next_matching_date first, then duration_between_dates.
 
     list_calendar_days uses optional limit. Empty limit means 366. Maximum is
-    3660. On success, read data. On validation failure, use error and data to retry.
+    3660. If response data is capped, answer includes an Attention warning and
+    data.truncation includes count_returned, count_total_before_truncation,
+    limit, and retry_hint. On success, read data. On validation failure, use
+    error and data to retry.
 
     Example:
     ```
