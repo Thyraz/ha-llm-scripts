@@ -231,11 +231,15 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   `browse_library` then `play_by_uri` for library playback.
 - `play_by_uri` and `play_by_name` support `enqueue`.
 - `enqueue` values:
-  - `play`
   - `replace`
   - `next`
   - `add`
-- Empty `enqueue` means `play`.
+  - `play`
+- Empty `enqueue` means `replace`.
+- Use `replace` for normal play requests.
+- Use `add` only when the user asks to add to the queue.
+- Use `next` only when the user asks to play next.
+- Use `play` only for explicit Music Assistant native play behavior.
 - Do not expose `replace_next`.
 - `play_by_uri` and `play_by_name` support `radio_mode`.
 - Empty `radio_mode` means `false`.
@@ -382,7 +386,7 @@ player_entity_id: media_player.kitchen
 media_uris: |-
   spotify://track/abc
   spotify://track/def
-enqueue: play
+enqueue: replace
 ```
 
 - Fast name-based playback:
@@ -394,7 +398,7 @@ play_queries: |-
   Lady Gaga - Aura
   Queen - Don't Stop Me Now
 media_type: track
-enqueue: play
+enqueue: replace
 ```
 
 - Join media players before playback:
@@ -547,14 +551,14 @@ data:
     - spotify://track/abc
     - spotify://track/def
   uri_count: 2
-  enqueue: play
+  enqueue: replace
   radio_mode: false
 meta:
   tool: llmtool_media_manager
   operation: play_by_uri
   player_entity_id: media_player.kitchen
   uri_count: 2
-  enqueue: play
+  enqueue: replace
 ```
 
 Successful name-based playback:
@@ -569,7 +573,7 @@ data:
     - Queen - Don't Stop Me Now
   query_count: 2
   media_type: track
-  enqueue: play
+  enqueue: replace
   radio_mode: false
 meta:
   tool: llmtool_media_manager
@@ -577,7 +581,7 @@ meta:
   player_entity_id: media_player.kitchen
   query_count: 2
   media_type: track
-  enqueue: play
+  enqueue: replace
   match_precision: name_based
 ```
 

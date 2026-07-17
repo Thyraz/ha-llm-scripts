@@ -95,8 +95,11 @@ llmtool_media_manager:
     browse_library results. For "play from my library/saved/favorites" requests,
     use search with library_only=true or browse_library, then play_by_uri.
     play_by_name requires newline-separated play_queries and a media_type. Track
-    queries are usually in artist - title form. enqueue values: play, replace,
-    next, add. Empty enqueue means play.
+    queries are usually in artist - title form. enqueue values: replace, next,
+    add, play. Empty enqueue means replace. Use replace for normal play
+    requests, add only when the user asks to add to the queue, next only when
+    the user asks to play next, and play only for explicit Music Assistant
+    native play behavior.
 
     get_queue answers what is playing and what plays next. transfer_queue
     requires source_player_entity_id and target_player_entity_id.
@@ -144,7 +147,7 @@ llmtool_media_manager:
       media_uris: |-
         spotify://track/example_one
         spotify://track/example_two
-      enqueue: play
+      enqueue: replace
     ```
 
     ```
@@ -154,7 +157,7 @@ llmtool_media_manager:
         Lady Gaga - Aura
         Queen - Don't Stop Me Now
       media_type: track
-      enqueue: play
+      enqueue: replace
     ```
 
     ```
@@ -162,7 +165,7 @@ llmtool_media_manager:
       player_entity_id: media_player.buro
       play_queries: SWR3
       media_type: radio
-      enqueue: play
+      enqueue: replace
     ```
 
     ```
@@ -341,18 +344,20 @@ llmtool_media_manager:
     enqueue:
       name: Enqueue
       description: >
-        For play_by_uri and play_by_name only. Use play, replace, next, or add.
-        Empty means play.
+        For play_by_uri and play_by_name only. Use replace for normal play,
+        add when the user asks to add to the queue, next when the user asks to
+        play next, and play only for explicit Music Assistant native play
+        behavior. Empty means replace.
       required: false
-      default: play
-      example: play
+      default: replace
+      example: replace
       selector:
         select:
           options:
-            - play
             - replace
             - next
             - add
+            - play
     radio_mode:
       name: Radio mode
       description: >

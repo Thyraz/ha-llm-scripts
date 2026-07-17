@@ -377,6 +377,25 @@ class MediaManagerHelperTest(unittest.TestCase):
                 "player_entity_id": "media_player.kitchen",
                 "player_entity_id_is_music_assistant": "true",
                 "media_uris": "spotify://track/a\nspotify://track/b",
+            }
+        )
+        explicit_play = run_helper(
+            {
+                "operation": "play_by_uri",
+                "query": "",
+                "player_entity_id": "media_player.kitchen",
+                "player_entity_id_is_music_assistant": "true",
+                "media_uris": "spotify://track/a",
+                "enqueue": "play",
+            }
+        )
+        explicit_add = run_helper(
+            {
+                "operation": "play_by_uri",
+                "query": "",
+                "player_entity_id": "media_player.kitchen",
+                "player_entity_id_is_music_assistant": "true",
+                "media_uris": "spotify://track/a\nspotify://track/b",
                 "enqueue": "add",
             }
         )
@@ -390,7 +409,11 @@ class MediaManagerHelperTest(unittest.TestCase):
         self.assertEqual(2, radio_many["data"]["uri_count"])
         self.assertTrue(valid["success"])
         self.assertEqual(["spotify://track/a", "spotify://track/b"], valid["data"]["media_uris"])
-        self.assertEqual("add", valid["data"]["action_data"]["enqueue"])
+        self.assertEqual("replace", valid["data"]["action_data"]["enqueue"])
+        self.assertTrue(explicit_play["success"])
+        self.assertEqual("play", explicit_play["data"]["action_data"]["enqueue"])
+        self.assertTrue(explicit_add["success"])
+        self.assertEqual("add", explicit_add["data"]["action_data"]["enqueue"])
         self.assertTrue(shaped["success"])
         self.assertEqual("Sent 2 media URIs to media_player.kitchen.", shaped["answer"])
 
@@ -412,6 +435,7 @@ class MediaManagerHelperTest(unittest.TestCase):
         self.assertEqual("track", valid["data"]["media_type"])
         self.assertEqual("track", valid["data"]["action_data"]["media_type"])
         self.assertEqual(["Lady Gaga - Aura", "Queen - Don't Stop Me Now"], valid["data"]["action_data"]["media_id"])
+        self.assertEqual("replace", valid["data"]["action_data"]["enqueue"])
         self.assertTrue(shaped["success"])
         self.assertEqual("Sent 2 play queries to media_player.kitchen.", shaped["answer"])
         self.assertEqual("name_based", shaped["meta"]["match_precision"])

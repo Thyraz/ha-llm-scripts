@@ -573,6 +573,10 @@ Operation contracts:
 - `group_unjoin`: required `operation`, `member_entity_ids`
 - `group_clear_members`: required `operation`, `leader_entity_id`
 
+Playback `enqueue` defaults to `replace`. Use `replace` for normal play
+requests, `next` for play-next requests, `add` for add-to-queue requests, and
+`play` only for explicit Music Assistant native play behavior.
+
 Only pass parameters listed for the selected operation. Non-empty parameters
 outside that operation contract return a soft failure.
 
@@ -653,7 +657,7 @@ operation: play_by_uri
 player_entity_id: media_player.kitchen
 media_uris: |-
   spotify://track/example
-enqueue: play
+enqueue: replace
 ```
 
 For "play from my library/saved/favorites" requests, search with
@@ -670,7 +674,7 @@ play_queries: |-
   Lady Gaga - Aura
   Queen - Don't Stop Me Now
 media_type: track
-enqueue: play
+enqueue: replace
 ```
 
 Radio by name:
@@ -680,7 +684,7 @@ operation: play_by_name
 player_entity_id: media_player.buro
 play_queries: SWR3
 media_type: radio
-enqueue: play
+enqueue: replace
 ```
 
 To group players before playback:

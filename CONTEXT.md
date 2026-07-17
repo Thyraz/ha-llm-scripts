@@ -176,6 +176,10 @@ _Avoid_: speaker name, room name, raw player name
 The ordered playback queue owned by a Music Assistant player.
 _Avoid_: media player attributes, now-playing state blob
 
+**Media Playback Queue Intent**:
+A user request that decides how requested media relates to the existing Music Assistant queue, such as replacing it, playing next, or appending it.
+_Avoid_: shuffle mode, search mode, playback transport state
+
 **Music Assistant library**:
 The user's saved, liked, or added Music Assistant media collection.
 _Avoid_: streaming catalog, provider search results

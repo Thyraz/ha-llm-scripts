@@ -16,7 +16,8 @@ MEDIA_TYPES = ["artist", "album", "audiobook", "playlist", "podcast", "track", "
 DEFAULT_SEARCH_MEDIA_TYPES = ["track", "album", "artist", "playlist", "radio"]
 PLAY_BY_NAME_MEDIA_TYPES = ["track", "album", "artist", "playlist", "radio"]
 ALBUM_TYPES = ["album", "single", "compilation", "ep"]
-ENQUEUE_VALUES = ["play", "replace", "next", "add"]
+ENQUEUE_VALUES = ["replace", "next", "add", "play"]
+DEFAULT_ENQUEUE = "replace"
 BOOL_FIELDS = [
     "library_only",
     "favorite",
@@ -676,7 +677,7 @@ def operation_prepare_play_by_uri():
     operation = "play_by_uri"
     player_entity_id = as_text(data.get("player_entity_id"))
     media_uris = parse_newline_list(data.get("media_uris"))
-    enqueue = as_text(data.get("enqueue")) or "play"
+    enqueue = as_text(data.get("enqueue")) or DEFAULT_ENQUEUE
     radio_mode = parse_bool_field("radio_mode")[0]
 
     if not player_entity_id or not is_media_player_entity_id(player_entity_id) or not is_music_assistant_player_flag("player_entity_id_is_music_assistant"):
@@ -686,7 +687,7 @@ def operation_prepare_play_by_uri():
     elif len(media_uris) > MAX_PLAYBACK_ITEMS:
         validation_error("Too many media_uris. Use at most 100 media URIs.", {"max_media_uris": MAX_PLAYBACK_ITEMS}, base_meta(operation))
     elif enqueue not in ENQUEUE_VALUES:
-        validation_error("Invalid enqueue. Use play, replace, next, or add.", {"known_enqueue_values": ENQUEUE_VALUES}, base_meta(operation))
+        validation_error("Invalid enqueue. Use replace, next, add, or play.", {"known_enqueue_values": ENQUEUE_VALUES}, base_meta(operation))
     elif radio_mode and len(media_uris) != 1:
         validation_error("radio_mode requires exactly one media URI.", {"uri_count": len(media_uris)}, base_meta(operation))
     else:
@@ -714,7 +715,7 @@ def operation_prepare_play_by_name():
     player_entity_id = as_text(data.get("player_entity_id"))
     play_queries = parse_newline_list(data.get("play_queries"))
     media_type = as_text(data.get("media_type"))
-    enqueue = as_text(data.get("enqueue")) or "play"
+    enqueue = as_text(data.get("enqueue")) or DEFAULT_ENQUEUE
     radio_mode = parse_bool_field("radio_mode")[0]
 
     if not player_entity_id or not is_media_player_entity_id(player_entity_id) or not is_music_assistant_player_flag("player_entity_id_is_music_assistant"):
@@ -732,7 +733,7 @@ def operation_prepare_play_by_name():
     elif media_type not in PLAY_BY_NAME_MEDIA_TYPES:
         validation_error("Invalid media_type for play_by_name.", {"invalid_media_types": [media_type], "known_media_types": PLAY_BY_NAME_MEDIA_TYPES}, base_meta(operation))
     elif enqueue not in ENQUEUE_VALUES:
-        validation_error("Invalid enqueue. Use play, replace, next, or add.", {"known_enqueue_values": ENQUEUE_VALUES}, base_meta(operation))
+        validation_error("Invalid enqueue. Use replace, next, add, or play.", {"known_enqueue_values": ENQUEUE_VALUES}, base_meta(operation))
     elif radio_mode and len(play_queries) != 1:
         validation_error("radio_mode requires exactly one play query.", {"query_count": len(play_queries)}, base_meta(operation))
     else:

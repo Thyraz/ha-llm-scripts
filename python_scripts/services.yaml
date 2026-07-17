@@ -220,8 +220,8 @@ llmtool_media_manager:
       description: Newline-separated Music Assistant play queries for play_by_name.
       example: Lady Gaga - Aura
     enqueue:
-      description: For playback. play, replace, next, or add.
-      example: play
+      description: For playback. replace, next, add, or play. Empty means replace.
+      example: replace
     radio_mode:
       description: For playback. If true, start radio mode from exactly one media URI or play query.
       example: "false"
