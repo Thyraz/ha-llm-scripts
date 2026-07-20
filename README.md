@@ -110,6 +110,10 @@ After install, Home Assistant should expose:
 Entity Index lets an Assistant discover allowed Home Assistant entities by
 label and location.
 
+Returned `state` uses Home Assistant display precision but keeps Home
+Assistant's canonical, unlocalized state language. `state_filter` also uses the
+canonical state string, such as `on` or `off`.
+
 For likely cumulative sensors, compact and detailed results include
 `value_hint`. For usage over a time range, follow that hint and use Long-Term
 Aggregated Statistics with `aggregation_type: change` instead of answering from

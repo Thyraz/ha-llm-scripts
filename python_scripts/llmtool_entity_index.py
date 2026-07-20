@@ -256,6 +256,9 @@ if output.get("success") is not False:
         state = ""
         if "state" in candidate:
             state = as_text(candidate["state"])
+        display_state = state
+        if "display_state" in candidate:
+            display_state = as_text(candidate["display_state"])
 
         if state_filter and state != state_filter:
             continue
@@ -280,6 +283,7 @@ if output.get("success") is not False:
             "entity_id": entity_id,
             "friendly_name": as_text(candidate["friendly_name"]) or entity_id,
             "state": state,
+            "display_state": display_state,
             "matched_labels": matched_labels,
             "domain": as_text(candidate["domain"]),
         }
@@ -323,7 +327,7 @@ if output.get("success") is not False:
             entity = {
                 "entity_id": match["entity_id"],
                 "friendly_name": match["friendly_name"],
-                "state": match["state"],
+                "state": match["display_state"],
                 "matched_labels": match["matched_labels"],
             }
 

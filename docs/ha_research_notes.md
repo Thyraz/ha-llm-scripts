@@ -1,7 +1,7 @@
 # Home Assistant Research Notes
 
-Checked: 2026-07-04
-Docs version shown by Home Assistant pages: 2026.7.0
+Checked: 2026-07-19
+Docs version shown by Home Assistant pages: 2026.7.2
 
 Use this file as the source ledger for Home Assistant behavior we rely on. Before substantial changes, re-check official docs, release notes, and source for anything touched here.
 
@@ -47,9 +47,19 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   https://github.com/music-assistant/hass-music-assistant
 - Home Assistant Core template helper source:
   `homeassistant/helpers/template.py`
+- Home Assistant sensor source:
+  `homeassistant/components/sensor/__init__.py`
 - Home Assistant sensor long-term statistics developer docs:
   https://developers.home-assistant.io/docs/core/entity/sensor/#long-term-statistics
+- Home Assistant sensor presentation rounding developer note:
+  https://developers.home-assistant.io/blog/2023/02/08/sensor_presentation_rounding/
+- Home Assistant sensor default display precision developer note:
+  https://developers.home-assistant.io/blog/2025/05/26/sensor-default-display-precision/
 - Home Assistant template functions: https://www.home-assistant.io/template-functions/
+- Home Assistant states template function:
+  https://www.home-assistant.io/template-functions/states/
+- Home Assistant translated state template function:
+  https://www.home-assistant.io/template-functions/state_translated/
 - Home Assistant label template functions:
   - https://www.home-assistant.io/template-functions/labels/
   - https://www.home-assistant.io/template-functions/label_entities/
@@ -96,6 +106,19 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - Home Assistant template functions include JSON serialization filters/functions such as `to_json` and `tojson`.
 - Home Assistant `from_json` accepts a `default` value that is returned instead
   of raising a template error when the input is invalid JSON.
+- `states(entity_id, rounded=true)` returns numeric states rounded according to
+  the entity's display precision, matching Home Assistant UI rounding.
+- `states(entity_id, with_unit=true)` appends the unit and implies display
+  rounding unless `rounded` is set explicitly.
+- `state_translated(entity_id)` returns localized state text for display. Use
+  `states(entity_id)` for comparisons because translated state text changes
+  with Home Assistant language.
+- Home Assistant template state formatting calls sensor presentation rounding
+  through `async_rounded_state`, which reads entity registry display precision
+  or suggested display precision.
+- Entity Index should collect Entity Display State in the LLM Tool Script with
+  `states(entity_id, rounded=true)` and keep raw `states(entity_id)` for
+  `state_filter`.
 - Home Assistant REST API requires bearer token auth and exposes `/api/history/period`.
 - `labels()` returns all label IDs when called without an argument.
 - `labels(entity_id)` returns labels assigned directly to that entity; device and area labels do not roll up.

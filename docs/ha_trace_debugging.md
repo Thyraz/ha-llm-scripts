@@ -105,6 +105,10 @@ The Python Helper `candidates` service data must be a list. If `candidates` is
 shown as one quoted string, the `from_json` handoff at the Python Helper action
 did not produce a native list.
 
+Candidate records include raw `state` for filtering and `display_state` for
+Assistant-facing responses. `display_state` should use Home Assistant display
+precision and should not be translated.
+
 If `meta.truncated` is true in the helper response, read `data.truncation` and
 retry with its `retry_hint` if needed.
 

@@ -60,6 +60,10 @@ _Avoid_: match mode, label matching mode
 A selected Home Assistant entity attribute that Entity Index may include in detailed results because it helps an Assistant choose or explain a safe next action.
 _Avoid_: attribute dump, raw attributes, all attributes
 
+**Entity Display State**:
+A Home Assistant entity state rendered for Assistant-facing responses using the user's display precision while keeping Home Assistant's canonical state language.
+_Avoid_: raw state, unrounded value, internal value
+
 **Long-Term Aggregated Statistics**:
 An LLM Tool that returns aggregated Home Assistant long-term statistics for a requested time range.
 _Avoid_: Aggregated Longterm History Access, raw state history, history fetcher

@@ -76,12 +76,15 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
 - `id_only` returns `data.entities` as a list of entity ID strings.
 - Success responses always return results under `data.entities`.
 - `compact` returns `entity_id`, `friendly_name`, `state`, and `matched_labels`.
+- Returned `state` is an Entity Display State: rounded with Home Assistant
+  display precision but not translated.
 - `compact` and `detailed` add `value_hint` only when the entity state is likely
   cumulative and period usage should be read through Long-Term Aggregated
   Statistics with `aggregation_type=change`.
 - `matched_labels` contains only query-relevant labels that caused the entity to match.
 - `matched_labels` excludes `Everywhere`, `Inside`, and `Outside`; location appears in response metadata.
-- `state_filter` is an exact Home Assistant state string.
+- `state_filter` is an exact canonical Home Assistant state string, not an
+  Entity Display State and not localized text.
 - Empty or missing `state_filter` means no state filter.
 - `unknown` and `unavailable` are included unless `state_filter` excludes them.
 - `detailed` adds safe operational fields only: `domain`, `area_id`, `device_id`,

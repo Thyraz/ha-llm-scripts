@@ -33,7 +33,7 @@ llmtool_entity_index:
         Response size: id_only, compact, or detailed.
       example: compact
     state_filter:
-      description: Optional exact Home Assistant state string.
+      description: Optional exact canonical Home Assistant state string.
       example: "on"
     limit:
       description: >

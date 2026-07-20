@@ -33,6 +33,7 @@ def candidate(
     visible=True,
     location=True,
     state="on",
+    display_state=None,
     unit_of_measurement="",
     device_class="",
     state_class="",
@@ -47,6 +48,8 @@ def candidate(
         "location_matched": location,
         "domain": entity_id.split(".")[0],
     }
+    if display_state is not None:
+        result["display_state"] = display_state
     if unit_of_measurement:
         result["unit_of_measurement"] = unit_of_measurement
     if device_class:
@@ -75,6 +78,42 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(["light.inside_visible"], result["data"]["entities"])
         self.assertNotIn("effective_labels", result["meta"])
+
+    def test_state_filter_uses_raw_state_but_response_returns_display_state(self):
+        result = run_helper(
+            {
+                "labels": "TemperatureSensor",
+                "location": "inside",
+                "entity_scope": "filtered_by_labels",
+                "label_operator": "AND",
+                "state_filter": "23.39",
+                "candidates": [
+                    candidate(
+                        "sensor.room_temperature",
+                        ["TemperatureSensor"],
+                        visible=True,
+                        location=True,
+                        state="23.39",
+                        display_state="23.4",
+                    ),
+                    candidate(
+                        "sensor.other_temperature",
+                        ["TemperatureSensor"],
+                        visible=True,
+                        location=True,
+                        state="23.4",
+                        display_state="23.4",
+                    ),
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(1, result["meta"]["count"])
+        entity = result["data"]["entities"][0]
+        self.assertEqual("sensor.room_temperature", entity["entity_id"])
+        self.assertEqual("23.4", entity["state"])
+        self.assertEqual("23.39", result["meta"]["state_filter"])
 
     def test_all_scope_everywhere_only_requires_visibility(self):
         result = run_helper(
