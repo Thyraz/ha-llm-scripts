@@ -15,6 +15,7 @@ Current implementation includes:
 - `script.llmtool_calculator` for deterministic arithmetic
 - `script.llmtool_date_calculator` for deterministic calendar and local-time calculations
 - `script.llmtool_calendar_manager` for reading Home Assistant calendar events
+- `script.llmtool_weather_forecast` for reading Home Assistant weather forecasts
 - `script.llmtool_media_manager` for Music Assistant media and media player groups
 - optional `script.llmtool_memory_manager` for user-provided long-term memory
 
@@ -524,6 +525,117 @@ Responses are capped by `limit`, default 100 and maximum 1000. Capped responses
 include `meta.truncated: true`, add `data.truncation`, and make `answer` warn
 about truncation. Retry with a narrower time range or higher limit if needed
 events were not included.
+
+## Weather Forecast tool
+
+After install, Home Assistant should expose:
+
+- `script.llmtool_weather_forecast`
+- `python_script.llmtool_weather_forecast`
+
+Weather Forecast reads Home Assistant forecasts from one exact `weather.*`
+entity. Use Entity Index first if the Assistant does not know the weather
+entity ID. This version reads forecasts only.
+
+Supported forecast types:
+
+- `daily`
+- `hourly`
+
+This version does not expose `twice_daily`.
+
+Call contract:
+
+```yaml
+required: weather_entity_id, forecast_type, start_time, end_time
+optional: verbosity, limit
+```
+
+Use `forecast_type=daily` for full local days. Use `forecast_type=hourly` for
+part-day requests, such as this evening or tomorrow morning, and for multi-day
+hourly ranges.
+
+Use local Home Assistant time in exactly this format:
+
+```text
+YYYY-MM-DD HH:MM:SS
+```
+
+`start_time` is inclusive. `end_time` is exclusive. For
+`forecast_type=daily`, both times must use `00:00:00`. Returned forecast days
+include `weekday`; Assistants should trust returned weekdays instead of
+recalculating them.
+
+`verbosity=overview` is the default. Use it for normal weather reports.
+Overview returns baseline forecast data and only includes precipitation or wind
+when worth mentioning. It omits pressure, humidity, UV index, cloud coverage,
+apparent temperature, and dew point.
+
+Use `verbosity=detailed` only when specific forecast attributes are needed.
+Detailed responses return supported Home Assistant forecast fields when the
+weather provider supplies them.
+
+Run `script.llmtool_weather_forecast` from Developer Tools -> Actions:
+
+```yaml
+weather_entity_id: weather.home
+forecast_type: daily
+start_time: "2026-07-25 00:00:00"
+end_time: "2026-07-27 00:00:00"
+verbosity: overview
+limit: 24
+```
+
+Expected daily response shape:
+
+```yaml
+success: true
+answer: "Found 2 forecast days."
+data:
+  days:
+    - date: "2026-07-25"
+      weekday: Saturday
+      condition: rainy
+      temperature: 22
+      templow: 16
+      precipitation: 3.2
+      precipitation_probability: 70
+    - date: "2026-07-26"
+      weekday: Sunday
+      condition: partlycloudy
+      temperature: 24
+      templow: 17
+meta:
+  tool: llmtool_weather_forecast
+  weather_entity_id: weather.home
+  forecast_type: daily
+  start_time: "2026-07-25 00:00:00"
+  end_time: "2026-07-27 00:00:00"
+  verbosity: overview
+  count: 2
+  total: 2
+  limit: 24
+```
+
+Hourly responses group periods by local day:
+
+```yaml
+data:
+  days:
+    - date: "2026-07-24"
+      weekday: Friday
+      periods:
+        - datetime: "2026-07-24 18:00:00"
+          time: "18:00:00"
+          condition: rainy
+          temperature: 21
+          precipitation_probability: 60
+```
+
+Responses are capped by `limit`, default 24 and maximum 168. Capped responses
+include `meta.truncated: true`, add `data.truncation`, and make `answer` warn
+about truncation. Retry with a narrower Weather Forecast Time Range or higher
+limit if needed forecast rows were not included.
 
 ## Media Manager tool
 
@@ -1193,6 +1305,12 @@ days or less. This version reads events only. For event text search, use
 search_events with keyword, start_time, and end_time. Pass exact event text from
 the user as keyword; do not translate it.
 
+Weather Forecast: use for Home Assistant weather forecast questions. Use Entity
+Index first if the exact weather.* entity ID is unknown. Use forecast_type=daily
+only for full local days with midnight start/end. Use forecast_type=hourly for
+part-day or multi-day hourly ranges. Use overview for normal weather reports.
+Request detailed only when specific forecast attributes are needed.
+
 Media Manager: use for Music Assistant search, library browsing, playback,
 queue checks, queue transfers, and media_player grouping. Use Entity Index
 first when you need player entity IDs. Use search first for one ambiguous
@@ -1252,6 +1370,7 @@ local Home Assistant time as YYYY-MM-DD HH:MM:SS.
 - [Tool plans](docs/plans/README.md)
 - [Memory Manager plan](docs/plans/implemented/memory-manager.md)
 - [Media Manager plan](docs/plans/media-manager.md)
+- [Weather Forecast plan](docs/plans/weather-forecast.md)
 - [Calendar Manager plan](docs/plans/implemented/calendar-manager.md)
 - [Long-Term Aggregated Statistics plan](docs/plans/implemented/long-term-aggregated-statistics.md)
 - [Raw Entity History plan](docs/plans/implemented/raw-entity-history.md)
@@ -1321,6 +1440,12 @@ For Calendar Manager helper regression checks:
 
 ```bash
 python3 tests/test_llmtool_calendar_manager.py
+```
+
+For Weather Forecast helper regression checks:
+
+```bash
+python3 tests/test_llmtool_weather_forecast.py
 ```
 
 For Media Manager helper regression checks:

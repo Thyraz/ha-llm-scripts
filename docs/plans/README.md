@@ -7,6 +7,7 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 ## Current active plans
 
 - [Media Manager](media-manager.md)
+- [Weather Forecast](weather-forecast.md)
 
 ## Implemented plans
 

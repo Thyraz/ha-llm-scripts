@@ -1,0 +1,208 @@
+llmtool_weather_forecast:
+  alias: LLM Tool Weather Forecast
+  icon: mdi:weather-partly-cloudy
+  description: >
+    Use Weather Forecast for Home Assistant weather forecast questions.
+
+    Use Entity Index first if you do not know the exact weather.* entity ID.
+
+    Pass weather_entity_id as one exact Home Assistant weather.* entity ID.
+
+    Pass forecast_type as daily for full local days and hourly for part-day or
+    multi-day hourly ranges. This tool does not support twice_daily in v1.
+
+    Pass start_time and end_time as local Home Assistant times in exactly this
+    format: YYYY-MM-DD HH:MM:SS. Relative time text, timezone suffixes, and ISO
+    T separators are invalid. start_time is inclusive and end_time is exclusive.
+    For forecast_type=daily, start_time and end_time must both use 00:00:00.
+    Use forecast_type=hourly for partial-day requests such as this evening or
+    tomorrow morning.
+
+    Use verbosity=overview for normal weather reports. Empty verbosity means
+    overview. Overview returns date, weekday, condition, temperature, low
+    temperature when available, and only significant precipitation or wind.
+    It omits pressure, humidity, UV index, cloud coverage, apparent
+    temperature, and dew point.
+
+    Use verbosity=detailed only when you need specific forecast attributes such
+    as pressure, humidity, UV index, cloud coverage, apparent temperature, dew
+    point, wind, or precipitation details.
+
+    Trust the returned weekday fields instead of recalculating weekdays.
+
+    limit caps forecast rows globally. Empty limit means 24. Maximum is 168.
+    If response data is capped, answer includes an Attention warning and
+    data.truncation includes count_returned, count_total_before_truncation,
+    limit, and retry_hint.
+
+    Example daily overview:
+    ```
+      weather_entity_id: weather.home
+      forecast_type: daily
+      start_time: "2026-07-25 00:00:00"
+      end_time: "2026-07-27 00:00:00"
+      verbosity: overview
+    ```
+
+    Example hourly overview:
+    ```
+      weather_entity_id: weather.home
+      forecast_type: hourly
+      start_time: "2026-07-24 18:00:00"
+      end_time: "2026-07-25 00:00:00"
+      verbosity: overview
+    ```
+  mode: queued
+  max: 2
+  fields:
+    weather_entity_id:
+      name: Weather entity ID
+      description: >
+        Required exact Home Assistant weather.* entity ID. Use Entity Index first
+        if you do not know the ID.
+      required: true
+      example: weather.home
+      selector:
+        text:
+    forecast_type:
+      name: Forecast type
+      description: >
+        Forecast type to retrieve. Use daily for full local days and hourly for
+        part-day or multi-day hourly ranges. This tool does not support
+        twice_daily in v1.
+      required: true
+      example: daily
+      selector:
+        select:
+          options:
+            - daily
+            - hourly
+    start_time:
+      name: Start time
+      description: >
+        Required local Home Assistant start time. Use exactly
+        YYYY-MM-DD HH:MM:SS. start_time is inclusive. For daily forecasts, use
+        00:00:00.
+      required: true
+      example: "2026-07-25 00:00:00"
+      selector:
+        text:
+    end_time:
+      name: End time
+      description: >
+        Required local Home Assistant end time. Use exactly YYYY-MM-DD HH:MM:SS.
+        end_time is exclusive and must be after start_time. For daily forecasts,
+        use 00:00:00.
+      required: true
+      example: "2026-07-27 00:00:00"
+      selector:
+        text:
+    verbosity:
+      name: Verbosity
+      description: >
+        Response detail: overview or detailed. Empty means overview. Use
+        overview for normal weather reports. Use detailed only when specific
+        forecast attributes are needed.
+      required: false
+      default: overview
+      example: overview
+      selector:
+        select:
+          options:
+            - overview
+            - detailed
+    limit:
+      name: Limit
+      description: >
+        Optional maximum returned forecast rows. Default 24. Maximum 168.
+      required: false
+      default: 24
+      example: "24"
+      selector:
+        number:
+          min: 1
+          max: 168
+          mode: box
+  sequence:
+    # Validate scalar input and capture weather entity units before calling HA.
+    - alias: Prepare Weather Forecast request
+      action: python_script.llmtool_weather_forecast
+      data:
+        mode: prepare
+        weather_entity_id: "{{ weather_entity_id | default('', true) }}"
+        forecast_type: "{{ forecast_type | default('', true) }}"
+        start_time: "{{ start_time | default('', true) }}"
+        end_time: "{{ end_time | default('', true) }}"
+        verbosity: "{{ verbosity | default('', true) }}"
+        limit: "{{ limit | default('', true) }}"
+      response_variable: weather_forecast_prepare
+
+    # Call weather.get_forecasts only after validation succeeds.
+    - alias: Fetch and shape Weather Forecast
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ weather_forecast_prepare.success }}"
+          sequence:
+            - action: weather.get_forecasts
+              target:
+                entity_id: "{{ weather_forecast_prepare.data.weather_entity_id }}"
+              data:
+                type: "{{ weather_forecast_prepare.data.forecast_type }}"
+              response_variable: weather_forecast_action_response
+
+            # Home Assistant should expose weather response data as a mapping.
+            # Serialize explicitly before handing it to the Python Helper.
+            - variables:
+                weather_forecast_action_response_json: >
+                  {% set response = weather_forecast_action_response | default({}, true) %}
+                  {% if response is string %}
+                    {{ response | from_json(default={'llmtool_invalid_response': true}) | to_json }}
+                  {% else %}
+                    {{ response | to_json }}
+                  {% endif %}
+
+            - action: python_script.llmtool_weather_forecast
+              data:
+                mode: shape
+                prepared: >
+                  {{ weather_forecast_prepare.data | to_json | from_json(default={}) }}
+                weather_response: >
+                  {% if weather_forecast_action_response_json is string %}
+                    {{ weather_forecast_action_response_json | from_json(default={'llmtool_invalid_response': true}) }}
+                  {% else %}
+                    {{ weather_forecast_action_response_json }}
+                  {% endif %}
+              response_variable: weather_forecast_helper
+      default:
+        - variables:
+            weather_forecast_helper:
+              success: false
+              error: "{{ weather_forecast_prepare.error }}"
+              data: "{{ weather_forecast_prepare.data }}"
+              meta: "{{ weather_forecast_prepare.meta }}"
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ weather_forecast_helper.success }}"
+          sequence:
+            - variables:
+                weather_forecast_response:
+                  success: true
+                  answer: "{{ weather_forecast_helper.answer }}"
+                  data: "{{ weather_forecast_helper.data }}"
+                  meta: "{{ weather_forecast_helper.meta }}"
+      default:
+        - variables:
+            weather_forecast_response:
+              success: false
+              error: "{{ weather_forecast_helper.error }}"
+              data: "{{ weather_forecast_helper.data }}"
+              meta: "{{ weather_forecast_helper.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Weather Forecast complete
+      response_variable: weather_forecast_response

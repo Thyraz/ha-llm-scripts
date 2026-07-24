@@ -161,6 +161,45 @@ llmtool_calendar_manager:
         Response detail: compact or detailed.
       example: compact
 
+llmtool_weather_forecast:
+  name: LLM Tool Weather Forecast
+  description: >
+    Validate Weather Forecast input, prepare weather.get_forecasts requests,
+    and shape returned forecast rows.
+  fields:
+    mode:
+      description: >
+        Helper mode: prepare validates input and builds the weather request;
+        shape validates and shapes the weather.get_forecasts response.
+      example: prepare
+    weather_entity_id:
+      description: Exact Home Assistant weather.* entity ID.
+      example: weather.home
+    forecast_type:
+      description: >
+        Forecast type: daily or hourly.
+      example: daily
+    start_time:
+      description: >
+        Local Home Assistant start time in format YYYY-MM-DD HH:MM:SS.
+      example: "2026-07-25 00:00:00"
+    end_time:
+      description: >
+        Local Home Assistant end time in format YYYY-MM-DD HH:MM:SS.
+      example: "2026-07-27 00:00:00"
+    verbosity:
+      description: >
+        Response detail: overview or detailed. Empty means overview.
+      example: overview
+    limit:
+      description: >
+        Optional maximum returned forecast rows. Default 24, maximum 168.
+      example: "24"
+    prepared:
+      description: Internal prepared request data for shape mode.
+    weather_response:
+      description: Internal Home Assistant weather.get_forecasts response.
+
 llmtool_media_manager:
   name: LLM Tool Media Manager
   description: >

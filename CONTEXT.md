@@ -156,6 +156,26 @@ _Avoid_: hidden parameter rules, ignored extra fields, implicit mode behavior
 A Calendar Manager filter that selects all events, all-day events, or timed events.
 _Avoid_: all_day boolean, calendar state
 
+**Weather Forecast**:
+An LLM Tool that returns Home Assistant weather forecast data for a requested local time range.
+_Avoid_: Weather Manager, weather blueprint, weather plugin
+
+**Weather Forecast Time Range**:
+A local Home Assistant time span used by Weather Forecast to select forecast rows.
+_Avoid_: date plus length, relative weather time, forecast duration prompt
+
+**Weather Forecast type**:
+The Weather Forecast choice between daily forecast rows for full-day requests and hourly forecast rows for part-day requests.
+_Avoid_: period type, resolution, twice-daily forecast
+
+**Weather Forecast day**:
+A local calendar day returned by Weather Forecast, including its weekday and either one daily forecast row or selected hourly forecast rows.
+_Avoid_: forecast item, date bucket, raw row
+
+**Weather Forecast verbosity**:
+The Weather Forecast result-detail choice between overview data for ordinary weather reports and detailed data when the Assistant needs specific forecast attributes.
+_Avoid_: output mode, response style, forecast type
+
 **Media Manager**:
 An LLM Tool that lets an Assistant control music playback, queues, and media player groups.
 _Avoid_: Media Player Group Manager, Music Library Search, speaker group tool

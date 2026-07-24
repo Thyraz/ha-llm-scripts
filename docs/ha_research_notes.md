@@ -1,7 +1,7 @@
 # Home Assistant Research Notes
 
-Checked: 2026-07-19
-Docs version shown by Home Assistant pages: 2026.7.2
+Checked: 2026-07-24
+Docs version shown by Home Assistant pages: 2026.7.4
 
 Use this file as the source ledger for Home Assistant behavior we rely on. Before substantial changes, re-check official docs, release notes, and source for anything touched here.
 
@@ -27,6 +27,8 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   https://www.home-assistant.io/integrations/calendar/
 - Home Assistant Calendar get events action:
   https://www.home-assistant.io/actions/calendar.get_events/
+- Home Assistant Weather get forecasts action:
+  https://www.home-assistant.io/actions/weather.get_forecasts/
 - Home Assistant Media player integration:
   https://www.home-assistant.io/integrations/media_player/
 - Home Assistant media player join action:
@@ -233,6 +235,20 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   value contains an `events` list.
 - Calendar event response rows include `summary`, optional `description`,
   `start`, `end`, and optional `location`. Event `end` is exclusive.
+- `weather.get_forecasts` reads forecast data from weather entities and returns
+  response data through a response variable.
+- `weather.get_forecasts` requires a forecast `type` in YAML. Documented
+  values are `daily`, `hourly`, and `twice_daily`.
+- Weather entities only support the forecast types supplied by their
+  integration.
+- `weather.get_forecasts` response data is keyed by weather entity ID; each
+  value contains a `forecast` list.
+- Weather forecast rows include `datetime`; documented forecast fields include
+  `is_daytime`, `condition`, `apparent_temperature`, `temperature`, `templow`,
+  `dew_point`, `humidity`, `cloud_coverage`, `precipitation`,
+  `precipitation_probability`, `pressure`, `uv_index`, `wind_bearing`,
+  `wind_gust_speed`, and `wind_speed`. Weather providers may omit fields they
+  do not supply.
 - `media_player.join` groups media players together for synchronous playback on
   supported multiroom audio systems.
 - `media_player.join` uses the target media player as the player others follow,
