@@ -6,11 +6,12 @@ When a tool is implemented and validated, move its plan to `docs/plans/implement
 
 ## Current active plans
 
-- [Media Manager](media-manager.md)
-- [Weather Forecast](weather-forecast.md)
+None.
 
 ## Implemented plans
 
+- [Media Manager](implemented/media-manager.md)
+- [Weather Forecast](implemented/weather-forecast.md)
 - [Memory Manager](implemented/memory-manager.md)
 - [Calendar Manager](implemented/calendar-manager.md)
 - [Demo LLM Tool](implemented/demo-tool.md)

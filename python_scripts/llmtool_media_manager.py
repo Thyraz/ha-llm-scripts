@@ -7,6 +7,7 @@ OPERATIONS = [
     "play_by_name",
     "get_queue",
     "transfer_queue",
+    "set_playback_mode",
     "group_join",
     "group_unjoin",
     "group_clear_members",
@@ -18,6 +19,8 @@ PLAY_BY_NAME_MEDIA_TYPES = ["track", "album", "artist", "playlist", "radio"]
 ALBUM_TYPES = ["album", "single", "compilation", "ep"]
 ENQUEUE_VALUES = ["replace", "next", "add", "play"]
 DEFAULT_ENQUEUE = "replace"
+SHUFFLE_MODE_VALUES = ["on", "off"]
+REPEAT_VALUES = ["off", "all", "one"]
 BOOL_FIELDS = [
     "library_only",
     "favorite",
@@ -64,6 +67,8 @@ PARAMETER_NAMES = [
     "play_queries",
     "enqueue",
     "radio_mode",
+    "shuffle_mode",
+    "repeat",
     "source_player_entity_id",
     "target_player_entity_id",
     "auto_play",
@@ -80,6 +85,7 @@ ALLOWLISTS = {
     "play_by_name": ["operation", "player_entity_id", "play_queries", "media_type", "enqueue", "radio_mode"],
     "get_queue": ["operation", "player_entity_id", "limit"],
     "transfer_queue": ["operation", "source_player_entity_id", "target_player_entity_id", "auto_play"],
+    "set_playback_mode": ["operation", "player_entity_id", "shuffle_mode", "repeat"],
     "group_join": ["operation", "leader_entity_id", "member_entity_ids", "ungroup_first", "replace_existing"],
     "group_unjoin": ["operation", "member_entity_ids"],
     "group_clear_members": ["operation", "leader_entity_id"],
@@ -187,6 +193,12 @@ def is_present(value):
         return False
     text = as_text(value).lower()
     return text not in ["", "false", "off", "no", "0", "none", "unknown", "unavailable"]
+
+
+def is_parameter_present(parameter_name):
+    if parameter_name in ["shuffle_mode", "repeat"]:
+        return as_text(data.get(parameter_name)) != ""
+    return is_present(data.get(parameter_name))
 
 
 def parse_bool_field(field_name):
@@ -362,7 +374,7 @@ def validate_allowlist(operation):
     allowed = ALLOWLISTS.get(operation) or []
     invalid_parameters = []
     for parameter_name in PARAMETER_NAMES:
-        if parameter_name not in allowed and is_present(data.get(parameter_name)):
+        if parameter_name not in allowed and is_parameter_present(parameter_name):
             invalid_parameters.append(parameter_name)
 
     if invalid_parameters:
@@ -809,6 +821,48 @@ def operation_prepare_transfer_queue():
         output["meta"] = base_meta(operation)
 
 
+def operation_prepare_set_playback_mode():
+    operation = "set_playback_mode"
+    player_entity_id = as_text(data.get("player_entity_id"))
+    shuffle_mode = as_text(data.get("shuffle_mode")).lower()
+    repeat = as_text(data.get("repeat")).lower()
+    action_data = {}
+
+    if shuffle_mode == "on":
+        action_data["shuffle"] = True
+    elif shuffle_mode == "off":
+        action_data["shuffle"] = False
+    if repeat:
+        action_data["repeat"] = repeat
+
+    if not player_entity_id:
+        validation_error("Missing player_entity_id. Provide a Home Assistant media_player.* entity ID.", {"required": "player_entity_id"}, base_meta(operation))
+    elif not is_media_player_entity_id(player_entity_id):
+        validation_error("Invalid entity ID. Use Home Assistant media_player.* entity IDs.", {"invalid_entity_ids": [player_entity_id]}, base_meta(operation))
+    elif not shuffle_mode and not repeat:
+        validation_error(
+            "Missing playback mode. Provide shuffle_mode, repeat, or both.",
+            {"required_one_of": ["shuffle_mode", "repeat"]},
+            base_meta(operation),
+        )
+    elif shuffle_mode and shuffle_mode not in SHUFFLE_MODE_VALUES:
+        validation_error("Invalid shuffle_mode. Use on or off.", {"known_shuffle_modes": SHUFFLE_MODE_VALUES}, base_meta(operation))
+    elif repeat and repeat not in REPEAT_VALUES:
+        validation_error("Invalid repeat. Use off, all, or one.", {"known_repeat_values": REPEAT_VALUES}, base_meta(operation))
+    else:
+        output["success"] = True
+        output["data"] = {
+            "operation": operation,
+            "action": "set_playback_mode",
+            "target_entity_id": player_entity_id,
+            "action_data": action_data,
+            "player_entity_id": player_entity_id,
+            "shuffle_mode": shuffle_mode,
+            "repeat": repeat,
+        }
+        output["meta"] = base_meta(operation)
+
+
 def build_group_prepare_payload(
     operation,
     leader_entity_id,
@@ -959,6 +1013,8 @@ def prepare_mode():
         operation_prepare_get_queue()
     elif operation == "transfer_queue":
         operation_prepare_transfer_queue()
+    elif operation == "set_playback_mode":
+        operation_prepare_set_playback_mode()
     else:
         operation_prepare_group(operation)
 
@@ -1275,6 +1331,25 @@ def shape_transfer_queue(prepared):
     output["meta"] = {"tool": TOOL_NAME, "operation": "transfer_queue"}
 
 
+def shape_set_playback_mode(prepared):
+    data_payload = {
+        "player_entity_id": prepared["player_entity_id"],
+    }
+    if prepared["shuffle_mode"]:
+        data_payload["shuffle_mode"] = prepared["shuffle_mode"]
+    if prepared["repeat"]:
+        data_payload["repeat"] = prepared["repeat"]
+
+    output["success"] = True
+    output["answer"] = "Requested playback mode update for {}.".format(prepared["player_entity_id"])
+    output["data"] = data_payload
+    output["meta"] = {
+        "tool": TOOL_NAME,
+        "operation": "set_playback_mode",
+        "player_entity_id": prepared["player_entity_id"],
+    }
+
+
 def shape_group(prepared):
     operation = prepared["operation"]
     leader_entity_id = prepared["leader_entity_id"]
@@ -1355,6 +1430,8 @@ def shape_mode():
         shape_get_queue(prepared, action_response)
     elif operation == "transfer_queue":
         shape_transfer_queue(prepared)
+    elif operation == "set_playback_mode":
+        shape_set_playback_mode(prepared)
     elif operation in ["group_join", "group_unjoin", "group_clear_members"]:
         shape_group(prepared)
     else:

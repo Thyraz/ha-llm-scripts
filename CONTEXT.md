@@ -204,6 +204,10 @@ _Avoid_: media player attributes, now-playing state blob
 A user request that decides how requested media relates to the existing Music Assistant queue, such as replacing it, playing next, or appending it.
 _Avoid_: shuffle mode, search mode, playback transport state
 
+**Media Playback Mode**:
+A user request that changes how a Home Assistant media player consumes its active queue, such as shuffle or repeat.
+_Avoid_: queue intent, media search mode, playback transport state
+
 **Music Assistant library**:
 The user's saved, liked, or added Music Assistant media collection.
 _Avoid_: streaming catalog, provider search results

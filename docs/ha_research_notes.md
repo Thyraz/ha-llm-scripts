@@ -35,6 +35,10 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   https://www.home-assistant.io/actions/media_player.join/
 - Home Assistant media player unjoin action:
   https://www.home-assistant.io/actions/media_player.unjoin/
+- Home Assistant media player shuffle action:
+  https://www.home-assistant.io/actions/media_player.shuffle_set/
+- Home Assistant media player repeat action:
+  https://www.home-assistant.io/actions/media_player.repeat_set/
 - Home Assistant Music Assistant integration:
   https://www.home-assistant.io/integrations/music_assistant/
 - Home Assistant Music Assistant actions:
@@ -257,6 +261,12 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
 - `media_player.unjoin` has no additional YAML options beyond the target.
 - Media player grouping actions only work on integrations that support player
   groups.
+- `media_player.shuffle_set` targets media player entities and requires
+  `shuffle`, a boolean.
+- `media_player.repeat_set` targets media player entities and requires
+  `repeat`, with documented values `off`, `all`, and `one`.
+- Shuffle and repeat actions only work on media players that support those
+  playback modes.
 - The official Home Assistant Music Assistant integration provides
   `music_assistant.get_library`, `music_assistant.search`,
   `music_assistant.play_media`, `music_assistant.get_queue`, and

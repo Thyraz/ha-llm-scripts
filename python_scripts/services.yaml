@@ -214,8 +214,8 @@ llmtool_media_manager:
     operation:
       description: >
         Media Manager operation: search, browse_library, play_by_uri,
-        play_by_name, get_queue, transfer_queue, group_join, group_unjoin, or
-        group_clear_members.
+        play_by_name, get_queue, transfer_queue, set_playback_mode,
+        group_join, group_unjoin, or group_clear_members.
       example: search
     query:
       description: Search text for search and optional library search text.
@@ -250,7 +250,9 @@ llmtool_media_manager:
       description: For browse_library with media_type=album. album, single, ep, or compilation.
       example: album
     player_entity_id:
-      description: Music Assistant media_player.* entity ID for playback or get_queue.
+      description: >
+        Music Assistant media_player.* entity ID for playback or get_queue.
+        Home Assistant media_player.* entity ID for set_playback_mode.
       example: media_player.kitchen
     media_uris:
       description: Newline-separated Music Assistant media URIs for play_by_uri.
@@ -264,6 +266,12 @@ llmtool_media_manager:
     radio_mode:
       description: For playback. If true, start radio mode from exactly one media URI or play query.
       example: "false"
+    shuffle_mode:
+      description: For set_playback_mode. on or off.
+      example: "on"
+    repeat:
+      description: For set_playback_mode. off, all, or one.
+      example: "all"
     source_player_entity_id:
       description: Source Music Assistant media_player.* entity ID for transfer_queue.
       example: media_player.kitchen

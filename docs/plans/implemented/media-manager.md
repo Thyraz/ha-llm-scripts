@@ -1,13 +1,13 @@
 # Media Manager Plan
 
-Status: implemented in repo; pending Home Assistant Developer Tools -> Actions
-validation.
+Status: implemented in repo and validated in Home Assistant.
 
 ## Purpose
 
 Media Manager lets an Assistant search Music Assistant, browse the user's Music
 Assistant library, play by Music Assistant media URI or by name, inspect and
-transfer Music Assistant queues, and change Home Assistant media player groups.
+transfer Music Assistant queues, set playback mode, and change Home Assistant
+media player groups.
 
 ## Current decisions
 
@@ -65,6 +65,7 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   - `play_by_name`
   - `get_queue`
   - `transfer_queue`
+  - `set_playback_mode`
   - `group_join`
   - `group_unjoin`
   - `group_clear_members`
@@ -265,6 +266,25 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
 - Empty `auto_play` means `true`.
 - Media Manager intentionally rejects Music Assistant's implicit first-playing
   player behavior when `source_player` is omitted.
+- `set_playback_mode` uses Home Assistant native `media_player.shuffle_set` and
+  `media_player.repeat_set` actions.
+- `set_playback_mode` targets one generic Home Assistant `media_player.*`
+  entity ID.
+- `set_playback_mode` requires at least one of `shuffle_mode` or `repeat`.
+- `shuffle_mode` values:
+  - `on`
+  - `off`
+- `repeat` values:
+  - `off`
+  - `all`
+  - `one`
+- `set_playback_mode` may set both shuffle and repeat in one operation.
+- `set_playback_mode` does not verify final player state. The response reports
+  the requested playback mode change.
+- Media Manager does not pre-check shuffle/repeat support. Unsupported player
+  failures surface as Home Assistant runtime errors in Script trace.
+- Use Entity Index detailed to read current media player `shuffle` and
+  `repeat` state before or after a playback mode change.
 - Grouping operations use Home Assistant native `media_player.join` and
   `media_player.unjoin` actions.
 - Grouping operations keep the existing Media Player Group Manager semantics.
@@ -295,6 +315,8 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   - `play_queries`
   - `enqueue`
   - `radio_mode`
+  - `shuffle_mode`
+  - `repeat`
   - `source_player_entity_id`
   - `target_player_entity_id`
   - `auto_play`
@@ -325,6 +347,8 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   - `get_queue`: required `operation`, `player_entity_id`; optional `limit`.
   - `transfer_queue`: required `operation`, `source_player_entity_id`,
     `target_player_entity_id`; optional `auto_play`.
+  - `set_playback_mode`: required `operation`, `player_entity_id`, and at
+    least one of `shuffle_mode`, `repeat`; optional `shuffle_mode`, `repeat`.
   - `group_join`: required `operation`, `leader_entity_id`,
     `member_entity_ids`; optional `ungroup_first`, `replace_existing`.
   - `group_unjoin`: required `operation`, `member_entity_ids`.
@@ -341,6 +365,8 @@ transfer Music Assistant queues, and change Home Assistant media player groups.
   - `get_queue`: `operation`, `player_entity_id`, `limit`
   - `transfer_queue`: `operation`, `source_player_entity_id`,
     `target_player_entity_id`, `auto_play`
+  - `set_playback_mode`: `operation`, `player_entity_id`, `shuffle_mode`,
+    `repeat`
   - `group_join`: `operation`, `leader_entity_id`, `member_entity_ids`,
     `ungroup_first`, `replace_existing`
   - `group_unjoin`: `operation`, `member_entity_ids`
@@ -727,6 +753,11 @@ meta:
 - Missing `source_player_entity_id` for `transfer_queue`.
 - Missing `target_player_entity_id` for `transfer_queue`.
 - Invalid source or target player for `transfer_queue`.
+- Missing `player_entity_id` for `set_playback_mode`.
+- Missing both `shuffle_mode` and `repeat` for `set_playback_mode`.
+- Invalid `shuffle_mode`.
+- Invalid `repeat`.
+- Invalid media player entity ID for `set_playback_mode`.
 - Missing `leader_entity_id` for `group_join` or `group_clear_members`.
 - Missing `member_entity_ids` for `group_join` or `group_unjoin`.
 - Invalid media player entity ID for grouping operations.
@@ -798,6 +829,13 @@ meta:
 - Get queue shapes current item, next item, and current-forward item list.
 - Transfer queue requires source and target.
 - Transfer queue rejects non-Music-Assistant source or target.
+- Set playback mode accepts generic media player entity ID.
+- Set playback mode supports `shuffle_mode=on|off`.
+- Set playback mode supports `repeat=off|all|one`.
+- Set playback mode may set shuffle and repeat in one operation.
+- Set playback mode returns requested values without claiming final state.
+- Strict allowlist treats `shuffle_mode=off` and `repeat=off` as explicit
+  non-empty parameters.
 - Group join keeps existing Media Player Group Manager duplicate, self-member,
   `ungroup_first`, and `replace_existing` behavior.
 - Group unjoin keeps existing de-dupe and validation behavior.

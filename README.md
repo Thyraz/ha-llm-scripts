@@ -16,7 +16,7 @@ Current implementation includes:
 - `script.llmtool_date_calculator` for deterministic calendar and local-time calculations
 - `script.llmtool_calendar_manager` for reading Home Assistant calendar events
 - `script.llmtool_weather_forecast` for reading Home Assistant weather forecasts
-- `script.llmtool_media_manager` for Music Assistant media and media player groups
+- `script.llmtool_media_manager` for Music Assistant media, playback mode, and media player groups
 - optional `script.llmtool_memory_manager` for user-provided long-term memory
 
 ## Install
@@ -646,7 +646,8 @@ After install, Home Assistant should expose:
 
 Media Manager searches Music Assistant, browses the user's Music Assistant
 library, plays by Music Assistant media URI or by name, reads and transfers
-Music Assistant queues, and manages Home Assistant media player groups.
+Music Assistant queues, sets playback mode, and manages Home Assistant media
+player groups.
 
 Supported operations:
 
@@ -656,6 +657,7 @@ Supported operations:
 - `play_by_name`
 - `get_queue`
 - `transfer_queue`
+- `set_playback_mode`
 - `group_join`
 - `group_unjoin`
 - `group_clear_members`
@@ -685,6 +687,7 @@ Operation contracts:
 - `play_by_name`: required `operation`, `player_entity_id`, `play_queries`, `media_type`; optional `enqueue`, `radio_mode`
 - `get_queue`: required `operation`, `player_entity_id`; optional `limit`
 - `transfer_queue`: required `operation`, `source_player_entity_id`, `target_player_entity_id`; optional `auto_play`
+- `set_playback_mode`: required `operation`, `player_entity_id`, and at least one of `shuffle_mode`, `repeat`; optional `shuffle_mode`, `repeat`
 - `group_join`: required `operation`, `leader_entity_id`, `member_entity_ids`; optional `ungroup_first`, `replace_existing`
 - `group_unjoin`: required `operation`, `member_entity_ids`
 - `group_clear_members`: required `operation`, `leader_entity_id`
@@ -692,6 +695,11 @@ Operation contracts:
 Playback `enqueue` defaults to `replace`. Use `replace` for normal play
 requests, `next` for play-next requests, `add` for add-to-queue requests, and
 `play` only for explicit Music Assistant native play behavior.
+
+Playback mode uses `shuffle_mode: on|off` and `repeat: off|all|one`. Use
+`repeat: one` for "repeat this song" and `repeat: all` for "loop the
+queue/playlist". `set_playback_mode` reports the requested change, not verified
+final player state.
 
 Only pass parameters listed for the selected operation. Non-empty parameters
 outside that operation contract return a soft failure.
@@ -801,6 +809,15 @@ player_entity_id: media_player.buro
 play_queries: SWR3
 media_type: radio
 enqueue: replace
+```
+
+Set playback mode:
+
+```yaml
+operation: set_playback_mode
+player_entity_id: media_player.kitchen
+shuffle_mode: "on"
+repeat: "all"
 ```
 
 To group players before playback:
@@ -1312,7 +1329,7 @@ part-day or multi-day hourly ranges. Use overview for normal weather reports.
 Request detailed only when specific forecast attributes are needed.
 
 Media Manager: use for Music Assistant search, library browsing, playback,
-queue checks, queue transfers, and media_player grouping. Use Entity Index
+queue checks, queue transfers, playback mode, and media_player grouping. Use Entity Index
 first when you need player entity IDs. Use search first for one ambiguous
 "play X" request when the notation or the media type is unclear. 
 Use play_by_name with explicit media_type when the user clearly asks 
@@ -1369,8 +1386,8 @@ local Home Assistant time as YYYY-MM-DD HH:MM:SS.
 - [Memory Manager storage decision](docs/adr/0003-optional-memory-manager-uses-variables-history.md)
 - [Tool plans](docs/plans/README.md)
 - [Memory Manager plan](docs/plans/implemented/memory-manager.md)
-- [Media Manager plan](docs/plans/media-manager.md)
-- [Weather Forecast plan](docs/plans/weather-forecast.md)
+- [Media Manager plan](docs/plans/implemented/media-manager.md)
+- [Weather Forecast plan](docs/plans/implemented/weather-forecast.md)
 - [Calendar Manager plan](docs/plans/implemented/calendar-manager.md)
 - [Long-Term Aggregated Statistics plan](docs/plans/implemented/long-term-aggregated-statistics.md)
 - [Raw Entity History plan](docs/plans/implemented/raw-entity-history.md)

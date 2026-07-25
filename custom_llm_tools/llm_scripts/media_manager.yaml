@@ -3,7 +3,7 @@ llmtool_media_manager:
   icon: mdi:music-box-multiple
   description: >
     Use Media Manager for Music Assistant search, library browsing, playback,
-    queue checks, queue transfer, and media player grouping.
+    queue checks, queue transfer, playback mode, and media player grouping.
 
     Use Entity Index first when you need Home Assistant media_player.* entity
     IDs. Use search first for a single ambiguous "play X" request when media
@@ -13,7 +13,8 @@ llmtool_media_manager:
     versions, obscure tracks, or corrections after a wrong name-based match.
 
     Supported operations: search, browse_library, play_by_uri, play_by_name,
-    get_queue, transfer_queue, group_join, group_unjoin, group_clear_members.
+    get_queue, transfer_queue, set_playback_mode, group_join, group_unjoin,
+    group_clear_members.
 
     Operation contracts:
 
@@ -51,6 +52,14 @@ llmtool_media_manager:
     transfer_queue:
       Required: operation, source_player_entity_id, target_player_entity_id.
       Optional: auto_play.
+
+    set_playback_mode:
+      Required: operation, player_entity_id, and at least one of shuffle_mode
+      or repeat.
+      Optional: shuffle_mode, repeat.
+      Use shuffle_mode=on or shuffle_mode=off for shuffle. Use repeat=off,
+      repeat=all, or repeat=one for repeat. "Repeat this song" means
+      repeat=one. "Loop the queue/playlist" means repeat=all.
 
     group_join:
       Required: operation, leader_entity_id, member_entity_ids.
@@ -103,6 +112,9 @@ llmtool_media_manager:
 
     get_queue answers what is playing and what plays next. transfer_queue
     requires source_player_entity_id and target_player_entity_id.
+    set_playback_mode requests shuffle and repeat changes, but does not verify
+    final player state. Use Entity Index detailed before or after when current
+    shuffle/repeat state is needed.
 
     Grouping operations use leader_entity_id and member_entity_ids. Use
     group_join before playback when the user asks to play on several grouped
@@ -169,6 +181,13 @@ llmtool_media_manager:
     ```
 
     ```
+      operation: set_playback_mode
+      player_entity_id: media_player.kitchen
+      shuffle_mode: "on"
+      repeat: "all"
+    ```
+
+    ```
       operation: group_join
       leader_entity_id: media_player.living_room
       member_entity_ids: media_player.kitchen,media_player.bedroom
@@ -181,8 +200,8 @@ llmtool_media_manager:
       name: Operation
       description: >
         Media Manager operation: search, browse_library, play_by_uri,
-        play_by_name, get_queue, transfer_queue, group_join, group_unjoin, or
-        group_clear_members.
+        play_by_name, get_queue, transfer_queue, set_playback_mode,
+        group_join, group_unjoin, or group_clear_members.
       required: true
       example: search
       selector:
@@ -194,6 +213,7 @@ llmtool_media_manager:
             - play_by_name
             - get_queue
             - transfer_queue
+            - set_playback_mode
             - group_join
             - group_unjoin
             - group_clear_members
@@ -316,7 +336,8 @@ llmtool_media_manager:
       name: Player entity ID
       description: >
         Music Assistant media_player.* entity ID for play_by_uri, play_by_name,
-        or get_queue. Use Entity Index first if you do not know the ID.
+        or get_queue. Home Assistant media_player.* entity ID for
+        set_playback_mode. Use Entity Index first if you do not know the ID.
       required: false
       example: media_player.kitchen
       selector:
@@ -367,6 +388,31 @@ llmtool_media_manager:
       default: false
       selector:
         boolean:
+    shuffle_mode:
+      name: Shuffle mode
+      description: >
+        For set_playback_mode only. Use on to enable shuffle or off to disable
+        shuffle.
+      required: false
+      example: "on"
+      selector:
+        select:
+          options:
+            - "on"
+            - "off"
+    repeat:
+      name: Repeat
+      description: >
+        For set_playback_mode only. Use off for no repeat, all to loop the
+        queue or playlist, or one to repeat the current item.
+      required: false
+      example: "all"
+      selector:
+        select:
+          options:
+            - "off"
+            - "all"
+            - "one"
     source_player_entity_id:
       name: Source player entity ID
       description: >
@@ -449,6 +495,8 @@ llmtool_media_manager:
         helper_play_queries: "{{ play_queries | default('', true) }}"
         helper_enqueue: "{{ enqueue | default('', true) }}"
         helper_radio_mode: "{{ radio_mode | default(false, true) }}"
+        helper_shuffle_mode: "{{ shuffle_mode | default('', true) }}"
+        helper_repeat: "{{ repeat | default('', true) }}"
         helper_source_player_entity_id: "{{ source_player_entity_id | default('', true) }}"
         helper_target_player_entity_id: "{{ target_player_entity_id | default('', true) }}"
         helper_auto_play: "{{ auto_play | default('', true) }}"
@@ -528,6 +576,8 @@ llmtool_media_manager:
         play_queries: "{{ helper_play_queries }}"
         enqueue: "{{ helper_enqueue }}"
         radio_mode: "{{ helper_radio_mode }}"
+        shuffle_mode: "{{ helper_shuffle_mode }}"
+        repeat: "{{ helper_repeat }}"
         source_player_entity_id: "{{ helper_source_player_entity_id }}"
         target_player_entity_id: "{{ helper_target_player_entity_id }}"
         auto_play: "{{ helper_auto_play }}"
@@ -607,6 +657,44 @@ llmtool_media_manager:
                 entity_id: "{{ media_manager_prepare.data.target_entity_id }}"
               data: >
                 {{ media_manager_prepare.data.action_data | to_json | from_json(default={}) }}
+            - variables:
+                media_manager_action_response: {}
+
+        - conditions:
+            - condition: template
+              value_template: "{{ media_manager_prepare.success and media_manager_prepare.data.operation == 'set_playback_mode' }}"
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ media_manager_prepare.data.shuffle_mode == 'on' }}"
+                  sequence:
+                    - action: media_player.shuffle_set
+                      target:
+                        entity_id: "{{ media_manager_prepare.data.target_entity_id }}"
+                      data:
+                        shuffle: true
+                - conditions:
+                    - condition: template
+                      value_template: "{{ media_manager_prepare.data.shuffle_mode == 'off' }}"
+                  sequence:
+                    - action: media_player.shuffle_set
+                      target:
+                        entity_id: "{{ media_manager_prepare.data.target_entity_id }}"
+                      data:
+                        shuffle: false
+
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ media_manager_prepare.data.repeat != '' }}"
+                  sequence:
+                    - action: media_player.repeat_set
+                      target:
+                        entity_id: "{{ media_manager_prepare.data.target_entity_id }}"
+                      data:
+                        repeat: "{{ media_manager_prepare.data.repeat }}"
+
             - variables:
                 media_manager_action_response: {}
 

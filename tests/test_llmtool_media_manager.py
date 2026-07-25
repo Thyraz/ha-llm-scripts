@@ -4,6 +4,7 @@ import unittest
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "python_scripts" / "llmtool_media_manager.py"
+SCRIPT_YAML = Path(__file__).resolve().parents[1] / "custom_llm_tools" / "llm_scripts" / "media_manager.yaml"
 
 
 class NativeMappingWithMissingGet:
@@ -38,6 +39,8 @@ def base_data():
         "play_queries": "",
         "enqueue": "",
         "radio_mode": "",
+        "shuffle_mode": "",
+        "repeat": "",
         "source_player_entity_id": "",
         "target_player_entity_id": "",
         "auto_play": "",
@@ -84,6 +87,17 @@ def shape_payload(prepared, action_response=None, restricted_builtins=None):
 
 
 class MediaManagerHelperTest(unittest.TestCase):
+    def test_playback_mode_selector_values_are_quoted_yaml_scalars(self):
+        script_yaml = SCRIPT_YAML.read_text()
+
+        self.assertIn('            - "on"', script_yaml)
+        self.assertIn('            - "off"', script_yaml)
+        self.assertIn('            - "all"', script_yaml)
+        self.assertIn('            - "one"', script_yaml)
+        self.assertNotIn("            - on\n", script_yaml)
+        self.assertNotIn("            - off\n", script_yaml)
+        self.assertNotIn("      example: on\n", script_yaml)
+
     def test_search_defaults_types_and_builds_action(self):
         result = run_helper({})
 
@@ -564,6 +578,94 @@ class MediaManagerHelperTest(unittest.TestCase):
         self.assertTrue(transfer["data"]["auto_play"])
         self.assertFalse(transfer_no_autoplay["data"]["auto_play"])
         self.assertEqual("media_player.living_room", transfer["data"]["target_entity_id"])
+
+    def test_set_playback_mode_builds_generic_media_player_actions(self):
+        combined = run_helper(
+            {
+                "operation": "set_playback_mode",
+                "query": "",
+                "player_entity_id": "media_player.kitchen",
+                "shuffle_mode": "off",
+                "repeat": "all",
+            }
+        )
+        repeat_only = run_helper(
+            {
+                "operation": "set_playback_mode",
+                "query": "",
+                "player_entity_id": "media_player.kitchen",
+                "repeat": "one",
+            }
+        )
+        shaped = shape_payload(combined["data"])
+
+        self.assertTrue(combined["success"])
+        self.assertEqual("set_playback_mode", combined["data"]["action"])
+        self.assertEqual("media_player.kitchen", combined["data"]["target_entity_id"])
+        self.assertFalse(combined["data"]["action_data"]["shuffle"])
+        self.assertEqual("all", combined["data"]["action_data"]["repeat"])
+        self.assertTrue(repeat_only["success"])
+        self.assertNotIn("shuffle", repeat_only["data"]["action_data"])
+        self.assertEqual("one", repeat_only["data"]["action_data"]["repeat"])
+        self.assertTrue(shaped["success"])
+        self.assertEqual("Requested playback mode update for media_player.kitchen.", shaped["answer"])
+        self.assertEqual("off", shaped["data"]["shuffle_mode"])
+        self.assertEqual("all", shaped["data"]["repeat"])
+
+    def test_set_playback_mode_validation(self):
+        missing_mode = run_helper(
+            {
+                "operation": "set_playback_mode",
+                "query": "",
+                "player_entity_id": "media_player.kitchen",
+            }
+        )
+        invalid_player = run_helper(
+            {
+                "operation": "set_playback_mode",
+                "query": "",
+                "player_entity_id": "sensor.kitchen",
+                "shuffle_mode": "on",
+            }
+        )
+        invalid_shuffle = run_helper(
+            {
+                "operation": "set_playback_mode",
+                "query": "",
+                "player_entity_id": "media_player.kitchen",
+                "shuffle_mode": "true",
+            }
+        )
+        invalid_repeat = run_helper(
+            {
+                "operation": "set_playback_mode",
+                "query": "",
+                "player_entity_id": "media_player.kitchen",
+                "repeat": "playlist",
+            }
+        )
+        outside_contract = run_helper(
+            {
+                "operation": "play_by_uri",
+                "query": "",
+                "player_entity_id": "media_player.kitchen",
+                "player_entity_id_is_music_assistant": "true",
+                "media_uris": "spotify://track/a",
+                "shuffle_mode": "off",
+                "repeat": "off",
+            }
+        )
+
+        self.assertFalse(missing_mode["success"])
+        self.assertEqual(["shuffle_mode", "repeat"], missing_mode["data"]["required_one_of"])
+        self.assertFalse(invalid_player["success"])
+        self.assertEqual(["sensor.kitchen"], invalid_player["data"]["invalid_entity_ids"])
+        self.assertFalse(invalid_shuffle["success"])
+        self.assertEqual(["on", "off"], invalid_shuffle["data"]["known_shuffle_modes"])
+        self.assertFalse(invalid_repeat["success"])
+        self.assertEqual(["off", "all", "one"], invalid_repeat["data"]["known_repeat_values"])
+        self.assertFalse(outside_contract["success"])
+        self.assertEqual(["shuffle_mode", "repeat"], outside_contract["data"]["invalid_parameters"])
 
     def test_group_join_removes_leader_and_dedupes_members(self):
         result = run_helper(

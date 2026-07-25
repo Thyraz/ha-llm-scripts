@@ -1,7 +1,6 @@
 # Weather Forecast Plan
 
-Status: implemented in repo; pending Home Assistant Developer Tools -> Actions
-and Assist validation.
+Status: implemented in repo and validated in Home Assistant.
 
 This plan defines the first read-only Weather Forecast LLM Tool. The supplied
 external blueprint is background only; implementation should follow this repo's
