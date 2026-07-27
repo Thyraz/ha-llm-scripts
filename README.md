@@ -1407,8 +1407,7 @@ Option Selector: use for reading available options from, and selecting one
 option on, existing input_select.* and select.* entities. Use Entity Index first
 if the exact entity ID is unknown. Call get_options to inspect exact option
 spelling. Call select_option only when the user asks to set, change, choose, or
-select an option. desired_option exact match wins; otherwise a
-case-insensitive unique match is allowed.
+select an option.
 
 Long-Term Aggregated Statistics: use for durable historical statistics:
 averages, minimums, maximums, changes, trends, energy, water, and other
