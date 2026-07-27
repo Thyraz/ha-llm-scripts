@@ -112,6 +112,33 @@ precision and should not be translated.
 If `meta.truncated` is true in the helper response, read `data.truncation` and
 retry with its `retry_hint` if needed.
 
+### Option Selector
+
+Useful trace variables:
+
+- `option_selector_helper`
+- `option_selector_current`
+- `option_selector_response`
+
+Expected option model:
+
+- Option Selector accepts exact `input_select.*` and `select.*` entity IDs.
+- Entity existence is checked with the Home Assistant state machine, so an
+  existing entity whose current state is `unknown` is still valid.
+- Available options come from the entity `options` attribute.
+- `select_option` calls either `input_select.select_option` or
+  `select.select_option`, based on the entity domain.
+- Exact `desired_option` match wins. If there is no exact match, one
+  case-insensitive match is accepted. More than one case-insensitive match is
+  ambiguous.
+
+If the helper returns an unknown option error, retry with one value from
+`data.allowed_options`.
+
+If the helper succeeds but final `current` differs from `selected`, check
+whether the target `select.*` entity updates asynchronously or exposes a state
+value different from the selected option text.
+
 ### Long-Term Aggregated Statistics
 
 Useful trace variables:

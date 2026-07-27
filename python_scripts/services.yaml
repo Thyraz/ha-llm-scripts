@@ -40,6 +40,26 @@ llmtool_entity_index:
         Optional maximum returned entities. Default 50, maximum 1000.
       example: "50"
 
+llmtool_option_selector:
+  name: LLM Tool Option Selector
+  description: >
+    Validate Option Selector input, read available options, and prepare option
+    selection.
+  fields:
+    operation:
+      description: >
+        Option Selector operation: get_options or select_option.
+      example: get_options
+    entity_id:
+      description: >
+        Exact Home Assistant input_select.* or select.* entity ID.
+      example: input_select.house_mode
+    desired_option:
+      description: >
+        Desired option for select_option. Exact match wins; otherwise a
+        case-insensitive unique match is allowed.
+      example: Away
+
 llmtool_calculator:
   name: LLM Tool Calculator
   description: Validate Calculator input and return deterministic arithmetic.

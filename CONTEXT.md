@@ -64,6 +64,26 @@ _Avoid_: attribute dump, raw attributes, all attributes
 A Home Assistant entity state rendered for Assistant-facing responses using the user's display precision while keeping Home Assistant's canonical state language.
 _Avoid_: raw state, unrounded value, internal value
 
+**Option Selector**:
+An LLM Tool for reading available options from, and selecting one option on, Home Assistant `input_select.*` and `select.*` entities.
+_Avoid_: Input/Select Tool, Select Manager, dropdown tool, option picker
+
+**Option Selector operation**:
+A named option action the Option Selector applies, such as reading available options or selecting one option.
+_Avoid_: function, mode, command
+
+**Option Selector operation contract**:
+The Assistant-facing rule for one Option Selector operation that defines which parameters are required, which are optional, and which non-empty parameters should return a validation failure.
+_Avoid_: hidden parameter rules, ignored extra fields, implicit mode behavior
+
+**Option Selector Entity ID**:
+A Home Assistant `input_select.*` or `select.*` entity ID supplied to Option Selector.
+_Avoid_: option name, dropdown name, helper name, select alias
+
+**Option Selector desired option**:
+The option text the user wants selected on an Option Selector Entity ID, resolved to one exact available option before selection.
+_Avoid_: value, state, target option, raw option
+
 **Long-Term Aggregated Statistics**:
 An LLM Tool that returns aggregated Home Assistant long-term statistics for a requested time range.
 _Avoid_: Aggregated Longterm History Access, raw state history, history fetcher

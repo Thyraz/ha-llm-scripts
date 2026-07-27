@@ -10,6 +10,7 @@ Current implementation includes:
 
 - `script.llmtool_demo` for install and response-shape validation
 - `script.llmtool_entity_index` for safe labeled-entity discovery
+- `script.llmtool_option_selector` for reading and selecting options on input_select/select entities
 - `script.llmtool_long_term_aggregated_statistics` for aggregated long-term statistics
 - `script.llmtool_raw_entity_history` for unaggregated raw entity history
 - `script.llmtool_calculator` for deterministic arithmetic
@@ -206,6 +207,108 @@ data:
     - TemperatureSensor
 meta: {}
 ```
+
+## Option Selector tool
+
+After install, Home Assistant should expose:
+
+- `script.llmtool_option_selector`
+- `python_script.llmtool_option_selector`
+
+Option Selector reads available options from, and selects one option on,
+Home Assistant `input_select.*` and `select.*` entities. Use Entity Index first
+if the Assistant does not know the exact entity ID. Do not invent entity IDs.
+
+Supported operations:
+
+- `get_options`
+- `select_option`
+
+Operation contracts:
+
+- `get_options`: required `operation`, `entity_id`
+- `select_option`: required `operation`, `entity_id`, `desired_option`
+
+Only pass parameters listed for the selected operation. Non-empty parameters
+outside that operation contract return a soft failure.
+
+Run `script.llmtool_option_selector` from Developer Tools -> Actions:
+
+```yaml
+operation: get_options
+entity_id: input_select.house_mode
+```
+
+Expected response shape:
+
+```yaml
+success: true
+answer: "Found 4 options."
+data:
+  entity_id: input_select.house_mode
+  domain: input_select
+  friendly_name: House mode
+  current: Home
+  options:
+    - Home
+    - Away
+    - Sleep
+    - Guest
+meta:
+  tool: llmtool_option_selector
+  operation: get_options
+  count: 4
+```
+
+Call `select_option` only when the user asks to set, change, choose, or select
+an option:
+
+```yaml
+operation: select_option
+entity_id: input_select.house_mode
+desired_option: Away
+```
+
+`desired_option` resolves to an exact available option before Home Assistant is
+called. Exact match wins. If there is no exact match, a case-insensitive unique
+match is allowed. Unknown or ambiguous options return a soft failure with
+allowed options.
+
+```yaml
+success: false
+error: "Unknown option. Use data.allowed_options and retry."
+data:
+  entity_id: input_select.house_mode
+  domain: input_select
+  friendly_name: House mode
+  desired_option: Vacation
+  allowed_options:
+    - Home
+    - Away
+meta:
+  tool: llmtool_option_selector
+  operation: select_option
+```
+
+Successful selection reports the requested selection and observed current state:
+
+```yaml
+success: true
+answer: "Selected Away."
+data:
+  entity_id: input_select.house_mode
+  domain: input_select
+  friendly_name: House mode
+  previous: Home
+  selected: Away
+  current: Away
+meta:
+  tool: llmtool_option_selector
+  operation: select_option
+```
+
+Some `select.*` entities may update asynchronously, so `current` is useful
+evidence, not the success condition.
 
 ## Long-Term Aggregated Statistics tool
 
@@ -1300,6 +1403,13 @@ for broad alternatives and is a shortcut for multiple calls with one label each.
 Use Entity Index to discover allowed Home Assistant entity IDs before calling
 tools that need entity IDs, unless exact IDs are already known.
 
+Option Selector: use for reading available options from, and selecting one
+option on, existing input_select.* and select.* entities. Use Entity Index first
+if the exact entity ID is unknown. Call get_options to inspect exact option
+spelling. Call select_option only when the user asks to set, change, choose, or
+select an option. desired_option exact match wins; otherwise a
+case-insensitive unique match is allowed.
+
 Long-Term Aggregated Statistics: use for durable historical statistics:
 averages, minimums, maximums, changes, trends, energy, water, and other
 long-term counters. For monotonic increasing counters, use change to get the
@@ -1385,6 +1495,7 @@ local Home Assistant time as YYYY-MM-DD HH:MM:SS.
 - [Raw Entity History REST decision](docs/adr/0002-raw-entity-history-rest-command.md)
 - [Memory Manager storage decision](docs/adr/0003-optional-memory-manager-uses-variables-history.md)
 - [Tool plans](docs/plans/README.md)
+- [Option Selector plan](docs/plans/implemented/option-selector.md)
 - [Memory Manager plan](docs/plans/implemented/memory-manager.md)
 - [Media Manager plan](docs/plans/implemented/media-manager.md)
 - [Weather Forecast plan](docs/plans/implemented/weather-forecast.md)
@@ -1427,6 +1538,12 @@ For Entity Index helper regression checks:
 
 ```bash
 python3 tests/test_llmtool_entity_index.py
+```
+
+For Option Selector helper regression checks:
+
+```bash
+python3 tests/test_llmtool_option_selector.py
 ```
 
 For Calculator helper regression checks:

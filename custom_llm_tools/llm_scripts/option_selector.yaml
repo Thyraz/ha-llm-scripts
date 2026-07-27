@@ -1,0 +1,158 @@
+llmtool_option_selector:
+  alias: LLM Tool Option Selector
+  icon: mdi:form-select
+  description: >
+    Use Option Selector to read available options from, or select one option on,
+    an existing Home Assistant input_select.* or select.* entity.
+
+    Use Entity Index first if you do not know the exact Option Selector Entity
+    ID. Do not invent entity IDs.
+
+    Supported operations:
+
+    get_options:
+      Required: operation, entity_id.
+      Optional: none.
+
+    select_option:
+      Required: operation, entity_id, desired_option.
+      Optional: none.
+
+    Only pass parameters listed for the selected operation. Non-empty
+    parameters not listed for that operation return validation failure.
+
+    get_options returns the current option and every available option. Use it
+    before select_option when you need to inspect exact option spelling.
+
+    select_option should be called only when the user asks to set, change,
+    choose, or select an option. desired_option is resolved to an exact
+    available option before Home Assistant is called. Exact match wins. If
+    there is no exact match, a case-insensitive unique match is allowed. Unknown
+    or ambiguous options return a soft failure with allowed options so you can
+    retry with an exact value.
+
+    select_option reports the requested selection and the observed current
+    state after the action. Some select entities may update asynchronously, so
+    current is useful evidence, not the success condition.
+
+    On success, read data. get_options returns entity_id, domain,
+    friendly_name, current, and options. select_option returns entity_id,
+    domain, friendly_name, previous, selected, and current. On validation
+    failure, use error and data to retry.
+
+    Example read:
+    ```
+      operation: get_options
+      entity_id: input_select.house_mode
+    ```
+
+    Example select:
+    ```
+      operation: select_option
+      entity_id: input_select.house_mode
+      desired_option: Away
+    ```
+  mode: queued
+  max: 2
+  fields:
+    operation:
+      name: Operation
+      description: >
+        Option Selector operation: get_options or select_option.
+      required: true
+      example: get_options
+      selector:
+        select:
+          options:
+            - get_options
+            - select_option
+    entity_id:
+      name: Entity ID
+      description: >
+        Exact Home Assistant input_select.* or select.* entity ID. Use Entity
+        Index first if you do not know the ID.
+      required: true
+      example: input_select.house_mode
+      selector:
+        entity:
+          domain:
+            - input_select
+            - select
+    desired_option:
+      name: Desired option
+      description: >
+        Required for select_option. Option text the user wants selected. Exact
+        match wins; otherwise a case-insensitive unique match is allowed.
+      required: false
+      example: Away
+      selector:
+        text:
+  sequence:
+    # Validate operation, entity, and option data before calling HA.
+    - alias: Prepare Option Selector request
+      action: python_script.llmtool_option_selector
+      data:
+        operation: "{{ operation | default('', true) }}"
+        entity_id: "{{ entity_id | default('', true) }}"
+        desired_option: "{{ desired_option | default('', true) }}"
+      response_variable: option_selector_helper
+
+    # Call the domain-specific select_option action only after validation succeeds.
+    - alias: Select requested option
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ option_selector_helper.success and option_selector_helper.meta.operation == 'select_option' }}"
+          sequence:
+            - action: "{{ option_selector_helper.data.domain }}.select_option"
+              target:
+                entity_id: "{{ option_selector_helper.data.entity_id }}"
+              data:
+                option: "{{ option_selector_helper.data.selected }}"
+
+            - variables:
+                option_selector_current: "{{ states(option_selector_helper.data.entity_id) }}"
+
+    # Own the final LLM Tool response in the Home Assistant script.
+    - alias: Build structured response
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ option_selector_helper.success and option_selector_helper.meta.operation == 'select_option' }}"
+          sequence:
+            - variables:
+                option_selector_response:
+                  success: true
+                  answer: "Selected {{ option_selector_helper.data.selected }}."
+                  data:
+                    entity_id: "{{ option_selector_helper.data.entity_id }}"
+                    domain: "{{ option_selector_helper.data.domain }}"
+                    friendly_name: "{{ option_selector_helper.data.friendly_name }}"
+                    previous: "{{ option_selector_helper.data.previous }}"
+                    selected: "{{ option_selector_helper.data.selected }}"
+                    current: "{{ option_selector_current }}"
+                  meta:
+                    tool: llmtool_option_selector
+                    operation: select_option
+
+        - conditions:
+            - condition: template
+              value_template: "{{ option_selector_helper.success }}"
+          sequence:
+            - variables:
+                option_selector_response:
+                  success: true
+                  answer: "{{ option_selector_helper.answer }}"
+                  data: "{{ option_selector_helper.data }}"
+                  meta: "{{ option_selector_helper.meta }}"
+      default:
+        - variables:
+            option_selector_response:
+              success: false
+              error: "{{ option_selector_helper.error }}"
+              data: "{{ option_selector_helper.data }}"
+              meta: "{{ option_selector_helper.meta }}"
+
+    # Return the structured response to the caller.
+    - stop: LLM Tool Option Selector complete
+      response_variable: option_selector_response

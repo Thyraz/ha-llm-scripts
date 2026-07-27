@@ -11,6 +11,7 @@ None.
 ## Implemented plans
 
 - [Media Manager](implemented/media-manager.md)
+- [Option Selector](implemented/option-selector.md)
 - [Weather Forecast](implemented/weather-forecast.md)
 - [Memory Manager](implemented/memory-manager.md)
 - [Calendar Manager](implemented/calendar-manager.md)

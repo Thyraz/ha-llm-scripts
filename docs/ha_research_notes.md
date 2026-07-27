@@ -1,6 +1,6 @@
 # Home Assistant Research Notes
 
-Checked: 2026-07-24
+Checked: 2026-07-27
 Docs version shown by Home Assistant pages: 2026.7.4
 
 Use this file as the source ledger for Home Assistant behavior we rely on. Before substantial changes, re-check official docs, release notes, and source for anything touched here.
@@ -79,6 +79,12 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   - https://www.home-assistant.io/integrations/google_generative_ai_conversation/
 - Home Assistant Input Select integration:
   - https://www.home-assistant.io/integrations/input_select/
+- Home Assistant Input Select select option action:
+  https://www.home-assistant.io/actions/input_select.select_option/
+- Home Assistant Select select option action:
+  https://www.home-assistant.io/actions/select.select_option/
+- Home Assistant select entity developer docs:
+  https://developers.home-assistant.io/docs/core/entity/select/
 - Home Assistant Core LLM helper source: `homeassistant/helpers/llm.py`
 - Home Assistant Core Python script source:
   `homeassistant/components/python_script/__init__.py`
@@ -137,6 +143,11 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   integrations are written using Home Assistant templating.
 - Input Select helpers define an editable list of options and can be configured
   in the UI or YAML.
+- `input_select.select_option` selects a specific option for an input select and
+  requires `option` in action data.
+- `select.select_option` selects a specific option for a select entity and
+  requires `option` in action data.
+- Select entities expose an `options` list and a current selected option.
 - `area_id(entity_id)` returns the area ID for an entity or `None`.
 - `device_id(entity_id)` returns the device ID for an entity or `None`.
 - `integration_entities(entry_name)` returns entity IDs for an integration
