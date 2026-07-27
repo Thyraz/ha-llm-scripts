@@ -41,7 +41,7 @@ Assistant-facing text attached to one LLM Tool Script that explains how to call 
 _Avoid_: prompt snippet, README overview, implementation notes
 
 **Prompt overview**:
-Short Assistant prompt text that explains which LLM Tools are available and when to use each one.
+Short Assistant prompt text that a Home Assistant admin copies into an Assistant prompt to explain which LLM Tools are available and when to use each one.
 _Avoid_: full tool manual, call reference, implementation notes
 
 **Entity Index**:

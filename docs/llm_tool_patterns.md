@@ -145,9 +145,12 @@ interact, or when to use them.
 
 ## Prompt overviews
 
-README should include one compact Prompt overview covering the non-demo LLM
-Tools. Demo tools are validation-only and do not need operational prompt text. A
-later `examples/assistant_prompt.md` can provide a full copyable version.
+README is admin-facing. Keep it focused on what this repo is, installation,
+configuration, the copyable Prompt overview, validation, security, and links to
+deeper docs. Do not add per-tool call manuals to README.
+
+README should include one copyable Prompt overview covering the non-demo LLM
+Tools. Demo tools are validation-only and do not need operational prompt text.
 
 The Prompt overview should tell the Assistant:
 
