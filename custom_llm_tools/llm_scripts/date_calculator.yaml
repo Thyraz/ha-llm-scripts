@@ -68,8 +68,7 @@ llmtool_date_calculator:
       date: "2025-01-31 10:00:00"
       segments: "months=1,days=2"
     ```
-  mode: queued
-  max: 2
+  mode: parallel
   fields:
     operation:
       name: Operation

@@ -13,6 +13,12 @@ Use an LLM Tool Python Helper only when YAML/Jinja would be hard to read or when
 - Use lowercase letters and underscores.
 - Avoid generic names such as `calendar_lookup`.
 
+## Script mode
+
+- Use `mode: parallel` for LLM Tool Scripts.
+- If a tool cannot safely run in parallel, document the reason in the script
+  before using another script mode.
+
 ## Parameters
 
 - Prefer scalar strings, booleans, and simple enum strings.

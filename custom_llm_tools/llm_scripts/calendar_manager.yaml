@@ -79,8 +79,7 @@ llmtool_calendar_manager:
       verbosity: compact
       limit: 100
     ```
-  mode: queued
-  max: 2
+  mode: parallel
   fields:
     operation:
       name: Operation

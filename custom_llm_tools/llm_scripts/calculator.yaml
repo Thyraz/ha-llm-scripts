@@ -39,8 +39,7 @@ llmtool_calculator:
         value_count: 3
         precision: 1
     ```
-  mode: queued
-  max: 2
+  mode: parallel
   fields:
     operation:
       name: Operation

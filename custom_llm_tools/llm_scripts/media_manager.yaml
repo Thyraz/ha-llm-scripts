@@ -193,8 +193,7 @@ llmtool_media_manager:
       member_entity_ids: media_player.kitchen,media_player.bedroom
       replace_existing: true
     ```
-  mode: queued
-  max: 2
+  mode: parallel
   fields:
     operation:
       name: Operation

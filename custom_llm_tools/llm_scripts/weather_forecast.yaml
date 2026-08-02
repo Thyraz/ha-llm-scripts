@@ -52,8 +52,7 @@ llmtool_weather_forecast:
       end_time: "2026-07-25 00:00:00"
       verbosity: overview
     ```
-  mode: queued
-  max: 2
+  mode: parallel
   fields:
     weather_entity_id:
       name: Weather entity ID

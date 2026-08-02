@@ -52,8 +52,7 @@ llmtool_option_selector:
       entity_id: input_select.house_mode
       desired_option: Away
     ```
-  mode: queued
-  max: 2
+  mode: parallel
   fields:
     operation:
       name: Operation

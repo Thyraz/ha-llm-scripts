@@ -3,8 +3,7 @@ llmtool_demo:
   description: >
     Use this demo LLM Tool to verify scalar parameters, Python Helper handoff,
     response capture, and structured script responses.
-  mode: queued
-  max: 2
+  mode: parallel
   fields:
     name:
       name: Name

@@ -777,7 +777,7 @@ meta:
 - Removed `docs/plans/implemented/media-player-group-manager.md`.
 - Update README status, install/usage docs, Prompt overview, validation
   commands, and docs links.
-- Keep the LLM Tool Script `mode: queued` and `max: 2`.
+- Keep the LLM Tool Script `mode: parallel`.
 - Use `action:` syntax for all Home Assistant actions.
 - Use YAML comments for non-obvious phases.
 - Resolve Music Assistant Instance in YAML templates before calling the Python

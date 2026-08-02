@@ -65,8 +65,7 @@ llmtool_long_term_aggregated_statistics:
         count: 24
         total: 24
     ```
-  mode: queued
-  max: 2
+  mode: parallel
   fields:
     entity_ids:
       name: Entity IDs

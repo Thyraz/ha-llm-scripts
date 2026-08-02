@@ -71,8 +71,7 @@ llmtool_entity_index:
         verbosity: compact
         limit: 50
     ```
-  mode: queued
-  max: 2
+  mode: parallel
   fields:
     label_names:
       name: Label names
@@ -318,6 +317,7 @@ llmtool_entity_index:
               'state_class': state_class_text,
               'current_temperature': state_attr(entity_id, 'current_temperature'),
               'temperature': state_attr(entity_id, 'temperature'),
+              'current_position': state_attr(entity_id, 'current_position'),
               'volume_level': state_attr(entity_id, 'volume_level'),
               'is_volume_muted': state_attr(entity_id, 'is_volume_muted'),
               'media_title': state_attr(entity_id, 'media_title'),

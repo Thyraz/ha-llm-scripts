@@ -125,8 +125,7 @@ llmtool_memory_manager:
       tags: schedule,kid_one
       text: School starts at 08:10 on regular weekdays.
     ```
-  mode: queued
-  max: 2
+  mode: parallel
   fields:
     operation:
       name: Operation
