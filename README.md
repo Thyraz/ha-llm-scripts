@@ -65,6 +65,14 @@ input_text.llmtool_media_manager_music_assistant_config_entry_id
 
 Create this helper only if more than one Music Assistant instance is installed, then set it to the config entry ID the Media Manager should use.
 
+Optional Notification Manager TTS entity:
+
+```text
+input_text.llmtool_notification_manager_tts_entity_id
+```
+
+Create this helper when `tts.home_assistant_cloud` is not the TTS entity the Notification Manager should use. Set it to one exact `tts.*` entity ID.
+
 Optional Memory Manager setup:
 
 1. Install Variables+History through HACS.
@@ -265,6 +273,12 @@ Index first if the exact weather.* entity ID is unknown. Use forecast_type=daily
 only for full local days with midnight start/end. Use forecast_type=hourly for
 part-day or multi-day hourly ranges. Use overview for normal weather reports.
 Request detailed only when specific forecast attributes are needed.
+
+Notification Manager: use to send short user-facing messages to target
+entities. This version supports media_player.* targets through TTS. Use Entity
+Index to find media_player.* entities by room/floor labels, then call
+Notification Manager with exact target_entity_ids. If it returns a TTS setup
+error, report the setup instruction from error and data to the user.
 
 Media Manager: use for Music Assistant search, library browsing, playback,
 queue checks, queue transfers, playback mode, and media_player grouping. Use Entity Index

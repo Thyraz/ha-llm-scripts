@@ -1,0 +1,304 @@
+llmtool_notification_manager:
+  alias: LLM Tool Notification Manager
+  icon: mdi:bullhorn
+  description: >
+    Use Notification Manager to send a short user-facing message to exact Home
+    Assistant target entities. This version supports media_player.* targets and
+    delivers the message with text-to-speech.
+
+    Use Entity Index first if you do not know the exact media_player.* entity
+    IDs. Rooms and floors are Entity Index label_names, not location values.
+    For room or floor plus media player searches, use label_operator AND.
+
+    Pass target_entity_ids as comma-separated Home Assistant media_player.*
+    entity IDs. Do not pass room names, speaker names, or labels.
+
+    Pass message as non-empty text. The message is sent as-is.
+
+    TTS is configured by the Home Assistant admin, not by the Assistant. If this
+    tool returns a TTS setup error, tell the user to configure the helper named
+    in data.helper_entity_id or enable the default entity in
+    data.default_tts_entity_id.
+
+    On success, read data.target_entity_ids and data.message. On validation
+    failure, use error and data to retry or explain setup.
+
+    Example after Entity Index found the player:
+    ```
+      target_entity_ids: media_player.kitchen
+      message: Dinner is ready.
+    ```
+  mode: parallel
+  fields:
+    target_entity_ids:
+      name: Target entity IDs
+      description: >
+        Comma-separated exact Home Assistant media_player.* entity IDs. Use
+        Entity Index first for room or floor labels.
+      required: true
+      example: media_player.kitchen,media_player.living_room
+      selector:
+        text:
+    message:
+      name: Message
+      description: Text to send to the target entities.
+      required: true
+      example: Dinner is ready.
+      selector:
+        text:
+          multiline: true
+  sequence:
+    # TTS engine choice is admin configuration, not Assistant routing.
+    - alias: Resolve Notification Manager TTS entity
+      variables:
+        tts_config_helper_entity_id: input_text.llmtool_notification_manager_tts_entity_id
+        default_tts_entity_id: tts.home_assistant_cloud
+        configured_tts_entity_id: >-
+          {{ (states(tts_config_helper_entity_id) | trim) if (states(tts_config_helper_entity_id) | trim) not in ['unknown', 'unavailable', 'none', ''] else '' }}
+        available_tts_entity_ids: >
+          {% set ns = namespace(items=[]) %}
+          {% for tts_entity in states.tts %}
+            {% set entity_id = tts_entity.entity_id | string | trim %}
+            {% if entity_id %}
+              {% set ns.items = ns.items + [entity_id] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.items }}
+        tts_entity_id: >-
+          {{ configured_tts_entity_id if configured_tts_entity_id else default_tts_entity_id if default_tts_entity_id in available_tts_entity_ids else '' }}
+
+    # Validate text fields and resolve existing media_player targets.
+    - alias: Prepare Notification Manager request
+      variables:
+        helper_message: "{{ message if message is defined and message is string else '' }}"
+        message_invalid_shape: "{{ message is defined and message is not none and message is not string }}"
+        target_entity_ids_invalid_shape: "{{ target_entity_ids is defined and target_entity_ids is not none and target_entity_ids is not string }}"
+        raw_target_entity_ids: "{{ target_entity_ids if target_entity_ids is defined and target_entity_ids is string else '' }}"
+        requested_target_entity_ids: >
+          {% set ns = namespace(items=[]) %}
+          {% for part in raw_target_entity_ids.split(',') %}
+            {% set entity_id = part | trim %}
+            {% if entity_id and entity_id not in ns.items %}
+              {% set ns.items = ns.items + [entity_id] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.items }}
+        duplicate_target_entity_ids: >
+          {% set seen = namespace(items=[]) %}
+          {% set duplicates = namespace(items=[]) %}
+          {% for part in raw_target_entity_ids.split(',') %}
+            {% set entity_id = part | trim %}
+            {% if entity_id %}
+              {% if entity_id in seen.items and entity_id not in duplicates.items %}
+                {% set duplicates.items = duplicates.items + [entity_id] %}
+              {% elif entity_id not in seen.items %}
+                {% set seen.items = seen.items + [entity_id] %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ duplicates.items }}
+        invalid_target_entity_ids: >
+          {% set ns = namespace(items=[]) %}
+          {% for entity_id in requested_target_entity_ids %}
+            {% if not (entity_id | regex_search('^media_player\.[a-z0-9_]+$')) %}
+              {% set ns.items = ns.items + [entity_id] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.items }}
+        available_media_player_entity_ids: >
+          {% set ns = namespace(items=[]) %}
+          {% for player in states.media_player %}
+            {% set entity_id = player.entity_id | string | trim %}
+            {% if entity_id %}
+              {% set ns.items = ns.items + [entity_id] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.items }}
+        unknown_target_entity_ids: >
+          {% set ns = namespace(items=[]) %}
+          {% for entity_id in requested_target_entity_ids %}
+            {% if entity_id not in invalid_target_entity_ids and entity_id not in available_media_player_entity_ids %}
+              {% set ns.items = ns.items + [entity_id] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.items }}
+
+    # Return actionable soft failures for expected Assistant/user mistakes.
+    - alias: Validate Notification Manager request
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ message_invalid_shape }}"
+          sequence:
+            - variables:
+                notification_manager_response:
+                  success: false
+                  error: "Invalid message. Use non-empty text."
+                  data:
+                    parameter: message
+                    expected: non-empty text
+                  meta:
+                    tool: llmtool_notification_manager
+            - stop: Invalid Notification Manager message
+              response_variable: notification_manager_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ (helper_message | trim) == '' }}"
+          sequence:
+            - variables:
+                notification_manager_response:
+                  success: false
+                  error: "Missing message. Provide non-empty text."
+                  data:
+                    parameter: message
+                    expected: non-empty text
+                  meta:
+                    tool: llmtool_notification_manager
+            - stop: Missing Notification Manager message
+              response_variable: notification_manager_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ target_entity_ids_invalid_shape }}"
+          sequence:
+            - variables:
+                notification_manager_response:
+                  success: false
+                  error: "Invalid target_entity_ids. Use comma-separated text, not an array/list."
+                  data:
+                    parameter: target_entity_ids
+                    expected: comma-separated text
+                    example: media_player.kitchen,media_player.living_room
+                  meta:
+                    tool: llmtool_notification_manager
+            - stop: Invalid Notification Manager target shape
+              response_variable: notification_manager_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ (requested_target_entity_ids | count) == 0 }}"
+          sequence:
+            - variables:
+                notification_manager_response:
+                  success: false
+                  error: "Missing target_entity_ids. Provide existing media_player.* entity IDs."
+                  data:
+                    parameter: target_entity_ids
+                    expected_domain: media_player
+                  meta:
+                    tool: llmtool_notification_manager
+            - stop: Missing Notification Manager targets
+              response_variable: notification_manager_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ (invalid_target_entity_ids | count) > 0 }}"
+          sequence:
+            - variables:
+                notification_manager_response:
+                  success: false
+                  error: "Invalid target entity ID. Use Home Assistant media_player.* entity IDs."
+                  data:
+                    invalid_target_entity_ids: "{{ invalid_target_entity_ids }}"
+                    expected_domain: media_player
+                  meta:
+                    tool: llmtool_notification_manager
+            - stop: Invalid Notification Manager targets
+              response_variable: notification_manager_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ (unknown_target_entity_ids | count) > 0 }}"
+          sequence:
+            - variables:
+                notification_manager_response:
+                  success: false
+                  error: "Unknown target entity ID. Use Entity Index to find existing media_player.* entities."
+                  data:
+                    unknown_target_entity_ids: "{{ unknown_target_entity_ids }}"
+                    expected_domain: media_player
+                  meta:
+                    tool: llmtool_notification_manager
+            - stop: Unknown Notification Manager targets
+              response_variable: notification_manager_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ configured_tts_entity_id and not (configured_tts_entity_id | regex_search('^tts\\.[a-z0-9_]+$')) }}"
+          sequence:
+            - variables:
+                notification_manager_response:
+                  success: false
+                  error: "Configured TTS entity is invalid. Ask the user to update input_text.llmtool_notification_manager_tts_entity_id with a valid tts.* entity ID."
+                  data:
+                    helper_entity_id: "{{ tts_config_helper_entity_id }}"
+                    configured_tts_entity_id: "{{ configured_tts_entity_id }}"
+                    default_tts_entity_id: "{{ default_tts_entity_id }}"
+                  meta:
+                    tool: llmtool_notification_manager
+            - stop: Invalid Notification Manager TTS entity
+              response_variable: notification_manager_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ configured_tts_entity_id and configured_tts_entity_id not in available_tts_entity_ids }}"
+          sequence:
+            - variables:
+                notification_manager_response:
+                  success: false
+                  error: "Configured TTS entity was not found. Ask the user to update input_text.llmtool_notification_manager_tts_entity_id with an existing tts.* entity ID."
+                  data:
+                    helper_entity_id: "{{ tts_config_helper_entity_id }}"
+                    configured_tts_entity_id: "{{ configured_tts_entity_id }}"
+                    default_tts_entity_id: "{{ default_tts_entity_id }}"
+                  meta:
+                    tool: llmtool_notification_manager
+            - stop: Unknown Notification Manager TTS entity
+              response_variable: notification_manager_response
+
+        - conditions:
+            - condition: template
+              value_template: "{{ not tts_entity_id }}"
+          sequence:
+            - variables:
+                notification_manager_response:
+                  success: false
+                  error: "No TTS entity configured. Ask the user to create input_text.llmtool_notification_manager_tts_entity_id with a valid tts.* entity ID, or enable tts.home_assistant_cloud."
+                  data:
+                    helper_entity_id: "{{ tts_config_helper_entity_id }}"
+                    default_tts_entity_id: "{{ default_tts_entity_id }}"
+                  meta:
+                    tool: llmtool_notification_manager
+            - stop: Missing Notification Manager TTS entity
+              response_variable: notification_manager_response
+
+    # Let the configured TTS/media integration own queue, ducking, and jingle behavior.
+    - alias: Speak notification message
+      repeat:
+        for_each: "{{ requested_target_entity_ids }}"
+        sequence:
+          - action: tts.speak
+            target:
+              entity_id: "{{ tts_entity_id }}"
+            data:
+              media_player_entity_id: "{{ repeat.item }}"
+              message: "{{ helper_message | trim }}"
+
+    # Return the structured response to the caller.
+    - alias: Build structured response
+      variables:
+        notification_manager_response:
+          success: true
+          answer: "Sent notification to {{ requested_target_entity_ids | count }} media {{ 'player' if (requested_target_entity_ids | count) == 1 else 'players' }}."
+          data:
+            target_entity_ids: "{{ requested_target_entity_ids }}"
+            duplicate_target_entity_ids: "{{ duplicate_target_entity_ids }}"
+            message: "{{ helper_message | trim }}"
+          meta:
+            tool: llmtool_notification_manager
+            target_count: "{{ requested_target_entity_ids | count }}"
+            delivery: tts
+
+    - stop: LLM Tool Notification Manager complete
+      response_variable: notification_manager_response

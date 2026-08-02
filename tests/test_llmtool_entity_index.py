@@ -434,6 +434,77 @@ class EntityIndexHelperTest(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertNotIn("group_members", result["data"]["entities"][0])
 
+    def test_compact_result_adds_cover_current_position_and_preserves_falsey_values(self):
+        result = run_helper(
+            {
+                "location": "inside",
+                "entity_scope": "filtered_by_labels",
+                "labels": "Light",
+                "verbosity": "compact",
+                "candidates": [
+                    candidate(
+                        "cover.closed_shutter",
+                        ["Light"],
+                        state="closed",
+                        attributes={"current_position": 0},
+                    ),
+                    candidate(
+                        "cover.open_shutter",
+                        ["Light"],
+                        state="open",
+                        attributes={"current_position": 100},
+                    ),
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        closed_cover = result["data"]["entities"][0]
+        open_cover = result["data"]["entities"][1]
+
+        self.assertEqual(0, closed_cover["current_position"])
+        self.assertEqual(100, open_cover["current_position"])
+
+    def test_id_only_result_omits_cover_current_position(self):
+        result = run_helper(
+            {
+                "location": "inside",
+                "entity_scope": "filtered_by_labels",
+                "labels": "Light",
+                "verbosity": "id_only",
+                "candidates": [
+                    candidate(
+                        "cover.shutter",
+                        ["Light"],
+                        attributes={"current_position": 50},
+                    )
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(["cover.shutter"], result["data"]["entities"])
+
+    def test_cover_current_position_is_domain_limited(self):
+        result = run_helper(
+            {
+                "location": "inside",
+                "entity_scope": "filtered_by_labels",
+                "labels": "TemperatureSensor",
+                "verbosity": "compact",
+                "candidates": [
+                    candidate(
+                        "sensor.position",
+                        ["TemperatureSensor"],
+                        attributes={"current_position": 50},
+                    )
+                ],
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertNotIn("current_position", result["data"]["entities"][0])
+
     def test_compact_result_omits_detailed_climate_and_media_fields(self):
         result = run_helper(
             {
