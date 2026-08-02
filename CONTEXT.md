@@ -56,8 +56,8 @@ _Avoid_: query mode, search mode
 The `AND` or `OR` operator that controls whether Entity Index requires all supplied `label_names` or at least one supplied `label_names` value to match.
 _Avoid_: match mode, label matching mode
 
-**Entity Index detailed field**:
-A selected Home Assistant entity attribute that Entity Index may include in detailed results because it helps an Assistant choose or explain a safe next action.
+**Entity Index operational field**:
+A selected Home Assistant entity attribute that Entity Index may include because it helps an Assistant interpret entity state or choose a safe next action.
 _Avoid_: attribute dump, raw attributes, all attributes
 
 **Entity Display State**:
@@ -195,6 +195,18 @@ _Avoid_: forecast item, date bucket, raw row
 **Weather Forecast verbosity**:
 The Weather Forecast result-detail choice between overview data for ordinary weather reports and detailed data when the Assistant needs specific forecast attributes.
 _Avoid_: output mode, response style, forecast type
+
+**Notification Manager**:
+An LLM Tool that sends a user-facing message to a target entity, with delivery chosen from the target entity type.
+_Avoid_: Announcement Tool, TTS Tool, messaging backend, notifier
+
+**Notification target entity**:
+A Home Assistant entity supplied to Notification Manager that determines how the message is delivered.
+_Avoid_: source, room name, speaker name
+
+**Notification message**:
+Text supplied to Notification Manager for delivery to the chosen Notification target entity.
+_Avoid_: announcement text, payload, body
 
 **Media Manager**:
 An LLM Tool that lets an Assistant control music playback, queues, and media player groups.

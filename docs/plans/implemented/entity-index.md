@@ -87,6 +87,8 @@ Entity Index helps an Assistant find Home Assistant entities it is allowed to kn
   Entity Display State and not localized text.
 - Empty or missing `state_filter` means no state filter.
 - `unknown` and `unavailable` are included unless `state_filter` excludes them.
+- `compact` and `detailed` include `current_position` for `cover.*` when
+  available because cover state alone is too lossy for position-aware covers.
 - `detailed` adds safe operational fields only: `domain`, `area_id`, `device_id`,
   `unit_of_measurement`, `device_class`, and `state_class` when available.
 - For `climate.*`, `detailed` may also include `current_temperature` and

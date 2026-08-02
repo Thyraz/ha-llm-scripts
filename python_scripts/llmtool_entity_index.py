@@ -16,6 +16,10 @@ MEDIA_PLAYER_DETAIL_FIELDS = [
     "repeat",
 ]
 
+COVER_POSITION_FIELDS = [
+    "current_position",
+]
+
 
 # Small helpers keep the top-level python_script flow readable.
 def as_text(value):
@@ -301,7 +305,7 @@ if output.get("success") is not False:
             if optional_value:
                 shaped[optional_field] = optional_value
 
-        for optional_field in CLIMATE_DETAIL_FIELDS + MEDIA_PLAYER_DETAIL_FIELDS:
+        for optional_field in CLIMATE_DETAIL_FIELDS + MEDIA_PLAYER_DETAIL_FIELDS + COVER_POSITION_FIELDS:
             if optional_field in candidate and candidate[optional_field] is not None:
                 shaped[optional_field] = candidate[optional_field]
 
@@ -330,6 +334,9 @@ if output.get("success") is not False:
                 "state": match["display_state"],
                 "matched_labels": match["matched_labels"],
             }
+
+            if match["domain"] == "cover":
+                add_native_detail_fields(entity, match, COVER_POSITION_FIELDS)
 
             if verbosity == "detailed":
                 for detail_field in [

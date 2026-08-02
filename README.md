@@ -4,7 +4,7 @@ Reusable Home Assistant script collection for LLM-based Assistants.
 
 This repo gives a Home Assistant admin a ready-to-install LLM Tool library for Assist. The Assistant-facing call details live in each Home Assistant script's Tool description, not in this README.
 
-Included LLM Tools cover entity discovery, option selection, long-term statistics, raw history, calculator, date calculator, calendar events, weather forecasts, Music Assistant media control, and optional Assistant memory.
+Included LLM Tools cover entity discovery, option selection, long-term statistics, raw history, calculator, date calculator, calendar events, weather forecasts, notifications, Music Assistant media control, and optional Assistant memory.
 
 ## Install
 

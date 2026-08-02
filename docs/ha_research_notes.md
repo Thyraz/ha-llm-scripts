@@ -1,6 +1,6 @@
 # Home Assistant Research Notes
 
-Checked: 2026-07-27
+Checked: 2026-08-02
 Docs version shown by Home Assistant pages: 2026.7.4
 
 Use this file as the source ledger for Home Assistant behavior we rely on. Before substantial changes, re-check official docs, release notes, and source for anything touched here.
@@ -27,10 +27,18 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   https://www.home-assistant.io/integrations/calendar/
 - Home Assistant Calendar get events action:
   https://www.home-assistant.io/actions/calendar.get_events/
+- Home Assistant Cover integration:
+  https://www.home-assistant.io/integrations/cover/
+- Home Assistant Cover entity developer docs:
+  https://developers.home-assistant.io/docs/core/entity/cover/
 - Home Assistant Weather get forecasts action:
   https://www.home-assistant.io/actions/weather.get_forecasts/
 - Home Assistant Media player integration:
   https://www.home-assistant.io/integrations/media_player/
+- Home Assistant TTS integration:
+  https://www.home-assistant.io/integrations/tts/
+- Home Assistant TTS speak action:
+  https://www.home-assistant.io/actions/tts.speak/
 - Home Assistant media player join action:
   https://www.home-assistant.io/actions/media_player.join/
 - Home Assistant media player unjoin action:
@@ -250,6 +258,11 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   value contains an `events` list.
 - Calendar event response rows include `summary`, optional `description`,
   `start`, `end`, and optional `location`. Event `end` is exclusive.
+- Cover entities have state values such as `opening`, `open`, `closing`, and
+  `closed`.
+- Cover entities may expose `current_position` from the cover
+  `current_cover_position` property. The position is an integer from 0 to 100,
+  where 0 means closed and 100 means fully open. Integrations may omit it.
 - `weather.get_forecasts` reads forecast data from weather entities and returns
   response data through a response variable.
 - `weather.get_forecasts` requires a forecast `type` in YAML. Documented
@@ -278,6 +291,11 @@ Use this file as the source ledger for Home Assistant behavior we rely on. Befor
   `repeat`, with documented values `off`, `all`, and `one`.
 - Shuffle and repeat actions only work on media players that support those
   playback modes.
+- `tts.speak` turns text into speech and plays it on a media player.
+- `tts.speak` targets a `tts.*` entity and requires `media_player_entity_id`
+  plus `message` in action data.
+- The TTS integration also supports legacy `tts.say`; new scripts should use
+  `tts.speak` for UI-configured TTS entities.
 - The official Home Assistant Music Assistant integration provides
   `music_assistant.get_library`, `music_assistant.search`,
   `music_assistant.play_media`, `music_assistant.get_queue`, and
